@@ -22,9 +22,9 @@ func (wa *WidgetsApp) ReactTo(ev events.Event) error {
 	case *events.AllowCreateIdentities:
 		wa.allowCreateIdentities = true
 		return nil
-	// case "DisabelCreateIdentities":
-	// 	wa.allowCreateIdentities = false
-	// 	return nil
+	case *events.DisableCreateIdentities:
+		wa.allowCreateIdentities = false
+		return nil
 	default:
 		return errors.Errorf("WidgetsApp aggregate doesn't know what to do with %#v", ev)
 	}
