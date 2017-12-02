@@ -5,8 +5,9 @@
 # for detailed Gopkg.toml documentation.
 #
 required = [
-  "github.com/opentracing/opentracing-go",
+  "github.com/kylelemons/go-gypsy/yaml",
   "github.com/opentracing/basictracer-go",
+  "github.com/opentracing/opentracing-go",
   "github.com/pkg/errors",
   "github.com/sirupsen/logrus",
   "github.com/spf13/cobra",

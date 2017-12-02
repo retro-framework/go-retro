@@ -1,29 +1,24 @@
 package aggregates
 
 import (
-	"fmt"
-
 	"github.com/leehambley/ls-cms/events"
+	"github.com/leehambley/ls-cms/framework/types"
 	"github.com/pkg/errors"
 )
 
 type WidgetsApp struct {
-	allowCreateIdentities                  bool
-	allowCreateAuthorizations              bool
-	allowBindingIdentitiesToAuthorizations bool
+	AllowCreateIdentities                  bool
+	AllowCreateAuthorizations              bool
+	AllowBindingIdentitiesToAuthorizations bool
 }
 
-func (wa *WidgetsApp) String() string {
-	return fmt.Sprintf("App State: wa.allowCreateIdentities: %t", wa.allowCreateIdentities)
-}
-
-func (wa *WidgetsApp) ReactTo(ev events.Event) error {
+func (wa *WidgetsApp) ReactTo(ev types.Event) error {
 	switch ev.(type) {
 	case *events.AllowCreateIdentities:
-		wa.allowCreateIdentities = true
+		wa.AllowCreateIdentities = true
 		return nil
 	case *events.DisableCreateIdentities:
-		wa.allowCreateIdentities = false
+		wa.AllowCreateIdentities = false
 		return nil
 	default:
 		return errors.Errorf("WidgetsApp aggregate doesn't know what to do with %#v", ev)

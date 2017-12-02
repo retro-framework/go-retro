@@ -14,6 +14,12 @@
   version = "v1.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/kylelemons/go-gypsy"
+  packages = ["yaml"]
+  revision = "08cad365cd28a7fba23bb1e57aa43c5e18ad8bb8"
+
+[[projects]]
   name = "github.com/opentracing/basictracer-go"
   packages = [".","wire"]
   revision = "1b32af207119a14b1b231d451df3ed04a72efebf"
@@ -70,6 +76,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "208251d15cd1e10f6c61d5d995ca0c4c4c21989f3106c1e7d4e2dac7bc4b18cf"
+  inputs-digest = "2dd0675c36c46fab74a74efae1482f282f498c0a68ae956d21f046113396eb16"
   solver-name = "gps-cdcl"
   solver-version = 1

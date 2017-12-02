@@ -1,15 +1,15 @@
 package aggregates
 
 import (
-	"github.com/leehambley/ls-cms/events"
+	"github.com/leehambley/ls-cms/framework/types"
 	"github.com/pkg/errors"
 )
 
 type Session struct {
-	isAnonymous bool
+	IsAnonymous bool
 }
 
-func (sesh *Session) ReactTo(ev events.Event) error {
+func (sesh *Session) ReactTo(ev types.Event) error {
 	switch ev {
 	default:
 		return errors.Errorf("Session aggregate doesn't know what to do with %s", ev)
@@ -17,10 +17,6 @@ func (sesh *Session) ReactTo(ev events.Event) error {
 	return nil
 }
 
-func (sesh *Session) IsAnonymous() bool {
-	return true
-}
-
 func init() {
-	Register("session", &Session{})
+	Register("session", &Session{true})
 }
