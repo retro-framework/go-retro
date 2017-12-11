@@ -27,6 +27,7 @@ func Test_App_ApplyRaiseErrOnNonRoutableCommand(t *testing.T) {
 }
 
 func Test_App_InitializationWithConfigVars(t *testing.T) {
+	t.Skip("not implemented yet")
 
 	// assertErrEql := h(t).ErrEql
 	//
