@@ -71,7 +71,7 @@ type Command interface {
 type CommandFunc func(context.Context, Aggregate, Depot) ([]Event, error)
 
 type Resolver interface {
-	Resolve(Depot, CommandDesc) (CommandFunc, error)
+	Resolve(Depot, []byte) (CommandFunc, error)
 }
 
-type ResolveFunc func(Depot, CommandDesc) (CommandFunc, error)
+type ResolveFunc func(Depot, []byte) (CommandFunc, error)

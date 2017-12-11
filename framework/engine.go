@@ -31,7 +31,7 @@ type Engine struct {
 // There is presently no way (should there be?) to construct a command "by
 // hand" it must be serializable to account for the repo rehydrating the
 // aggregate.
-func (a *Engine) Apply(ctxt context.Context, sid types.SessionID, cmd types.CommandDesc) (string, error) {
+func (a *Engine) Apply(ctxt context.Context, sid types.SessionID, cmd []byte) (string, error) {
 
 	var sp opentracing.Span = opentracing.StartSpan("app/apply")
 	defer sp.Finish()
