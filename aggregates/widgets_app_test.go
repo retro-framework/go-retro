@@ -3,8 +3,8 @@ package aggregates
 import (
 	"testing"
 
-	"github.com/leehambley/ls-cms/events"
-	test "github.com/leehambley/ls-cms/framework/test_helper"
+	"github.com/retro-framework/go-retro/events"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 func Test_WidgetsApp_State_AllowCreationOfIdentities(t *testing.T) {

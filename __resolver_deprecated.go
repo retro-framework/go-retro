@@ -6,8 +6,8 @@ package main
 // 	"path"
 // 	"strings"
 //
-// 	"github.com/leehambley/ls-cms/aggregates"
-// 	"github.com/leehambley/ls-cms/storage"
+// 	"github.com/retro-framework/go-retro/aggregates"
+// 	"github.com/retro-framework/go-retro/storage"
 // 	"github.com/pkg/errors"
 // )
 //

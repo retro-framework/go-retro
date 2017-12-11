@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/leehambley/ls-cms/aggregates"
-	"github.com/leehambley/ls-cms/commands"
-	"github.com/leehambley/ls-cms/events"
-	"github.com/leehambley/ls-cms/framework/types"
+	"github.com/retro-framework/go-retro/aggregates"
+	"github.com/retro-framework/go-retro/commands"
+	"github.com/retro-framework/go-retro/events"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 type AllowCreationOfNewIdentities struct {

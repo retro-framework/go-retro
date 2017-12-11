@@ -3,7 +3,7 @@ package events
 import (
 	"testing"
 
-	test "github.com/leehambley/ls-cms/framework/test_helper"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 type dummyEv struct{}

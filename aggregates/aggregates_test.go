@@ -3,8 +3,8 @@ package aggregates
 import (
 	"testing"
 
-	test "github.com/leehambley/ls-cms/framework/test_helper"
-	"github.com/leehambley/ls-cms/framework/types"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 type dummyAggregate struct{}

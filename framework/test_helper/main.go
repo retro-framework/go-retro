@@ -3,8 +3,8 @@ package test_helper
 import (
 	"testing"
 
-	memory "github.com/leehambley/ls-cms/framework/in-memory"
-	"github.com/leehambley/ls-cms/framework/types"
+	memory "github.com/retro-framework/go-retro/framework/in-memory"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 func StateFixture(t *testing.T, state map[string][]types.Event) types.Depot {

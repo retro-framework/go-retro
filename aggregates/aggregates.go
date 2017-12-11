@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/leehambley/ls-cms/framework/types"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 // THIS FILE SHOULD BE AUTO GENERATED FROM

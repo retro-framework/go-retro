@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/leehambley/ls-cms/aggregates"
-	"github.com/leehambley/ls-cms/commands"
-	memory "github.com/leehambley/ls-cms/framework/in-memory"
-	"github.com/leehambley/ls-cms/framework/types"
+	"github.com/retro-framework/go-retro/aggregates"
+	"github.com/retro-framework/go-retro/commands"
+	memory "github.com/retro-framework/go-retro/framework/in-memory"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 type dummyAggregate struct{}

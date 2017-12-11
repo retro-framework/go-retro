@@ -1,4 +1,6 @@
-# LS-CMS
+[![Build Status](https://travis-ci.org/retro-framework/go-retro.svg?branch=master)](https://travis-ci.org/retro-framework/go-retro)
+
+# Retro Framework - Go-Retro
 
 A log structured CMS API project from which I hope to extract the log
 structured application one day soon.

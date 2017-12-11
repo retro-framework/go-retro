@@ -1,8 +1,8 @@
 package aggregates
 
 import (
-	"github.com/leehambley/ls-cms/events"
-	"github.com/leehambley/ls-cms/framework/types"
+	"github.com/retro-framework/go-retro/events"
+	"github.com/retro-framework/go-retro/framework/types"
 	"github.com/pkg/errors"
 )
 

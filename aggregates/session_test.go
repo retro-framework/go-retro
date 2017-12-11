@@ -3,7 +3,7 @@ package aggregates
 import (
 	"testing"
 
-	test "github.com/leehambley/ls-cms/framework/test_helper"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 func Test_Session_State_IsAnonymousByDefault(t *testing.T) {

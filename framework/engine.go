@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/leehambley/ls-cms/aggregates"
-	"github.com/leehambley/ls-cms/framework/types"
+	"github.com/retro-framework/go-retro/aggregates"
+	"github.com/retro-framework/go-retro/framework/types"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 )
