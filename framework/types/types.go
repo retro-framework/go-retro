@@ -19,8 +19,8 @@ type EventItterator interface {
 }
 
 type Depot interface {
-	Rehydrate(Aggregate, string) error
-	GetByDirname(string) AggregateItterator
+	Rehydrate(context.Context, Aggregate, string) error
+	GetByDirname(context.Context, string) AggregateItterator
 }
 
 type Logger interface {
@@ -71,7 +71,7 @@ type Command interface {
 type CommandFunc func(context.Context, Aggregate, Depot) ([]Event, error)
 
 type Resolver interface {
-	Resolve(Depot, []byte) (CommandFunc, error)
+	Resolve(context.Context, Depot, []byte) (CommandFunc, error)
 }
 
-type ResolveFunc func(Depot, []byte) (CommandFunc, error)
+type ResolveFunc func(context.Context, Depot, []byte) (CommandFunc, error)

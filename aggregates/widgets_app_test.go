@@ -1,6 +1,7 @@
 package aggregates
 
 import (
+	"context"
 	"testing"
 
 	"github.com/retro-framework/go-retro/events"
@@ -18,7 +19,7 @@ func Test_WidgetsApp_State_AllowCreationOfIdentities(t *testing.T) {
 	assertBoolEql(app.AllowCreateIdentities, false)
 
 	// Assert
-	err := mr.Rehydrate(&app, "_")
+	err := mr.Rehydrate(context.Background(), &app, "_")
 	assertErrEql(err, nil)
 	assertBoolEql(app.AllowCreateIdentities, true)
 }
@@ -35,7 +36,7 @@ func Test_WidgetsApp_State_DisableCreationOfIdentities(t *testing.T) {
 	assertBoolEql(app.AllowCreateIdentities, false)
 
 	// Assert
-	err := mr.Rehydrate(&app, "_")
+	err := mr.Rehydrate(context.Background(), &app, "_")
 	assertErrEql(err, nil)
 	assertBoolEql(app.AllowCreateIdentities, false)
 }

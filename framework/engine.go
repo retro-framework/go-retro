@@ -2,14 +2,25 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"time"
 
-	"github.com/retro-framework/go-retro/aggregates"
-	"github.com/retro-framework/go-retro/framework/types"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/aggregates"
+	"github.com/retro-framework/go-retro/framework/types"
 )
+
+type Error struct {
+	Op  string
+	Err error
+	Msg string
+}
+
+func (e Error) Error() string {
+	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
+}
 
 type Engine struct {
 	log      types.Logger
@@ -31,10 +42,11 @@ type Engine struct {
 // There is presently no way (should there be?) to construct a command "by
 // hand" it must be serializable to account for the repo rehydrating the
 // aggregate.
-func (a *Engine) Apply(ctxt context.Context, sid types.SessionID, cmd []byte) (string, error) {
+func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (string, error) {
 
-	var sp opentracing.Span = opentracing.StartSpan("app/apply")
-	defer sp.Finish()
+	spnApply, ctx := opentracing.StartSpanFromContext(ctx, "engine.Apply")
+	spnApply.SetTag("payload", string(cmd))
+	defer spnApply.Finish()
 
 	var (
 		sesh = &aggregates.Session{}
@@ -46,14 +58,19 @@ func (a *Engine) Apply(ctxt context.Context, sid types.SessionID, cmd []byte) (s
 	// having to repeat the is/not valid checks (although some commands such as
 	// changing passwords may want to do more thorough checks on sessions such as
 	// matching session IP address to the current client address from the ctxt?).
-	if sid != "" {
+	if sid == "" {
+		spnApply.LogEvent("no session found")
+	} else {
 		sessionPath := filepath.Join("sessions", string(sid))
-		err := a.depot.Rehydrate(sesh, sessionPath)
+		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
+		defer spnRehydrateSesh.Finish()
+		err := a.depot.Rehydrate(ctx, sesh, sessionPath)
 		if err != nil {
-			return "", errors.Wrap(err, "could not look up session")
-		} else {
-			_ = sesh
+			err := Error{"session-lookup", err, "could not look up session"}
+			spnRehydrateSesh.LogKV("event", "error", "error.object", err)
+			return "", err
 		}
+		spnRehydrateSesh.Finish()
 	}
 
 	// Check we have a repository, and use the repo and the resolver to
@@ -66,14 +83,14 @@ func (a *Engine) Apply(ctxt context.Context, sid types.SessionID, cmd []byte) (s
 		return "", errors.New("resolver not defined, please check config")
 	}
 
-	callable, err := a.resolver(a.depot, cmd)
+	callable, err := a.resolver(ctx, a.depot, cmd)
 	if err != nil {
 		return "", errors.Errorf("Couldn't resolve %s", cmd)
 	}
 
 	start := time.Now()
 
-	_, err = callable(ctxt, sesh, a.depot)
+	_, err = callable(ctx, sesh, a.depot)
 	if err != nil {
 		return "", errors.Wrap(err, "error from downstream")
 	}

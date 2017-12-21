@@ -1,9 +1,21 @@
 package memory
 
 import (
+	"context"
+	"fmt"
+
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/retro-framework/go-retro/framework/types"
-	"github.com/pkg/errors"
 )
+
+type Error struct {
+	Op  string
+	Err error
+}
+
+func (e Error) Error() string {
+	return fmt.Sprintf("memorydepot: op: %q err: %q", e.Op, e.Err)
+}
 
 type Depot struct {
 	aggEvs map[string][]types.Event
@@ -24,21 +36,32 @@ func NewEmptyDepot() *Depot {
 // is purely reconstitution of pre-existing state ready to receive new commands
 // by putting this aggregate in the firing line for new command handlers.
 //
-// Because I can't mutate `dest` here, as it's not passed as a pointer, we take
-// whatever zero value we're given (from the upstream aggregate facory) which
-// is registered with the resolver, and we return the modified one.
-func (d *Depot) Rehydrate(dest types.Aggregate, path string) error {
+// TODO: is this doc bogus? Because I can't mutate `dest` here, as it's not
+// passed as a pointer, we take whatever zero value we're given (from the
+// upstream aggregate facory) which is registered with the resolver, and
+// we return the modified one.
+func (d *Depot) Rehydrate(ctx context.Context, dest types.Aggregate, path string) error {
+
+	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "memorydepot.Rehydrate")
+	defer spnRehydrate.Finish()
+
 	var err error
-	for i, ev := range d.aggEvs[path] {
+	for _, ev := range d.aggEvs[path] {
+		spnReactToEv := opentracing.StartSpan("aggregate react to ev", opentracing.ChildOf(spnRehydrate.Context()))
+		spnReactToEv.LogKV("ev.object", ev)
 		err = dest.ReactTo(ev)
+		spnReactToEv.Finish()
 		if err != nil {
-			return errors.Errorf("error applying %#v to %s: %s (agg ev %d of %d)", ev, dest, err, i+1, len(d.aggEvs[path]))
+			err := Error{"react-to", err}
+			spnRehydrate.LogKV("event", "error", "error.object", err)
+			return err
 		}
 	}
+
 	return nil
 }
 
-func (d *Depot) GetByDirname(path string) types.AggregateItterator {
+func (d *Depot) GetByDirname(ctx context.Context, path string) types.AggregateItterator {
 	return nil
 }
 

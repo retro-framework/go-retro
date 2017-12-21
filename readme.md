@@ -16,11 +16,11 @@ structured application one day soon.
 
 ## Usage
 
-    $ go get -u github.com/opentracing/opentracing-go
-    $ go get -u github.com/pkg/errors
-    $ go get -u github.com/spf13/cobra
-
-(does not yet use a proper dependency manager)
+    $ git clone https://github.com/retro-framework/go-retro.git some/path/src/github.com/retro-framework/go-retro
+    $ export GOPATH=some/path
+    $ brew install dep
+    $ (cd some/path/src/github.com/retro-framework/go-retro && dep ensure)
+    $ go test github.com/retro-framework/go-retro
 
 ## Generator
 

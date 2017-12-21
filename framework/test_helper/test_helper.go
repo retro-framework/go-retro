@@ -1,6 +1,8 @@
 package test_helper
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	memory "github.com/retro-framework/go-retro/framework/in-memory"
@@ -31,27 +33,46 @@ type helper struct {
 	t *testing.T
 }
 
+func (h helper) TypeEql(got, want interface{}) {
+	h.t.Helper()
+	// check obvious case
+	if got == nil && want == nil {
+		return
+	}
+	// check for type equality
+	if strings.Compare(fmt.Sprintf("%T", got), fmt.Sprintf("%T", want)) != 0 {
+		h.t.Fatalf("type equality assertion failed, got %q wanted %q", fmt.Sprintf("%T", got), fmt.Sprintf("%T", want))
+	}
+}
+
 func (h helper) ErrEql(got, want error) {
+	h.t.Helper()
 	if got == nil && want == nil {
 		return
 	}
 	if got != nil && want != nil {
-		// todo mark as helper fn
-		// if got.Error() != want.Error() {
 		if got.Error() != want.Error() {
-			h.t.Fatalf("boolean equality assertion failed, got %q wanted %q", got, want.Error())
+			h.t.Fatalf("error equality assertion failed, got %q wanted %q", got, want.Error())
 		}
 	}
 }
 
+func (h helper) IsNil(any interface{}) {
+	h.t.Helper()
+	if any != nil {
+		h.t.Fatalf("wanted not nil, got %v", any)
+	}
+}
+
 func (h helper) NotNil(any interface{}) {
+	h.t.Helper()
 	if any == nil {
 		h.t.Fatalf("wanted nil, got %v", any)
 	}
 }
 
 func (h helper) BoolEql(got, want bool) {
-	// todo mark as helper fn
+	h.t.Helper()
 	if got != want {
 		h.t.Fatalf("boolean equality assertion failed, got %t wanted %t", got, want)
 	}

@@ -3,12 +3,13 @@ package commands
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
 func NewManifest() types.CommandManifest {
-	return &manifest{make(map[reflect.Type][]types.Command)}
+	return &manifest{make(map[string][]types.Command)}
 }
 
 var DefaultManifest = NewManifest()
@@ -18,22 +19,28 @@ func Register(agg types.Aggregate, cmd types.Command) error {
 }
 
 type manifest struct {
-	m map[reflect.Type][]types.Command
+	m map[string][]types.Command
+}
+
+func typeToKey(t reflect.Type) string {
+	// return strings.Join([]string{filepath.Base(t.PkgPath()), t.Name()}, ".")
+	return strings.Join([]string{t.Name()}, ".")
 }
 
 func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
 	var aggType = reflect.TypeOf(agg)
-	if existingCmds, anyCmds := m.m[aggType]; anyCmds {
+	if existingCmds, anyCmds := m.m[typeToKey(aggType)]; anyCmds {
 		for _, existingCmd := range existingCmds {
 			if cmd == existingCmd {
 				return fmt.Errorf("Can't register command %s for aggregate %s, command already registered", reflect.TypeOf(cmd), aggType)
 			}
 		}
 	}
-	m.m[aggType] = append(m.m[aggType], cmd)
+	m.m[typeToKey(aggType)] = append(m.m[typeToKey(aggType)], cmd)
 	return nil
 }
 
-func (m *manifest) ForAggregate(types.Aggregate) ([]types.Command, error) {
-	return nil, nil
+func (m *manifest) ForAggregate(agg types.Aggregate) ([]types.Command, error) {
+	var aggType = reflect.TypeOf(agg)
+	return m.m[typeToKey(aggType)], nil
 }

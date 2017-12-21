@@ -2,12 +2,15 @@ package resolver
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"testing"
 
+	opentracing "github.com/opentracing/opentracing-go"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
-	memory "github.com/retro-framework/go-retro/framework/in-memory"
+	"github.com/retro-framework/go-retro/framework/in-memory"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -29,21 +32,50 @@ func (dc *dummyCmd) Apply(context.Context, types.Aggregate, types.Depot) ([]type
 
 func Test_Resolver_ResolveExistingCmdSuccessfully(t *testing.T) {
 
-	emd := memory.NewEmptyDepot()
+	collector, err := zipkin.NewHTTPCollector("http://localhost:9411/api/v1/spans")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	defer collector.Close()
 
-	aggm := aggregates.NewManifest()
-	cmdm := commands.NewManifest()
+	tracer, err := zipkin.NewTracer(
+		zipkin.NewRecorder(collector, true, "0.0.0.0:0", "example"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	opentracing.SetGlobalTracer(tracer)
+
+	span, ctx := opentracing.StartSpanFromContext(context.Background(), "Test_Resolver_ResolveExistingCmdSuccessfully")
+	defer span.Finish()
+
+	// Arrange
+	var (
+		emd = memory.NewEmptyDepot()
+
+		aggm = aggregates.NewManifest()
+		cmdm = commands.NewManifest()
+
+		dCmd = &dummyCmd{}
+	)
 
 	aggm.Register("agg", dummyAggregate{})
-	cmdm.Register(dummyAggregate{}, &dummyCmd{})
+	cmdm.Register(dummyAggregate{}, dCmd)
 	cmdm.Register(dummyAggregate{}, &otherDummyCmd{})
 
 	r := resolver{aggm: aggm, cmdm: cmdm}
 
-	r.Resolve(emd, []byte(`{"path":"agg", "name":"dummyCmd"}`))
+	// Act
+	var (
+		res types.CommandFunc
+	)
 
-	fmt.Println(r)
+	_ = res // TODO: Why do I need this line to avoid "is not used" error on the var decl above?
+	res, err = r.Resolve(ctx, emd, []byte(`{"path":"agg", "name":"dummyCmd"}`))
 
+	// Assert
+	test.H(t).IsNil(err)
 }
 
 func Test_Resolver_ResolveExistingCmdRouteToNewInstance(t *testing.T) {
