@@ -45,6 +45,13 @@ func (h helper) TypeEql(got, want interface{}) {
 	}
 }
 
+func (h helper) StringEql(got, want string) {
+	h.t.Helper()
+	if strings.Compare(got, want) != 0 {
+		h.t.Fatalf("string equality assertion failed, got %q wanted %q", got, want)
+	}
+}
+
 func (h helper) ErrEql(got, want error) {
 	h.t.Helper()
 	if got == nil && want == nil {

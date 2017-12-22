@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -88,14 +87,10 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		return "", errors.Errorf("Couldn't resolve %s", cmd)
 	}
 
-	start := time.Now()
-
 	_, err = callable(ctx, sesh, a.depot)
 	if err != nil {
 		return "", errors.Wrap(err, "error from downstream")
 	}
-
-	_ = time.Since(start)
 
 	return "", nil
 }

@@ -29,6 +29,8 @@
 [[constraint]]
   name = "github.com/opentracing/opentracing-go"
 [[constraint]]
+  name = "github.com/rs/xid"
+[[constraint]]
   name = "github.com/openzipkin/zipkin-go-opentracing"
 [[constraint]]
   name = "github.com/uber/jaeger-client-go"

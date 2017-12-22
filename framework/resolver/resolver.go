@@ -59,19 +59,40 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 	}
 	spnUnmarshal.Finish()
 
+	// Check if the aggregate described by the "path" field of the cmdDesc
+	// includes "basename"
+	cmdDescParts := strings.Split(strings.TrimSpace(cmdDesc.Path), "/")
+	if len(cmdDescParts) > 2 {
+		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q contains too many slashes (may not nest)", cmdDesc.Path)}
+	}
+	aggType, aggID := cmdDescParts[0], cmdDescParts[1]
+	spnUnmarshal.SetTag("agg.type", aggType)
+	spnUnmarshal.SetTag("agg.id", aggID)
+
+	if len(aggType) == 0 && len(aggID) == 0 { // neither aggName or ID given … maybe we route to `_` if defined?
+		// TODO: Check if there's a "_" aggregate defined (may likely not be the case in many tests)
+		return nil, Error{"parse-agg-path", fmt.Errorf("can't split %q into name and id, both parts empty (empty string?)", cmdDesc.Path)}
+
+	} else if len(aggType) > 0 && len(aggID) == 0 { // path given, no ID
+
+	} else if len(aggType) == 0 && len(aggID) > 0 { // no `/` in path
+		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not include an id", cmdDesc.Path)}
+	}
+
 	// Check if the given path corresponds to a known aggregate,
 	// if not we might consider falling back to `_` to effectively
 	// make the "_" optional upstream.
 	spnAggLookup, ctx := opentracing.StartSpanFromContext(ctx, "lookup aggregate")
 	defer spnAggLookup.Finish()
-	agg, err := r.aggm.ForPath(cmdDesc.Path)
+	fmt.Println("aggType", aggType)
+	agg, err := r.aggm.ForPath(aggType)
 	if err != nil {
 		err = Error{"agg-lookup", err}
 		spnAggLookup.LogKV("event", "error", "error.object", err)
 		return nil, err
 	}
 	if agg == nil {
-		err := Error{"agg-", fmt.Errorf("could not find aggreate")}
+		err := Error{"agg-lookup", fmt.Errorf("could not find aggreate")}
 		spnAggLookup.LogKV("event", "error", "error.object", err)
 		return nil, err
 	}

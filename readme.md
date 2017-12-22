@@ -53,3 +53,24 @@ Testing is grouped into a few areas, aggregates, and whole application stack.
       //       role: Unrestricted
     }
 
+## Embedding OpenTracing (Zipkin)
+
+    // import zipkin "github.com/openzipkin/zipkin-go-opentracing"
+    // 
+    // collector, err := zipkin.NewHTTPCollector("http://localhost:9411/api/v1/spans")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// 	return
+	// }
+	// defer collector.Close()
+
+	// tracer, err := zipkin.NewTracer(
+	// 	zipkin.NewRecorder(collector, true, "0.0.0.0:0", "example"),
+	// )
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// opentracing.SetGlobalTracer(tracer)
+
+	// span, ctx := opentracing.StartSpanFromContext(context.Background(), "Test_Resolver_ResolveExistingCmdSuccessfully")
+	// defer span.Finish()
