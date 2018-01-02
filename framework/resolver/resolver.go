@@ -65,6 +65,11 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 	if len(cmdDescParts) > 2 {
 		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q contains too many slashes (may not nest)", cmdDesc.Path)}
 	}
+
+	if len(cmdDescParts) < 2 {
+		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not split into exactly two parts", cmdDesc.Path)}
+	}
+
 	aggType, aggID := cmdDescParts[0], cmdDescParts[1]
 	spnUnmarshal.SetTag("agg.type", aggType)
 	spnUnmarshal.SetTag("agg.id", aggID)

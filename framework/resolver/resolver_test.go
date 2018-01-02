@@ -43,7 +43,7 @@ func Test_Resolver_DoesNotResolveCmdToAggregateWithoutID(t *testing.T) {
 
 	r := resolver{aggm: aggm, cmdm: cmdm}
 
-	_, err = r.Resolve(context.Background(), emd, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+	_, err = r.Resolve(context.Background(), emd, []byte(`{"path":"agg", "name":"dummyCmd"}`))
 
 	test.H(t).NotNil(err)
 
@@ -51,7 +51,7 @@ func Test_Resolver_DoesNotResolveCmdToAggregateWithoutID(t *testing.T) {
 		t.Fatal("could not cast err to Error")
 	} else {
 		test.H(t).StringEql("parse-agg-path", rErr.Op)
-		test.H(t).StringEql("err agg path \"agg\" does not include an id", rErr.Err.Error())
+		test.H(t).StringEql("agg path \"agg\" does not split into exactly two parts", rErr.Err.Error())
 	}
 }
 
@@ -96,7 +96,6 @@ func Test_Resolver_ResolveExistingCmdToExistingAggregateSuccessfully(t *testing.
 	// Act
 	var res types.CommandFunc
 
-	_ = res // TODO: Why do I need this line to avoid "is not used" error on the var decl above?
 	res, err = r.Resolve(context.Background(), emd, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
 
 	// Assert
