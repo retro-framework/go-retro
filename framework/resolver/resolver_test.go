@@ -2,6 +2,8 @@ package resolver
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/retro-framework/go-retro/aggregates"
@@ -11,23 +13,72 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
-type dummyAggregate struct{}
+type OneEvent struct{}
+type OtherEvent struct{}
+type ExtraEvent struct{}
 
-func (_ dummyAggregate) ReactTo(types.Event) error {
+type dummyAggregate struct {
+	seenEvents []types.Event
+}
+
+func (da *dummyAggregate) ReactTo(ev types.Event) error {
+	da.seenEvents = append(da.seenEvents, ev)
+	return nil
+}
+
+type dummySession struct{}
+
+func (_ *dummySession) ReactTo(types.Event) error {
 	return nil
 }
 
 type dummyCmd struct {
+	s          *dummyAggregate
 	wasApplied bool
 }
-type otherDummyCmd struct{ dummyCmd }
+
+func (dc *dummyCmd) SetState(s types.Aggregate) error {
+	if agg, ok := s.(*dummyAggregate); ok {
+		dc.s = agg
+		return nil
+	} else {
+		return errors.New("can't cast aggregate state")
+	}
+}
 
 func (dc *dummyCmd) Apply(context.Context, types.Aggregate, types.Depot) ([]types.Event, error) {
+	if len(dc.s.seenEvents) != 2 {
+		return nil, errors.New(fmt.Sprintf("can't apply ExtraEvent to dummyAggregate unless it has seen precisely two events so far", len(dc.s.seenEvents)))
+	}
 	dc.wasApplied = true
+	return []types.Event{ExtraEvent{}}, nil
+}
+
+type otherDummyCmd struct {
+	dummyCmd
+	t     *testing.T
+	state dummyAggregate
+}
+
+func (odc otherDummyCmd) SetState(agg types.Aggregate) error {
+	if wa, ok := agg.(*dummyAggregate); ok {
+		odc.state = *wa
+		return nil
+	} else {
+		return errors.New("can't cast")
+	}
+}
+
+func (odc *otherDummyCmd) Apply(_ context.Context, agg types.Aggregate, _ types.Depot) ([]types.Event, error) {
+	if _, ok := agg.(*dummyAggregate); !ok {
+		odc.t.Fatal("can't typecast aggregate (%q) to concrete dummyAggregate type", agg)
+	}
 	return nil, nil
 }
 
 func Test_Resolver_DoesNotResolveCmdToAggregateWithoutID(t *testing.T) {
+
+	// Arrange
 	var (
 		emd = memory.NewEmptyDepot()
 
@@ -38,15 +89,16 @@ func Test_Resolver_DoesNotResolveCmdToAggregateWithoutID(t *testing.T) {
 		err error
 	)
 
-	aggm.Register("agg", dummyAggregate{})
-	cmdm.Register(dummyAggregate{}, dCmd)
+	aggm.Register("agg", &dummyAggregate{})
+	cmdm.Register(&dummyAggregate{}, dCmd)
 
-	r := resolver{aggm: aggm, cmdm: cmdm}
+	var r = resolver{aggm: aggm, cmdm: cmdm}
 
+	// Act
 	_, err = r.Resolve(context.Background(), emd, []byte(`{"path":"agg", "name":"dummyCmd"}`))
 
+	// Assert
 	test.H(t).NotNil(err)
-
 	if rErr, ok := err.(Error); !ok {
 		t.Fatal("could not cast err to Error")
 	} else {
@@ -57,27 +109,9 @@ func Test_Resolver_DoesNotResolveCmdToAggregateWithoutID(t *testing.T) {
 
 func Test_Resolver_ResolveExistingCmdToExistingAggregateSuccessfully(t *testing.T) {
 
-	// collector, err := zipkin.NewHTTPCollector("http://localhost:9411/api/v1/spans")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// 	return
-	// }
-	// defer collector.Close()
-
-	// tracer, err := zipkin.NewTracer(
-	// 	zipkin.NewRecorder(collector, true, "0.0.0.0:0", "example"),
-	// )
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// opentracing.SetGlobalTracer(tracer)
-
-	// span, ctx := opentracing.StartSpanFromContext(context.Background(), "Test_Resolver_ResolveExistingCmdSuccessfully")
-	// defer span.Finish()
-
 	// Arrange
 	var (
-		emd = memory.NewEmptyDepot()
+		md = memory.NewDepot(map[string][]types.Event{"agg/123": []types.Event{OneEvent{}, OtherEvent{}}})
 
 		aggm = aggregates.NewManifest()
 		cmdm = commands.NewManifest()
@@ -87,22 +121,30 @@ func Test_Resolver_ResolveExistingCmdToExistingAggregateSuccessfully(t *testing.
 		err error
 	)
 
-	aggm.Register("agg", dummyAggregate{})
-	cmdm.Register(dummyAggregate{}, dCmd)
-	cmdm.Register(dummyAggregate{}, &otherDummyCmd{})
+	aggm.Register("agg", &dummyAggregate{})
+	cmdm.Register(&dummyAggregate{}, dCmd)
+	cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
 
-	r := resolver{aggm: aggm, cmdm: cmdm}
+	var (
+		r   = resolver{aggm: aggm, cmdm: cmdm}
+		res types.CommandFunc
+	)
 
 	// Act
-	var res types.CommandFunc
-
-	res, err = r.Resolve(context.Background(), emd, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+	res, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
 
 	// Assert
 	test.H(t).IsNil(err)
-	test.H(t).NotNil(res) // assignment to interface type is also a useful assertion
+
+	// Act
+	newEvs, err := res(context.Background(), &dummySession{}, md)
+
+	// Assert
+	test.H(t).IsNil(err)
+	test.H(t).IntEql(1, len(newEvs))
+	test.H(t).IsNil(err)
 }
 
 func Test_Resolver_ResolveExistingCmdToNonExistantAggregateSuccessfully(t *testing.T) {
-	t.Skip("for example sending to /session/ should gen a new session with id and treat that as the instance")
+
 }

@@ -1,9 +1,9 @@
 package aggregates
 
 import (
+	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/events"
 	"github.com/retro-framework/go-retro/framework/types"
-	"github.com/pkg/errors"
 )
 
 type WidgetsApp struct {

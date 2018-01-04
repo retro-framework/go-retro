@@ -77,11 +77,10 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 	if len(aggType) == 0 && len(aggID) == 0 { // neither aggName or ID given … maybe we route to `_` if defined?
 		// TODO: Check if there's a "_" aggregate defined (may likely not be the case in many tests)
 		return nil, Error{"parse-agg-path", fmt.Errorf("can't split %q into name and id, both parts empty (empty string?)", cmdDesc.Path)}
-
 	} else if len(aggType) > 0 && len(aggID) == 0 { // path given, no ID
-
-	} else if len(aggType) == 0 && len(aggID) > 0 { // no `/` in path
 		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not include an id", cmdDesc.Path)}
+	} else if len(aggType) == 0 && len(aggID) > 0 { // no `/` in path
+		// TODO: Check for this case in the test
 	}
 
 	// Check if the given path corresponds to a known aggregate,
@@ -89,7 +88,6 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 	// make the "_" optional upstream.
 	spnAggLookup, ctx := opentracing.StartSpanFromContext(ctx, "lookup aggregate")
 	defer spnAggLookup.Finish()
-	fmt.Println("aggType", aggType)
 	agg, err := r.aggm.ForPath(aggType)
 	if err != nil {
 		err = Error{"agg-lookup", err}
@@ -133,11 +131,12 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 		return nil, Error{"agg-cmd-lookup", fmt.Errorf("no command registered with name %s for aggregate %v", cmdDesc.Name, reflect.TypeOf(agg).Elem().Name())}
 	}
 
-	// TODO: ~~instrument this and~~ make sure it works in general!
 	err = depot.Rehydrate(ctx, agg, cmdDesc.Path)
 	if err != nil {
 		return nil, Error{"agg-rehydrate", err}
 	}
+
+	cmd.SetState(agg)
 
 	return cmd.Apply, nil
 }

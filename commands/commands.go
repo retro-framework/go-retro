@@ -28,11 +28,13 @@ func typeToKey(t reflect.Type) string {
 }
 
 func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
+	// https://gist.github.com/hvoecking/10772475#file-translate-go-L191
+	// contains nicer reflection code with better explanations
 	var aggType = reflect.TypeOf(agg)
 	if existingCmds, anyCmds := m.m[typeToKey(aggType)]; anyCmds {
 		for _, existingCmd := range existingCmds {
 			if cmd == existingCmd {
-				return fmt.Errorf("Can't register command %s for aggregate %s, command already registered", reflect.TypeOf(cmd), aggType)
+				return fmt.Errorf("can't register command %s for aggregate %s, command already registered", reflect.TypeOf(cmd), aggType)
 			}
 		}
 	}
@@ -41,6 +43,8 @@ func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
 }
 
 func (m *manifest) ForAggregate(agg types.Aggregate) ([]types.Command, error) {
+	// https://gist.github.com/hvoecking/10772475#file-translate-go-L191
+	// contains nicer reflection code with better explanations
 	var aggType = reflect.TypeOf(agg)
 	return m.m[typeToKey(aggType)], nil
 }

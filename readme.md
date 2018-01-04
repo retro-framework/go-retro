@@ -56,7 +56,7 @@ Testing is grouped into a few areas, aggregates, and whole application stack.
 ## Embedding OpenTracing (Zipkin)
 
     // import zipkin "github.com/openzipkin/zipkin-go-opentracing"
-    // 
+    //
     // collector, err := zipkin.NewHTTPCollector("http://localhost:9411/api/v1/spans")
 	// if err != nil {
 	// 	log.Fatal(err)
@@ -74,3 +74,10 @@ Testing is grouped into a few areas, aggregates, and whole application stack.
 
 	// span, ctx := opentracing.StartSpanFromContext(context.Background(), "Test_Resolver_ResolveExistingCmdSuccessfully")
 	// defer span.Finish()
+
+## Doctor
+
+The doctor sub programme needs to check for the following:
+
+- Command fn SetState having a non pointer receiver
+- Aggregates having non pointer receivers
