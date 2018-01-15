@@ -54,10 +54,6 @@ func (dc *dummyCmd) Apply(context.Context, types.Aggregate, types.Depot) ([]type
 	return []types.Event{ExtraEvent{}}, nil
 }
 
-type otherDummyCmd struct {
-	dummyCmd
-}
-
 type dummyCmdWithArgs struct {
 	dummyCmd
 
@@ -131,7 +127,6 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 
 		aggm.Register("agg", &dummyAggregate{})
 		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
-		cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
 
 		var (
 			r   = resolver{aggm: aggm, cmdm: cmdm}
@@ -168,7 +163,6 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 
 		aggm.Register("agg", &dummyAggregate{})
 		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
-		cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
 
 		var (
 			r   = resolver{aggm: aggm, cmdm: cmdm}
@@ -233,14 +227,11 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 			aggm = aggregates.NewManifest()
 			cmdm = commands.NewManifest()
 
-			dCmd = &dummyCmd{}
-
 			err error
 		)
 
 		aggm.Register("agg", &dummyAggregate{})
-		cmdm.Register(&dummyAggregate{}, dCmd)
-		cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
 		cmdm.Register(&dummyAggregate{}, &dummyCmdWithArgs{})
 
 		var (
@@ -267,13 +258,10 @@ func Benchmark_Resolver_ResolveExistingCmdSuccessfully(b *testing.B) {
 
 		aggm = aggregates.NewManifest()
 		cmdm = commands.NewManifest()
-
-		dCmd = &dummyCmd{}
 	)
 
 	aggm.Register("agg", &dummyAggregate{})
-	cmdm.Register(&dummyAggregate{}, dCmd)
-	cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+	cmdm.Register(&dummyAggregate{}, &dummyCmd{})
 
 	var (
 		r = resolver{aggm: aggm, cmdm: cmdm}
