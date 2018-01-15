@@ -48,7 +48,7 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 
 func (dc *dummyCmd) Apply(context.Context, types.Aggregate, types.Depot) ([]types.Event, error) {
 	if len(dc.s.seenEvents) != 2 {
-		return nil, errors.New(fmt.Sprintf("can't apply ExtraEvent to dummyAggregate unless it has seen precisely two events so far", len(dc.s.seenEvents)))
+		return nil, errors.New(fmt.Sprintf("can't apply ExtraEvent to dummyAggregate unless it has seen precisely two events so far (has seen %d)", len(dc.s.seenEvents)))
 	}
 	dc.wasApplied = true
 	return []types.Event{ExtraEvent{}}, nil
@@ -142,9 +142,75 @@ func Test_Resolver_ResolveExistingCmdToExistingAggregateSuccessfully(t *testing.
 	// Assert
 	test.H(t).IsNil(err)
 	test.H(t).IntEql(1, len(newEvs))
-	test.H(t).IsNil(err)
 }
 
+// Test_Resolver_ResolveExistingCmdToExistingAggregateSuccessfully is to test
+// that when addressing a non-existant aggregate an empty instance is returned.
 func Test_Resolver_ResolveExistingCmdToNonExistantAggregateSuccessfully(t *testing.T) {
 
+	// Arrange
+	var (
+		md = memory.NewDepot(map[string][]types.Event{"agg/456": []types.Event{OneEvent{}, OtherEvent{}}})
+		//                                                 ^^^
+
+		aggm = aggregates.NewManifest()
+		cmdm = commands.NewManifest()
+
+		dCmd = &dummyCmd{}
+
+		err error
+	)
+
+	aggm.Register("agg", &dummyAggregate{})
+	cmdm.Register(&dummyAggregate{}, dCmd)
+	cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+
+	var (
+		r   = resolver{aggm: aggm, cmdm: cmdm}
+		res types.CommandFunc
+	)
+
+	// Act
+	res, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+	//                                                                  ^^^
+
+	// Assert
+	test.H(t).IsNil(err)
+
+	// Act
+	newEvs, err := res(context.Background(), &dummySession{}, md)
+
+	// Assert
+	test.H(t).NotNil(err) // dummyCmd throws error in case the aggregate has not !!= 2 events in the history
+	test.H(t).IntEql(0, len(newEvs))
+
+}
+
+func Benchmark_Resolver_ResolveExistingCmdSuccessfully(b *testing.B) {
+
+	b.ReportAllocs()
+
+	// Arrange
+	var (
+		md = memory.NewDepot(map[string][]types.Event{"agg/123": []types.Event{OneEvent{}, OtherEvent{}}})
+
+		aggm = aggregates.NewManifest()
+		cmdm = commands.NewManifest()
+
+		dCmd = &dummyCmd{}
+	)
+
+	aggm.Register("agg", &dummyAggregate{})
+	cmdm.Register(&dummyAggregate{}, dCmd)
+	cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+
+	var (
+		r = resolver{aggm: aggm, cmdm: cmdm}
+	)
+
+	for n := 0; n < b.N; n++ {
+		// Act
+		r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+
+	}
 }
