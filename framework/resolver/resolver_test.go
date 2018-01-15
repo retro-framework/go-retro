@@ -56,133 +56,204 @@ func (dc *dummyCmd) Apply(context.Context, types.Aggregate, types.Depot) ([]type
 
 type otherDummyCmd struct {
 	dummyCmd
-	t     *testing.T
-	state dummyAggregate
 }
 
-func (odc otherDummyCmd) SetState(agg types.Aggregate) error {
-	if wa, ok := agg.(*dummyAggregate); ok {
-		odc.state = *wa
-		return nil
+type dummyCmdWithArgs struct {
+	dummyCmd
+
+	str string
+	itn int
+}
+
+func (dcwa *dummyCmdWithArgs) SetArgs(args types.CommandArgs) error {
+
+	// NOTE:
+	//       JSON permits only float64 numbers in the JSON spec which
+	//       places a burden on all implementors of CommandWithArgs.
+
+	if strArg, ok := args["str"].(string); !ok {
+		return errors.New("expected args[str] to be castable to string, it wasn't")
 	} else {
-		return errors.New("can't cast")
+		dcwa.str = strArg
 	}
-}
 
-func (odc *otherDummyCmd) Apply(_ context.Context, agg types.Aggregate, _ types.Depot) ([]types.Event, error) {
-	if _, ok := agg.(*dummyAggregate); !ok {
-		odc.t.Fatal("can't typecast aggregate (%q) to concrete dummyAggregate type", agg)
-	}
-	return nil, nil
-}
-
-func Test_Resolver_DoesNotResolveCmdToAggregateWithoutID(t *testing.T) {
-
-	// Arrange
-	var (
-		emd = memory.NewEmptyDepot()
-
-		aggm = aggregates.NewManifest()
-		cmdm = commands.NewManifest()
-		dCmd = &dummyCmd{}
-
-		err error
-	)
-
-	aggm.Register("agg", &dummyAggregate{})
-	cmdm.Register(&dummyAggregate{}, dCmd)
-
-	var r = resolver{aggm: aggm, cmdm: cmdm}
-
-	// Act
-	_, err = r.Resolve(context.Background(), emd, []byte(`{"path":"agg", "name":"dummyCmd"}`))
-
-	// Assert
-	test.H(t).NotNil(err)
-	if rErr, ok := err.(Error); !ok {
-		t.Fatal("could not cast err to Error")
+	if intArg, ok := args["int"].(float64); !ok {
+		return errors.New("expected args[int] to be castable to float64, it wasn't")
 	} else {
-		test.H(t).StringEql("parse-agg-path", rErr.Op)
-		test.H(t).StringEql("agg path \"agg\" does not split into exactly two parts", rErr.Err.Error())
+		dcwa.itn = int(intArg)
 	}
+	return nil
 }
 
-func Test_Resolver_ResolveExistingCmdToExistingAggregateSuccessfully(t *testing.T) {
+func Test_Resolver_AggregateLookup(t *testing.T) {
 
-	// Arrange
-	var (
-		md = memory.NewDepot(map[string][]types.Event{"agg/123": []types.Event{OneEvent{}, OtherEvent{}}})
+	t.Run("does not command to aggregate without ID", func(t *testing.T) {
+		t.Parallel()
+		// Arrange
+		var (
+			emd = memory.NewEmptyDepot()
 
-		aggm = aggregates.NewManifest()
-		cmdm = commands.NewManifest()
+			aggm = aggregates.NewManifest()
+			cmdm = commands.NewManifest()
 
-		dCmd = &dummyCmd{}
+			err error
+		)
 
-		err error
-	)
+		aggm.Register("agg", &dummyAggregate{})
+		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
 
-	aggm.Register("agg", &dummyAggregate{})
-	cmdm.Register(&dummyAggregate{}, dCmd)
-	cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+		var r = resolver{aggm: aggm, cmdm: cmdm}
 
-	var (
-		r   = resolver{aggm: aggm, cmdm: cmdm}
-		res types.CommandFunc
-	)
+		// Act
+		_, err = r.Resolve(context.Background(), emd, []byte(`{"path":"agg", "name":"dummyCmd"}`))
 
-	// Act
-	res, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+		// Assert
+		test.H(t).NotNil(err)
+		if rErr, ok := err.(Error); !ok {
+			t.Fatal("could not cast err to Error")
+		} else {
+			test.H(t).StringEql("parse-agg-path", rErr.Op)
+			test.H(t).StringEql("agg path \"agg\" does not split into exactly two parts", rErr.Err.Error())
+		}
+	})
 
-	// Assert
-	test.H(t).IsNil(err)
+	t.Run("resolves to an existing aggregate and retrieves it's history successfully", func(t *testing.T) {
+		t.Parallel()
+		// Arrange
+		var (
+			md = memory.NewDepot(map[string][]types.Event{"agg/123": []types.Event{OneEvent{}, OtherEvent{}}})
 
-	// Act
-	newEvs, err := res(context.Background(), &dummySession{}, md)
+			aggm = aggregates.NewManifest()
+			cmdm = commands.NewManifest()
 
-	// Assert
-	test.H(t).IsNil(err)
-	test.H(t).IntEql(1, len(newEvs))
+			err error
+		)
+
+		aggm.Register("agg", &dummyAggregate{})
+		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
+		cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+
+		var (
+			r   = resolver{aggm: aggm, cmdm: cmdm}
+			res types.CommandFunc
+		)
+
+		// Act
+		res, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+
+		// Assert
+		test.H(t).IsNil(err)
+
+		// Act
+		newEvs, err := res(context.Background(), &dummySession{}, md)
+
+		// Assert
+		test.H(t).IsNil(err)
+		test.H(t).IntEql(1, len(newEvs))
+	})
+
+	t.Run("returns empty aggregate in case of non-exixtent ID", func(t *testing.T) {
+		t.Parallel()
+
+		// Arrange
+		var (
+			md = memory.NewDepot(map[string][]types.Event{"agg/456": []types.Event{OneEvent{}, OtherEvent{}}})
+			//                                                 ^^^
+
+			aggm = aggregates.NewManifest()
+			cmdm = commands.NewManifest()
+
+			err error
+		)
+
+		aggm.Register("agg", &dummyAggregate{})
+		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
+		cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+
+		var (
+			r   = resolver{aggm: aggm, cmdm: cmdm}
+			res types.CommandFunc
+		)
+
+		// Act
+		res, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+		//                                                                  ^^^
+
+		// Assert
+		test.H(t).IsNil(err)
+
+		// Act
+		newEvs, err := res(context.Background(), &dummySession{}, md)
+
+		// Assert
+		test.H(t).NotNil(err) // dummyCmd throws error in case the aggregate has not !!= 2 events in the history
+		test.H(t).IntEql(0, len(newEvs))
+	})
+
 }
 
-// Test_Resolver_ResolveExistingCmdToExistingAggregateSuccessfully is to test
-// that when addressing a non-existant aggregate an empty instance is returned.
-func Test_Resolver_ResolveExistingCmdToNonExistantAggregateSuccessfully(t *testing.T) {
+func Test_Resolver_CommandParsing(t *testing.T) {
 
-	// Arrange
-	var (
-		md = memory.NewDepot(map[string][]types.Event{"agg/456": []types.Event{OneEvent{}, OtherEvent{}}})
-		//                                                 ^^^
+	t.Run("should raise an error if args are given and the command doesn't implement tyeps.CommandWithArgs", func(t *testing.T) {
+		t.Parallel()
 
-		aggm = aggregates.NewManifest()
-		cmdm = commands.NewManifest()
+		// Arrange
+		var (
+			md = memory.NewDepot(map[string][]types.Event{"agg/123": []types.Event{OneEvent{}, OtherEvent{}}})
 
-		dCmd = &dummyCmd{}
+			aggm = aggregates.NewManifest()
+			cmdm = commands.NewManifest()
 
-		err error
-	)
+			err error
+		)
 
-	aggm.Register("agg", &dummyAggregate{})
-	cmdm.Register(&dummyAggregate{}, dCmd)
-	cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+		aggm.Register("agg", &dummyAggregate{})
+		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
 
-	var (
-		r   = resolver{aggm: aggm, cmdm: cmdm}
-		res types.CommandFunc
-	)
+		var (
+			r = resolver{aggm: aggm, cmdm: cmdm}
+		)
 
-	// Act
-	res, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
-	//                                                                  ^^^
+		// Act
+		_, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd", "args":{"str": "bar", "int": 123}}`))
 
-	// Assert
-	test.H(t).IsNil(err)
+		// Assert
+		test.H(t).NotNil(err) // dummyCmd does not implement the CommandWithArgs interface and "args" is given, this should
+		test.H(t).StringEql(err.Error(), `resolver: op: "cast-cmd-with-args" err: "args given, but command does not implement CommandWithArgs"`)
+	})
 
-	// Act
-	newEvs, err := res(context.Background(), &dummySession{}, md)
+	t.Run("should parse cmd with args and set them on the object", func(t *testing.T) {
 
-	// Assert
-	test.H(t).NotNil(err) // dummyCmd throws error in case the aggregate has not !!= 2 events in the history
-	test.H(t).IntEql(0, len(newEvs))
+		t.Parallel()
+
+		// Arrange
+		var (
+			md = memory.NewDepot(map[string][]types.Event{"agg/123": []types.Event{OneEvent{}, OtherEvent{}}})
+
+			aggm = aggregates.NewManifest()
+			cmdm = commands.NewManifest()
+
+			dCmd = &dummyCmd{}
+
+			err error
+		)
+
+		aggm.Register("agg", &dummyAggregate{})
+		cmdm.Register(&dummyAggregate{}, dCmd)
+		cmdm.Register(&dummyAggregate{}, &otherDummyCmd{})
+		cmdm.Register(&dummyAggregate{}, &dummyCmdWithArgs{})
+
+		var (
+			r = resolver{aggm: aggm, cmdm: cmdm}
+		)
+
+		// Act
+		_, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmdWithArgs", "args":{"str": "bar", "int": 123}}`))
+
+		// Assert
+		test.H(t).IsNil(err)
+
+	})
 
 }
 
@@ -211,6 +282,5 @@ func Benchmark_Resolver_ResolveExistingCmdSuccessfully(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		// Act
 		r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
-
 	}
 }

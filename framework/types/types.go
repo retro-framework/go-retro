@@ -67,10 +67,7 @@ type Logger interface {
 type CommandDesc interface {
 	Name() string
 	Path() string
-	Args() ApplicationCmdArgs
 }
-
-type ApplicationCmdArgs interface{}
 
 type StateEngine interface {
 	Apply(context.Context, SessionID, CommandDesc) (string, error)
@@ -125,9 +122,16 @@ type CommandManifest interface {
 // current session, and a Depot which it may use to look up any other
 // Aggregates that it needs to apply business logic.
 type Command interface {
-	SetState(Aggregate) error
 	Apply(context.Context, Aggregate, Depot) ([]Event, error)
+	SetState(Aggregate) error
 }
+
+type CommandWithArgs interface {
+	Command
+	SetArgs(CommandArgs) error
+}
+
+type CommandArgs map[string]interface{}
 
 type CommandFunc func(context.Context, Aggregate, Depot) ([]Event, error)
 

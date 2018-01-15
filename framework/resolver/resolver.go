@@ -3,6 +3,7 @@ package resolver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -138,11 +139,25 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 
 	cmd.SetState(agg)
 
+	if len(cmdDesc.Args) > 0 {
+		if cmdWithArgs, ok := cmd.(types.CommandWithArgs); !ok {
+			return nil, Error{"cast-cmd-with-args", errors.New("args given, but command does not implement CommandWithArgs")}
+		} else {
+			if err := cmdWithArgs.SetArgs(cmdDesc.Args); err != nil {
+				return nil, Error{"assign-args", err}
+			}
+		}
+	}
+
+	// TODO: Could implement an INFO level warning incase args are absent but
+	//       the command actually implements CommandWithArgs (annoying if use-
+	//			 case permits optional args?)
+
 	return cmd.Apply, nil
 }
 
 type commandDesc struct {
 	Name string `json:"name"`
 	Path string
-	Args types.ApplicationCmdArgs
+	Args types.CommandArgs
 }
