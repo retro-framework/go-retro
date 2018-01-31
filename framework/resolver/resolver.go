@@ -48,7 +48,7 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 	// however we're not interested in the concrete instance of the aggregate
 	// or not, we just need it's type in order to find it's command set and
 	// proceed to deconstructing the byte slice into real objects.
-	spnUnmarshal, ctx := opentracing.StartSpanFromContext(ctx, "unmarshal JSON byte stream")
+	spnUnmarshal := opentracing.StartSpan("unmarshal json byte steam", opentracing.ChildOf(spnResolve.Context()))
 	spnUnmarshal.SetTag("payload", string(b))
 	defer spnUnmarshal.Finish()
 	var cmdDesc commandDesc
@@ -87,7 +87,7 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 	// Check if the given path corresponds to a known aggregate,
 	// if not we might consider falling back to `_` to effectively
 	// make the "_" optional upstream.
-	spnAggLookup, ctx := opentracing.StartSpanFromContext(ctx, "lookup aggregate")
+	spnAggLookup := opentracing.StartSpan("look up aggregate", opentracing.ChildOf(spnResolve.Context()))
 	defer spnAggLookup.Finish()
 	agg, err := r.aggm.ForPath(aggType)
 	if err != nil {
@@ -104,9 +104,11 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 
 	// Look up the command before we invest effort to rehydrate something
 	// we might not be able to use
-	spnAggCmdLookup, ctx := opentracing.StartSpanFromContext(ctx, "lookup aggregate command")
+	spnAggCmdLookup := opentracing.StartSpan("look up command for aggregate", opentracing.ChildOf(spnResolve.Context()))
 	defer spnAggCmdLookup.Finish()
 	cmds, err := r.cmdm.ForAggregate(agg)
+	spnAggCmdLookup.SetTag("commands.list", cmds)
+	spnAggCmdLookup.SetTag("commands.num", len(cmds))
 	if err != nil {
 		err = Error{"agg-cmd-lookup", err}
 		spnAggCmdLookup.LogKV("event", "error", "error.object", err)
@@ -120,7 +122,9 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 	sp := opentracing.StartSpan("iterating over aggregate commands", opentracing.ChildOf(spnAggCmdLookup.Context()))
 	var cmd types.Command
 	for _, c := range cmds {
+		sp.LogKV(reflect.TypeOf(c).Elem().Name(), cmdDesc.Name)
 		if strings.Compare(reflect.TypeOf(c).Elem().Name(), cmdDesc.Name) == 0 {
+			sp.LogKV("matched", reflect.TypeOf(c).Elem().Name())
 			cmd = c
 		} else {
 			sp.LogKV("no match", reflect.TypeOf(c).Elem().Name())
@@ -158,6 +162,6 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 
 type commandDesc struct {
 	Name string `json:"name"`
-	Path string
+	Path string `json:"path"`
 	Args types.CommandArgs
 }
