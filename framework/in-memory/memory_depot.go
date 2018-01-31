@@ -3,6 +3,8 @@ package memory
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"sync"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/retro-framework/go-retro/framework/types"
@@ -18,6 +20,7 @@ func (e Error) Error() string {
 }
 
 type Depot struct {
+	sync.RWMutex
 	aggEvs map[string][]types.Event
 }
 
@@ -35,17 +38,13 @@ func NewEmptyDepot() *Depot {
 // At this level of abstraction we are not concerned with /commands/, this
 // is purely reconstitution of pre-existing state ready to receive new commands
 // by putting this aggregate in the firing line for new command handlers.
-//
-// TODO: is this doc bogus? Because I can't mutate `dest` here, as it's not
-// passed as a pointer, we take whatever zero value we're given (from the
-// upstream aggregate facory) which is registered with the resolver, and
-// we return the modified one.
 func (d *Depot) Rehydrate(ctx context.Context, dest types.Aggregate, path string) error {
 
 	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "memorydepot.Rehydrate")
 	defer spnRehydrate.Finish()
 
 	var err error
+	d.RLock()
 	for _, ev := range d.aggEvs[path] {
 		spnReactToEv := opentracing.StartSpan("aggregate react to ev", opentracing.ChildOf(spnRehydrate.Context()))
 		spnReactToEv.LogKV("ev.object", ev)
@@ -54,10 +53,12 @@ func (d *Depot) Rehydrate(ctx context.Context, dest types.Aggregate, path string
 		if err != nil {
 			err := Error{"react-to", err}
 			spnRehydrate.LogKV("event", "error", "error.object", err)
+			d.RUnlock()
 			return err
 		}
 	}
 
+	d.RUnlock()
 	return nil
 }
 
@@ -65,12 +66,32 @@ func (d *Depot) GetByDirname(ctx context.Context, path string) types.AggregateIt
 	return nil
 }
 
-// appendAggregateEvs appends the events to the history of the aggregate.
-// It is *vital* that this is never called without the guarantees that the
-// Command layer offers about the Aggregate's ability to accept these
-// events, or react to them in a sane way.
-func (d *Depot) appendAggregateEvs(a types.Aggregate, evs []types.Event) (int, int) {
-	var urn = "urn-sentinel"
-	d.aggEvs[urn] = append(d.aggEvs[urn], evs)
-	return len(d.aggEvs[urn]) - len(evs), len(d.aggEvs[urn])
+func (d *Depot) Claim(ctx context.Context, path string) bool {
+	return true
+}
+
+func (d *Depot) Release(path string) {
+	return
+}
+
+func (d *Depot) AppendEvs(path string, evs []types.Event) (int, error) {
+	d.Lock()
+	d.aggEvs[path] = append(d.aggEvs[path], evs)
+	d.Unlock()
+	return len(evs), nil
+}
+
+func (d *Depot) Exists(path string) bool {
+	d.RLock()
+	_, exists := d.aggEvs[path]
+	d.RUnlock()
+	return exists
+}
+
+func toType(t types.Aggregate) reflect.Type {
+	var v = reflect.ValueOf(t)
+	if reflect.Ptr == v.Kind() || reflect.Interface == v.Kind() {
+		v = v.Elem()
+	}
+	return v.Type()
 }
