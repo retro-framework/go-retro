@@ -1,9 +1,11 @@
-package main
+package engine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -21,11 +23,20 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
+func NewEngine(d types.Depot, r types.ResolveFunc, i types.IDFactory) Engine {
+	return Engine{d, r, i, 5 * time.Second}
+}
+
+func New(d types.Depot, r types.ResolveFunc, i types.IDFactory) Engine {
+	return NewEngine(d, r, i)
+}
+
 type Engine struct {
-	log      types.Logger
-	tracer   opentracing.Tracer
-	depot    types.Depot
-	resolver types.ResolveFunc
+	depot     types.Depot
+	resolver  types.ResolveFunc
+	idFactory types.IDFactory
+
+	claimTimeout time.Duration
 }
 
 // Apply takes a command and uses a Resolver to determine which aggregate
@@ -60,7 +71,7 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	if sid == "" {
 		spnApply.LogEvent("no session found")
 	} else {
-		sessionPath := filepath.Join("sessions", string(sid))
+		sessionPath := filepath.Join("session", string(sid))
 		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
 		defer spnRehydrateSesh.Finish()
 		err := a.depot.Rehydrate(ctx, sesh, sessionPath)
@@ -95,6 +106,63 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	return "", nil
 }
 
-func (a *Engine) StartSession(types.SessionParams) {
+// StartSession will attempt to summon a Session aggregate into existence by
+// calling it's "Start" command. If no session aggregate is registered and no
+// "start" command for it exists an error will be raised.
+//
+// The ID is generated internally using the types.IDFactory given to the
+// constructor. This function can be tied into a ticket server, or a simple
+// central sequential store or random hex string generator function at will.
+//
+// If error is non-nil the SID is not usable. The session ID is returned to
+// facilitate correlating logs with failed session start commands.
+func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
+	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "engine.StartSession")
+	defer spnResolve.Finish()
+
+	sidStr, err := e.idFactory()
+	sid := types.SessionID(sidStr)
+	if err != nil {
+		return sid, Error{"generate-id-for-session", err, "id factory returned an error when genrating an id"}
+	}
+
+	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnResolve.Context()))
+	path := fmt.Sprintf("session/%s", sid)
+
+	claimCtx, cancel := context.WithTimeout(ctx, e.claimTimeout)
+	defer cancel()
+
+	e.depot.Claim(claimCtx, path)
+	defer e.depot.Release(path)
+
+	b, err := json.Marshal(struct {
+		Path    string `json:"path"`
+		CmdName string `json:"name"`
+	}{path, "Start"})
+	if err != nil {
+		return sid, Error{"marshal-session-start-cmd", err, "can't marshal session start command to JSON for resolver"}
+	}
+	spnUnmarshal.SetTag("payload", string(b))
+	spnUnmarshal.Finish()
+
+	//↓ ResolveFunc needs to return the aggregate really, else I've no handle on it, and I can't "lock" it in the depot
+	sessionStart, err := e.resolver(ctx, e.depot, b)
+	if err != nil {
+		return sid, Error{"resolve-session-start-cmd", err, "can't resolve session start command, no aggregate or command registered"}
+	}
+
+	evs, err := sessionStart(ctx, nil, e.depot)
+	if err != nil {
+		return sid, Error{"execute-session-start-cmd", err, "can't call session start command, an error was returned"}
+	}
+
+	spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
+	n, err := e.depot.AppendEvs(path, evs)
+	if n != len(evs) {
+		return sid, Error{"depot-partial-store", err, "depot encountered error storing events for aggregate"}
+	}
+	spnAppendEvs.Finish()
+
+	return sid, nil
 }
