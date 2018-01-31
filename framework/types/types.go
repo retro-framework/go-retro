@@ -1,6 +1,9 @@
 package types
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type Aggregate interface {
 	ReactTo(Event) error
@@ -43,8 +46,15 @@ type EventItterator interface {
 //
 // This is not so much "Event Sourcing" as it is Command/Event sourcing.
 type Depot interface {
+	Claim(context.Context, string) bool
+	Release(string)
+
 	Rehydrate(context.Context, Aggregate, string) error
 	GetByDirname(context.Context, string) AggregateItterator
+
+	Exists(string) bool
+
+	AppendEvs(string, []Event) (int, error)
 }
 
 // Logger is the generic logging interface. It explicitly avoids including
@@ -76,7 +86,10 @@ type StateEngine interface {
 
 type SessionID string
 
-type SessionParams interface{}
+type SessionParams interface {
+	ID() SessionID
+	Client() string
+}
 
 type AggregateManifest interface {
 	Register(string, Aggregate) error
@@ -85,7 +98,14 @@ type AggregateManifest interface {
 
 type EventManifest interface {
 	Register(Event) error
+	KeyFor(Event) string
 }
+
+type EventFactory interface {
+	New(string) Event
+}
+
+type NowFn func() time.Time
 
 // CommandManifest is the interface that allows for various implementations
 // of mapping command types to aggregates. They are stored internally in a
@@ -140,3 +160,5 @@ type Resolver interface {
 }
 
 type ResolveFunc func(context.Context, Depot, []byte) (CommandFunc, error)
+
+type IDFactory func() (string, error)
