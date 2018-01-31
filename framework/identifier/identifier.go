@@ -1,10 +1,14 @@
-package main
+package identifier
 
 import (
 	"bytes"
 	"strings"
 	"unicode"
 )
+
+func New(name string) *identifier {
+	return NewIdentifier(name)
+}
 
 func NewIdentifier(name string) *identifier {
 	return &identifier{
@@ -40,6 +44,14 @@ func (i *identifier) Abbr() string {
 	var b bytes.Buffer
 	for _, w := range i.parts() {
 		b.WriteByte(w[0])
+	}
+	return b.String()
+}
+
+func (i *identifier) CamelCase() string {
+	var b bytes.Buffer
+	for _, w := range i.parts() {
+		b.WriteString(strings.Title(w))
 	}
 	return b.String()
 }
