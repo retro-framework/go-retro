@@ -22,6 +22,10 @@ structured application one day soon.
     $ (cd some/path/src/github.com/retro-framework/go-retro && dep ensure)
     $ go test github.com/retro-framework/go-retro
 
+**NOTE:** Some tests (integration, external server) are guarded by build tags, build with:
+
+    $ go test -tags 'redis integration' github.com/retro-framework/go-retro/framework/...
+  
 ## Generator
 
 The ls-cms project includes a generator to assist with the creation of the
@@ -81,3 +85,7 @@ The doctor sub programme needs to check for the following:
 
 - Command fn SetState having a non pointer receiver
 - Aggregates having non pointer receivers
+- Events having non-exported fields
+- Unmounted events, aggregates and commands
+- Session start function that returns no event
+
