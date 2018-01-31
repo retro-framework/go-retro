@@ -9,7 +9,7 @@ import (
 )
 
 func NewManifest() types.CommandManifest {
-	return &manifest{make(map[string][]types.Command)}
+	return &manifest{make(map[reflect.Type][]types.Command)}
 }
 
 var DefaultManifest = NewManifest()
@@ -19,32 +19,47 @@ func Register(agg types.Aggregate, cmd types.Command) error {
 }
 
 type manifest struct {
-	m map[string][]types.Command
+	m map[reflect.Type][]types.Command
 }
 
-func typeToKey(t reflect.Type) string {
-	// return strings.Join([]string{filepath.Base(t.PkgPath()), t.Name()}, ".")
-	return strings.Join([]string{t.Name()}, ".")
-}
+// https://golang.org/pkg/expvar/#Var
+// func (m *manifest) String() string {
+// 	b, err := json.Marshal()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return string(b)
+// }
 
 func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
-	// https://gist.github.com/hvoecking/10772475#file-translate-go-L191
-	// contains nicer reflection code with better explanations
-	var aggType = reflect.TypeOf(agg)
-	if existingCmds, anyCmds := m.m[typeToKey(aggType)]; anyCmds {
+	if existingCmds, anyCmds := m.m[m.toType(agg)]; anyCmds {
 		for _, existingCmd := range existingCmds {
 			if cmd == existingCmd {
-				return fmt.Errorf("can't register command %s for aggregate %s, command already registered", reflect.TypeOf(cmd), aggType)
+				return fmt.Errorf("can't register command %s for aggregate %s, command already registered", reflect.TypeOf(cmd), m.toType(agg))
 			}
 		}
 	}
-	m.m[typeToKey(aggType)] = append(m.m[typeToKey(aggType)], cmd)
+	m.m[m.toType(agg)] = append(m.m[m.toType(agg)], cmd)
 	return nil
 }
 
 func (m *manifest) ForAggregate(agg types.Aggregate) ([]types.Command, error) {
-	// https://gist.github.com/hvoecking/10772475#file-translate-go-L191
-	// contains nicer reflection code with better explanations
-	var aggType = reflect.TypeOf(agg)
-	return m.m[typeToKey(aggType)], nil
+	for key, cmds := range m.m {
+		if m.toTypeString(m.toType(agg)) == m.toTypeString(key) {
+			return cmds, nil
+		}
+	}
+	return []types.Command{}, nil
+}
+
+func (m *manifest) toType(t interface{}) reflect.Type {
+	var v = reflect.ValueOf(t)
+	if reflect.Ptr == v.Kind() || reflect.Interface == v.Kind() {
+		v = v.Elem()
+	}
+	return v.Type()
+}
+
+func (m *manifest) toTypeString(t reflect.Type) string {
+	return strings.Join([]string{t.PkgPath(), t.Name()}, ".")
 }

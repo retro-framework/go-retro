@@ -7,18 +7,40 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
-var Manifest = map[string]reflect.Type{}
+var DefaultManifest = NewManifest()
+
+type manifest struct {
+	m map[string]reflect.Type
+}
+
+func NewManifest() types.EventManifest {
+	return &manifest{make(map[string]reflect.Type)}
+}
 
 func Register(ev types.Event) error {
-	// https://gist.github.com/hvoecking/10772475#file-translate-go-L191
-	// contains nicer reflection code with better explanations
-	//
-	// TODO: does this only accept pointers to evs because of .Elem().Name() ???
-	//       see skipped test
-	evName := reflect.TypeOf(ev).Elem().Name()
-	if _, exists := Manifest[evName]; exists {
-		return fmt.Errorf("can't register event %s, already registered", evName)
+	return DefaultManifest.Register(ev)
+}
+
+func (m *manifest) Register(ev types.Event) error {
+	var (
+		v      = m.toType(ev)
+		evName = v.Name()
+	)
+	if _, exists := m.m[evName]; exists {
+		return fmt.Errorf("can't register event %s, already registered (event names are not namespaced)", evName)
 	}
-	Manifest[evName] = reflect.TypeOf(ev)
+	m.m[evName] = v
 	return nil
+}
+
+func (m *manifest) KeyFor(ev types.Event) string {
+	return m.toType(ev).Name()
+}
+
+func (m *manifest) toType(t types.Event) reflect.Type {
+	var v = reflect.ValueOf(t)
+	if reflect.Ptr == v.Kind() || reflect.Interface == v.Kind() {
+		v = v.Elem()
+	}
+	return v.Type()
 }

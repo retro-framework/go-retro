@@ -7,9 +7,8 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
-// THIS FILE SHOULD BE AUTO GENERATED FROM
-// FILES IN THE EVENTS DIRECTORY YOU MAY
-// NOT EDIT IT BY HAND
+// THIS FILE SHOULD BE AUTO GENERATED FROM FILES IN THE AGGREGATES
+// DIRECTORY YOU MAY NOT EDIT IT BY HAND
 
 var DefaultManifest = NewManifest()
 
@@ -32,7 +31,7 @@ func (m *manifest) Register(path string, agg types.Aggregate) error {
 	if existing, exists := m.m[path]; exists {
 		return fmt.Errorf("can't register aggregate %s at %s, path already bound to %s", reflect.TypeOf(agg), path, existing)
 	}
-	m.m[path] = toType(agg)
+	m.m[path] = m.toType(agg)
 	return nil
 }
 
@@ -60,7 +59,7 @@ func (m *manifest) ForPath(path string) (types.Aggregate, error) {
 //
 // > Be conservative in what you do, be liberal in what you accept from others
 // > – Joe Postel
-func toType(t types.Aggregate) reflect.Type {
+func (m *manifest) toType(t types.Aggregate) reflect.Type {
 	var v = reflect.ValueOf(t)
 	if reflect.Ptr == v.Kind() || reflect.Interface == v.Kind() {
 		v = v.Elem()

@@ -1,8 +1,8 @@
 package events
 
 type SetAvatar struct {
-	ContentType string `json:"contentType"`
-	ImgData     []byte `json:"imageData"`
+	ContentType string
+	ImgData     []byte
 }
 
 func init() {
