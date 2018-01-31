@@ -1,3 +1,4 @@
+// +build ignore
 package events
 
 // type envelope struct {
