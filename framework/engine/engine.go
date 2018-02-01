@@ -130,6 +130,10 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		return "", Error{"peek-path", err, "could not peek into cmd desc to determine path"}
 	}
 
+	// TODO: The repo/depot should also store the results
+	// of the command and the errors, if any. It should also
+	// store the timing of the execution, and respect the
+	// Durability of the event. (crit, optimistic)
 	spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
 	n, err := a.depot.AppendEvs(peek.Path, newEvs)
 	if n != len(newEvs) {
