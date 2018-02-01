@@ -9,7 +9,6 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -23,18 +22,23 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
-func NewEngine(d types.Depot, r types.ResolveFunc, i types.IDFactory) Engine {
-	return Engine{d, r, i, 5 * time.Second}
-}
-
-func New(d types.Depot, r types.ResolveFunc, i types.IDFactory) Engine {
-	return NewEngine(d, r, i)
+func New(d types.Depot, r types.ResolveFunc, i types.IDFactory, a types.AggregateManifest) Engine {
+	return Engine{
+		depot:        d,
+		resolver:     r,
+		idFactory:    i,
+		aggm:         a,
+		claimTimeout: 5 * time.Second,
+	}
 }
 
 type Engine struct {
 	depot     types.Depot
 	resolver  types.ResolveFunc
 	idFactory types.IDFactory
+
+	// TODO: this is a big hammer for finding out which aggregate is registered at "session"
+	aggm types.AggregateManifest
 
 	claimTimeout time.Duration
 }
@@ -58,10 +62,31 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	spnApply.SetTag("payload", string(cmd))
 	defer spnApply.Finish()
 
-	var (
-		sesh = &aggregates.Session{}
-		err  error
-	)
+	// Check we have a repository, aggm and etc, use them to give us
+	// back a rehydrated instance of the aggregate, and then we'll
+	// call the function on it.
+	if a.aggm == nil {
+		return "", Error{"agg-manifest-missing", nil, "aggregate manifest not available, please check config."}
+	}
+	if a.depot == nil {
+		return "", Error{"depot-missing", nil, "depot not available, please check config."}
+	}
+	if a.resolver == nil {
+		return "", Error{"resolver-missing", nil, "resolver not available, please check config."}
+	}
+
+	var err error
+
+	// Check we have a "session" aggreate in the manifest, else we will struggle
+	// from here on out.
+	spnSeshAggLookup := opentracing.StartSpan("look up session aggregate", opentracing.ChildOf(spnApply.Context()))
+	defer spnSeshAggLookup.Finish()
+	seshAgg, err := a.aggm.ForPath("session")
+	if err != nil {
+		err = Error{"agg-lookup", err, "coult not look up session aggregate in manifest"}
+		spnSeshAggLookup.LogKV("event", "error", "error.object", err)
+		return "", err
+	}
 
 	// If a session ID was provided, look it up in the repository.  preliminary
 	// checks on the session could/should be done here to avoid every command
@@ -74,7 +99,7 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		sessionPath := filepath.Join("session", string(sid))
 		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
 		defer spnRehydrateSesh.Finish()
-		err := a.depot.Rehydrate(ctx, sesh, sessionPath)
+		err := a.depot.Rehydrate(ctx, seshAgg, sessionPath)
 		if err != nil {
 			err := Error{"session-lookup", err, "could not look up session"}
 			spnRehydrateSesh.LogKV("event", "error", "error.object", err)
@@ -83,27 +108,17 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		spnRehydrateSesh.Finish()
 	}
 
-	// Check we have a repository, and use the repo and the resolver to
-	// give us back a rehydrated instance of the aggregate, and then we'll
-	// call the function on it.
-	if a.depot == nil {
-		return "", errors.New("repository not defined, please check config.")
-	}
-	if a.resolver == nil {
-		return "", errors.New("resolver not defined, please check config")
-	}
-
 	callable, err := a.resolver(ctx, a.depot, cmd)
 	if err != nil {
 		return "", errors.Errorf("Couldn't resolve %s", cmd)
 	}
 
-	_, err = callable(ctx, sesh, a.depot)
+	_, err = callable(ctx, seshAgg, a.depot)
 	if err != nil {
 		return "", errors.Wrap(err, "error from downstream")
 	}
 
-	return "", nil
+	return "ok", nil
 }
 
 // StartSession will attempt to summon a Session aggregate into existence by
@@ -150,7 +165,6 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	spnUnmarshal.SetTag("payload", string(b))
 	spnUnmarshal.Finish()
 
-	//↓ ResolveFunc needs to return the aggregate really, else I've no handle on it, and I can't "lock" it in the depot
 	sessionStart, err := e.resolver(ctx, e.depot, b)
 	if err != nil {
 		return sid, Error{"resolve-session-start-cmd", err, "can't resolve session start command, no aggregate or command registered"}
