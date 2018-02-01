@@ -44,7 +44,10 @@ func (d *Depot) Rehydrate(ctx context.Context, dest types.Aggregate, path string
 	defer spnRehydrate.Finish()
 
 	var err error
+
 	d.RLock()
+	defer d.RUnlock()
+
 	for _, ev := range d.aggEvs[path] {
 		spnReactToEv := opentracing.StartSpan("aggregate react to ev", opentracing.ChildOf(spnRehydrate.Context()))
 		spnReactToEv.LogKV("ev.object", ev)
@@ -53,12 +56,10 @@ func (d *Depot) Rehydrate(ctx context.Context, dest types.Aggregate, path string
 		if err != nil {
 			err := Error{"react-to", err}
 			spnRehydrate.LogKV("event", "error", "error.object", err)
-			d.RUnlock()
 			return err
 		}
 	}
 
-	d.RUnlock()
 	return nil
 }
 
