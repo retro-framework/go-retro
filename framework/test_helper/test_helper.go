@@ -81,7 +81,7 @@ func (h helper) IsNil(any interface{}) {
 func (h helper) NotNil(any interface{}) {
 	h.t.Helper()
 	if any == nil {
-		h.t.Fatalf("wanted nil, got %v", any)
+		h.t.Fatalf("wanted not nil, got %v", any)
 	}
 }
 

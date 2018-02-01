@@ -49,7 +49,29 @@ func Test_Engine_StartSession(t *testing.T) {
 
 	t.Run("creates a new session with parameters not matching an aggregate in the repository", func(t *testing.T) {
 		t.Parallel()
-		t.Skip("this should ensure unique session ID in repo, we can assume uuids are safe enough for now, should be fixed before 1.0")
+
+		// Arrange
+		var (
+			emd  = memory.NewEmptyDepot()
+			idFn = func() (string, error) {
+				return "123-stub-id", nil
+			}
+			resolveFn = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
+				fssc := fakeSessionStartCmd{}
+				fssc.SetState(&dummySession{})
+				return fssc.Apply, nil
+			}
+			e = NewEngine(emd, resolveFn, idFn)
+		)
+
+		// Act
+		sid, err := e.StartSession(context.Background())
+		test.H(t).BoolEql(true, emd.Exists(fmt.Sprintf("session/%s", sid)))
+		test.H(t).IsNil(err)
+
+		_, err = e.StartSession(context.Background())
+		test.H(t).BoolEql(true, emd.Exists(fmt.Sprintf("session/%s", sid)))
+		test.H(t).NotNil(err)
 	})
 
 	t.Run("persists the resulting session aggregate to the repository if the start command yields events", func(t *testing.T) {

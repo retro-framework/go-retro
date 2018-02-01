@@ -130,6 +130,10 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnResolve.Context()))
 	path := fmt.Sprintf("session/%s", sid)
 
+	if e.depot.Exists(path) {
+		return sid, Error{"guard-unique-session-id", err, "session id was not unique in depot, can't start."}
+	}
+
 	claimCtx, cancel := context.WithTimeout(ctx, e.claimTimeout)
 	defer cancel()
 
