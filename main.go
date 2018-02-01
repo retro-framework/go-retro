@@ -1,4 +1,5 @@
 // +build ignore
+
 package main
 
 import (
@@ -11,6 +12,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/retro-framework/go-retro/framework/identifier"
 	"github.com/spf13/cobra"
 )
 
@@ -116,7 +118,7 @@ func main() {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 
-			ident := NewIdentifier(args[0])
+			ident := identifier.New(args[0])
 
 			var t *template.Template = template.Must(template.New("aggregate").Parse(aggregateTpl))
 

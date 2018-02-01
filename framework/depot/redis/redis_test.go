@@ -2,8 +2,13 @@
 
 package redis
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/retro-framework/go-retro/events"
+)
 
 func Test_RedisDepot(t *testing.T) {
-	NewDepot()
+	NewDepot(events.DefaultManifest, time.Now)
 }
