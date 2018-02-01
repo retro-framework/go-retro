@@ -8,7 +8,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
-func Test_Depot() {
+func Test_Depot(t *testing.T) {
 	depots := map[string]types.Depot{
 		"in-memory": memory.NewEmptyDepot(),
 		"redis":     redis.New(),
