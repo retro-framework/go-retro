@@ -106,7 +106,6 @@ func Test_Engine_StartSession(t *testing.T) {
 		test.H(t).IsNil(err)
 
 		_, err = e.StartSession(context.Background())
-		test.H(t).BoolEql(true, emd.Exists(fmt.Sprintf("session/%s", sid)))
 		test.H(t).NotNil(err)
 	})
 
@@ -255,6 +254,7 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Assert
 			test.H(t).StringEql("ok", resStr)
+			test.H(t).BoolEql(true, emd.Exists("agg/123"))
 		})
 
 		t.Run("raises error if session is not findable", func(t *testing.T) {

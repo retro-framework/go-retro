@@ -108,15 +108,34 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		spnRehydrateSesh.Finish()
 	}
 
+	spnResolveCmd := opentracing.StartSpan("resolve command", opentracing.ChildOf(spnApply.Context()))
 	callable, err := a.resolver(ctx, a.depot, cmd)
 	if err != nil {
 		return "", errors.Errorf("Couldn't resolve %s", cmd)
 	}
+	spnResolveCmd.Finish()
 
-	_, err = callable(ctx, seshAgg, a.depot)
+	spnApplyCmd := opentracing.StartSpan("apply command", opentracing.ChildOf(spnApply.Context()))
+	newEvs, err := callable(ctx, seshAgg, a.depot)
 	if err != nil {
-		return "", errors.Wrap(err, "error from downstream")
+		return "", errors.Wrap(err, "error applying command")
 	}
+	spnApplyCmd.Finish()
+
+	var peek = struct {
+		Path string `json:"path"`
+	}{}
+	err = json.Unmarshal(cmd, &peek)
+	if err != nil {
+		return "", Error{"peek-path", err, "could not peek into cmd desc to determine path"}
+	}
+
+	spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
+	n, err := a.depot.AppendEvs(peek.Path, newEvs)
+	if n != len(newEvs) {
+		return "", Error{"depot-partial-store", nil, "depot encountered error storing events for aggregate"}
+	}
+	spnAppendEvs.Finish()
 
 	return "ok", nil
 }
