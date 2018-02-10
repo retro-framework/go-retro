@@ -46,7 +46,7 @@ func main() {
 		emd  = redis.NewDepot(events.DefaultManifest, time.Now)
 		idFn = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
 		r    = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest)
-		e    = engine.New(emd, r.Resolve, idFn)
+		e    = engine.New(emd, r.Resolve, idFn, aggregates.DefaultManifest)
 	)
 
 	mux := http.NewServeMux()
