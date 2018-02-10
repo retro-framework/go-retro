@@ -98,6 +98,7 @@ type AggregateManifest interface {
 
 type EventManifest interface {
 	Register(Event) error
+	RegisterAs(string, Event) error
 	KeyFor(Event) string
 }
 
