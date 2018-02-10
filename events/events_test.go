@@ -17,6 +17,10 @@ func Test_Events_RegisterEv_TwiceSameEvRaisesError(t *testing.T) {
 	assertNotNil(err)
 }
 
+func Test_Events_RegisterEv_RaisesErrorUnlessFieldsAreExported(t *testing.T) {
+	s.Skip("dumb guard against events that won't survive marshal/unmarshal")
+}
+
 func Test_Events_RegisterEv_TakesEitherPointerOrConcrete(t *testing.T) {
 	t.Skip("can register's use of reflect not handle concrete types yet?")
 	// assertErrEql := test.H(t).ErrEql
