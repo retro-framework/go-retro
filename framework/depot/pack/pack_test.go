@@ -26,8 +26,8 @@ func Test_Pack(t *testing.T) {
 		// Assert
 		test.H(t).IsNil(err)
 		var (
-			wantContents = `event json dummy 29┋{"foo":"hello","bar":"world"}`
-			wantHash     = `0def887a19c46e7d16ba7afc2e49f90b648207657dcccb4bd73444244180d9d4`
+			wantContents = `event json dummy 29` + HeaderContentSepRune + `{"foo":"hello","bar":"world"}`
+			wantHash     = `0756fae7f4a43d60b5532e1d4da5665daeb0f1a5274f363b99a7757511ec88db`
 		)
 		test.H(t).StringEql(string(res.Contents()), wantContents)
 		test.H(t).StringEql(fmt.Sprintf("%x", res.Hash().Bytes), wantHash)
@@ -52,13 +52,12 @@ func Test_Pack(t *testing.T) {
 		// Assert
 		test.H(t).IsNil(err)
 		var (
-			wantContents = `affix 176┋0 bar/123 sha256:666f6fe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+			wantContents = `affix 176` + HeaderContentSepRune + `0 bar/123 sha256:666f6fe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 1 baz/123 sha256:666f6fe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 `
-			wantHash = `5f56d8826281ad53f09364366409ef9bf1118cb1da536c62a65e55b4ddef9af1`
+			wantHash = `b9371e220f8a4c8fe071a6e7d7b2e6788f243ba2f88553a15e258219251876f7`
 		)
 		test.H(t).StringEql(string(res.Contents()), wantContents)
-		t.Log(fmt.Sprintf("%x", res.Hash().Bytes))
 		test.H(t).StringEql(fmt.Sprintf("%x", res.Hash().Bytes), wantHash)
 	})
 

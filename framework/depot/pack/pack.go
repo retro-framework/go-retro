@@ -4,7 +4,8 @@ package pack
 // character.
 //
 // BOX DRAWINGS HEAVY QUADRUPLE DASH VERTICAL
-const HeaderContentSepRune = "\u250B"
+// const HeaderContentSepRune = "\u250B"
+const HeaderContentSepRune = "\u0000"
 
 // Object is a storable object, they are
 // created by
