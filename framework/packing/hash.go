@@ -9,6 +9,10 @@ type Hash struct {
 	Bytes    []byte
 }
 
+func (h Hash) String() string {
+	return fmt.Sprintf("%s:%x", h.AlgoName, h.Bytes)
+}
+
 // ToPathName yields a pathname such as
 // "f63b/82de/c4c45a502655369ca20af061d08c4459b108f87a108aa1d1dd4c02a0"
 // which is intended to avoid having filesystem directories containing

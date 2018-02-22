@@ -107,6 +107,7 @@ func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
 func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (HashedObject, error) {
 
 	var (
+		cpB     bytes.Buffer
 		payload bytes.Buffer
 	)
 
@@ -114,14 +115,18 @@ func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (HashedObject, error) {
 		return nil, ErrCheckpointWithoutAffix
 	}
 
-	payload.WriteString(fmt.Sprintf("%s %s:%x\n", ObjectTypeAffix, cp.Affix.Hash().AlgoName, cp.Affix.Hash().Bytes))
-	payload.WriteString(fmt.Sprintf("session %s\n", cp.SessionID))
+	cpB.WriteString(fmt.Sprintf("%s %s:%x\n", ObjectTypeAffix, cp.Affix.Hash().AlgoName, cp.Affix.Hash().Bytes))
+	cpB.WriteString(fmt.Sprintf("session %s\n", cp.SessionID))
 
-	payload.WriteString(fmt.Sprintf("\n%s\n", cp.CommandDesc))
+	cpB.WriteString(fmt.Sprintf("\n%s\n", cp.CommandDesc))
 
 	for _, parent := range cp.Parents {
-		payload.WriteString(fmt.Sprintf("parent %d", parent))
+		cpB.WriteString(fmt.Sprintf("parent %d", parent))
 	}
+
+	payload.WriteString(fmt.Sprintf("%s %d", ObjectTypeCheckpoint, len(cpB.Bytes())))
+	payload.WriteString(HeaderContentSepRune)
+	payload.Write(cpB.Bytes())
 
 	hash := jp.hashFn()
 	hash.Write(payload.Bytes())
