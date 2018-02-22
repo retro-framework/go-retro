@@ -1,4 +1,4 @@
-package pack
+package packing
 
 import (
 	"bytes"
@@ -7,13 +7,17 @@ import (
 	"fmt"
 	"hash"
 	"sort"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
 func NewJSONPacker() *JSONPacker {
-	return &JSONPacker{func() hash.Hash { return sha256.New() }}
+	return &JSONPacker{
+		hashFn: func() hash.Hash { return sha256.New() },
+		nowFn:  time.Now,
+	}
 }
 
 // JSONPacker packs events, affixes and checkpoints
@@ -21,7 +25,8 @@ func NewJSONPacker() *JSONPacker {
 // a mutex because the hash engine is shared and must
 // be reset before use to clear buffers.
 type JSONPacker struct {
-	hFactory func() hash.Hash
+	hashFn func() hash.Hash
+	nowFn  func() time.Time
 }
 
 // PackEvent packs an Event type object into an envelope
@@ -41,15 +46,13 @@ func (jp *JSONPacker) PackEvent(evName string, ev types.Event) (HashedObject, er
 		return nil, errors.WithMessage(err, "retro-json-pack: can't marshal ev as json")
 	}
 
-	payload.WriteString(fmt.Sprintf("event json %s %d", evName, len(evB)))
+	payload.WriteString(fmt.Sprintf("%s json %s %d", ObjectTypeEvent, evName, len(evB)))
 	payload.WriteString(HeaderContentSepRune)
 	payload.Write(evB)
 
-	hash := jp.hFactory()
+	hash := jp.hashFn()
 	hash.Write(payload.Bytes())
 
-	// Assemble PackedEvent
-	// rPayload.Rewind()
 	return &PackedEvent{
 		PackedObject{
 			hash:    Hash{HashAlgoNameSHA256, hash.Sum(nil)},
@@ -85,11 +88,11 @@ func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
 		}
 	}
 
-	payload.WriteString(fmt.Sprintf("affix %d", len(affB.Bytes())))
+	payload.WriteString(fmt.Sprintf("%s %d", ObjectTypeAffix, len(affB.Bytes())))
 	payload.WriteString(HeaderContentSepRune)
 	payload.Write(affB.Bytes())
 
-	hash := jp.hFactory()
+	hash := jp.hashFn()
 	hash.Write(payload.Bytes())
 
 	return &PackedAffix{
@@ -99,6 +102,34 @@ func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
 		}}, nil
 }
 
-// func (jp *JSONPacker) PackAffix(ev Affix) (HashedObject, error) {
-//
-// }
+// PackCheckpoint packs a checkpoint by rendering an email
+// or HTTP style set of headers and injecting the prefix header, etc
+func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (HashedObject, error) {
+
+	var (
+		payload bytes.Buffer
+	)
+
+	if cp.Affix == nil {
+		return nil, ErrCheckpointWithoutAffix
+	}
+
+	payload.WriteString(fmt.Sprintf("%s %s:%x\n", ObjectTypeAffix, cp.Affix.Hash().AlgoName, cp.Affix.Hash().Bytes))
+	payload.WriteString(fmt.Sprintf("session %s\n", cp.SessionID))
+
+	payload.WriteString(fmt.Sprintf("\n%s\n", cp.CommandDesc))
+
+	for _, parent := range cp.Parents {
+		payload.WriteString(fmt.Sprintf("parent %d", parent))
+	}
+
+	hash := jp.hashFn()
+	hash.Write(payload.Bytes())
+
+	return &PackedCheckpoint{
+		PackedObject{
+			hash:    Hash{HashAlgoNameSHA256, hash.Sum(nil)},
+			payload: payload.Bytes(),
+		}}, nil
+
+}

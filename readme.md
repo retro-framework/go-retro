@@ -89,3 +89,11 @@ The doctor sub programme needs to check for the following:
 - Unmounted events, aggregates and commands
 - Session start function that returns no event
 
+## Depot
+
+The "depot" comprises a refdb and an odb, these two things are used together to
+collectievly store hashed objects and references that point at them.
+
+When a depot is challenged to persist a new command result it should write the
+resulting objects to the objdb and update the refdb to point at the new head.
+

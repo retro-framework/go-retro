@@ -1,4 +1,4 @@
-package pack
+package packing
 
 // HashAlgoName is the hashing algo,
 // presently only sha256 is supported

@@ -1,4 +1,4 @@
-package pack
+package packing
 
 // ObjectTypeName represents the
 type ObjectTypeName string

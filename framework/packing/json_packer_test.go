@@ -1,9 +1,11 @@
-package pack
+package packing
 
 import (
 	"crypto/sha256"
 	"fmt"
+	"hash"
 	"testing"
+	"time"
 
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
@@ -56,6 +58,53 @@ func Test_Pack(t *testing.T) {
 1 baz/123 sha256:666f6fe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 `
 			wantHash = `b9371e220f8a4c8fe071a6e7d7b2e6788f243ba2f88553a15e258219251876f7`
+		)
+		test.H(t).StringEql(string(res.Contents()), wantContents)
+		test.H(t).StringEql(fmt.Sprintf("%x", res.Hash().Bytes), wantHash)
+	})
+
+	// TODO: With more than one parent
+	// TODO: With fields (?)
+	// TODO: With summary
+	// TODO: With no session ID
+	// TODO: With more than one (sorted) field(s)?
+	// TODO: Error (in body)
+	t.Run("exemplary parentless checkpoint", func(t *testing.T) {
+
+		// Arrange
+		var (
+			jp = &JSONPacker{
+				hashFn: func() hash.Hash { return sha256.New() },
+				nowFn:  func() time.Time { return time.Time{} },
+			}
+			hash = Hash{
+				AlgoName: HashAlgoNameSHA256,
+				Bytes:    sha256.New().Sum([]byte("foo")),
+			}
+			packedAffix, _ = jp.PackAffix(Affix{"baz/123": []Hash{hash}, "bar/123": []Hash{hash}})
+		)
+
+		// Act
+		checkpoint := Checkpoint{
+			Affix: packedAffix,
+			// Summary:     "test checkpoint",
+			CommandDesc: []byte(`{"foo":"bar"}`),
+			Error:       nil,
+			Fields:      map[string]string{"session": "hello world"},
+			Parents:     []Checkpoint{},
+			SessionID:   "hello world",
+		}
+		res, err := jp.PackCheckpoint(checkpoint)
+
+		// Assert
+		test.H(t).IsNil(err)
+		var (
+			wantContents = `affix sha256:b9371e220f8a4c8fe071a6e7d7b2e6788f243ba2f88553a15e258219251876f7
+session hello world
+
+{"foo":"bar"}
+`
+			wantHash = `79dcd13a6efb476078350762226f8f7056c36a4e7cbedaf25fa36a6cf5c3c249`
 		)
 		test.H(t).StringEql(string(res.Contents()), wantContents)
 		test.H(t).StringEql(fmt.Sprintf("%x", res.Hash().Bytes), wantHash)
