@@ -45,6 +45,7 @@ func (m *manifest) KeyFor(ev types.Event) string {
 			return name
 		}
 	}
+	return ""
 }
 
 func (m *manifest) toType(t types.Event) reflect.Type {

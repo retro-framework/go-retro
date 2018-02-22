@@ -9,8 +9,8 @@ import (
 
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
-	memory "github.com/retro-framework/go-retro/framework/in-memory"
 	"github.com/retro-framework/go-retro/framework/resolver"
+	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/types"
 )
