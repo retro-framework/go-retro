@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	memory "github.com/retro-framework/go-retro/framework/in-memory"
 	"github.com/retro-framework/go-retro/framework/types"
 )
@@ -53,10 +54,14 @@ func (h helper) IntEql(got, want int) {
 }
 
 func (h helper) StringEql(got, want string) {
+
 	h.t.Helper()
-	if strings.Compare(got, want) != 0 {
-		h.t.Fatalf("string equality assertion failed, got %q wanted %q", got, want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		h.t.Errorf("string equality assertion failed (-got +want)\n%s", diff)
 	}
+	// if strings.Compare(got, want) != 0 {
+	// 	h.t.Fatalf("string equality assertion failed, got %q wanted %q", got, want)
+	// }
 }
 
 func (h helper) ErrEql(got, want error) {

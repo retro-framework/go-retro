@@ -36,3 +36,7 @@
   name = "github.com/spf13/cobra"
 [[constraint]]
   name = "github.com/go-redis/redis"
+
+[[constraint]]
+  name = "github.com/google/go-cmp"
+  version = "0.2.0"
