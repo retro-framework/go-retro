@@ -6,19 +6,19 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/retro-framework/go-retro/framework/storage/memory"
+	// "github.com/retro-framework/go-retro/framework/storage/memory"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
-func StateFixture(t *testing.T, state map[string][]types.Event) types.Depot {
-	t.Helper()
-	return memory.NewDepot(state)
-}
-
-func EmptyStateFixture(t *testing.T) types.Depot {
-	t.Helper()
-	return memory.NewDepot(map[string][]types.Event{})
-}
+// func StateFixture(t *testing.T, state map[string][]types.Event) types.Depot {
+// 	t.Helper()
+// 	return memory.NewDepot(state)
+// }
+//
+// func EmptyStateFixture(t *testing.T) types.Depot {
+// 	t.Helper()
+// 	return memory.NewDepot(map[string][]types.Event{})
+// }
 
 func AggStateFixture(name string, evs ...types.Event) map[string][]types.Event {
 	// TODO ensure that name isn't empty
@@ -54,14 +54,17 @@ func (h helper) IntEql(got, want int) {
 }
 
 func (h helper) StringEql(got, want string) {
-
 	h.t.Helper()
 	if diff := cmp.Diff(want, got); diff != "" {
 		h.t.Errorf("string equality assertion failed (-got +want)\n%s", diff)
 	}
-	// if strings.Compare(got, want) != 0 {
-	// 	h.t.Fatalf("string equality assertion failed, got %q wanted %q", got, want)
-	// }
+}
+
+func (h helper) InterfaceEql(got, want interface{}) {
+	h.t.Helper()
+	if diff := cmp.Diff(want, got); diff != "" {
+		h.t.Errorf("string equality assertion failed (-got +want)\n%s", diff)
+	}
 }
 
 func (h helper) ErrEql(got, want error) {
