@@ -18,7 +18,6 @@ var (
 	ErrUnableToWriteObject           = errors.New("unable to write object")
 	ErrUnableToCreateObjectFile      = errors.New("unable to create object file")
 	ErrUnableToCreateObjectDir       = errors.New("unable to create object dir")
-	ErrUnableToCreateBasedir         = errors.New("unable to create basedir")
 
 	ErrNoSuchObject                  = errors.New("no such object in object database")
 	ErrBadObjectHashForRetrieve      = errors.New("no valid object hash when looking up packed")
@@ -41,7 +40,7 @@ func (s *ObjectStore) WritePacked(p packing.PackedObject) (int, error) {
 	// TODO: What if basepath points to a _file_ not a dir?
 	if _, err := os.Stat(s.BasePath); os.IsNotExist(err) {
 		if err := s.mkdirAll(s.BasePath); err != nil {
-			return 0, ErrUnableToCreateBasedir
+			return 0, ErrUnableToCreateBaseDir
 		}
 	}
 
@@ -125,6 +124,8 @@ func (s *ObjectStore) RetrievePacked(str string) (*packing.PackedObject, error) 
 	}
 	r.Close()
 
+	// TODO: Check for err here, can this really fail with a local
+	// buffer?
 	orig, _ := ioutil.ReadAll(r)
 
 	po := packing.NewPackedObject(string(orig))

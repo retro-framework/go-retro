@@ -47,7 +47,7 @@ func Test_DB(t *testing.T) {
 				test.H(t).StringEql(string(packedObj.Contents()), string(po.Contents()))
 			})
 			t.Run("errors when retriving a object not already in the store", func(t *testing.T) {
-
+				t.Skip("not implemented yet")
 			})
 		})
 	}
