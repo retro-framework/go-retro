@@ -7,7 +7,8 @@ import (
 )
 
 var (
-	ErrUnknownRef = errors.New("ref name unknown")
+	ErrUnknownRef         = errors.New("ref name unknown")
+	ErrUnknownSymbolicRef = errors.New("symbolic ref name unknown")
 )
 
 // RefStore is used for storing references, references such as
@@ -15,6 +16,7 @@ var (
 // arbitrary checkpoints.
 type RefStore struct {
 	r map[string]packing.Hash
+	s map[string]string
 }
 
 // Write ref returns a boolean indicating whether the ref was changed
@@ -32,9 +34,29 @@ func (r *RefStore) Write(name string, newRef packing.Hash) (bool, error) {
 	return true, nil
 }
 
+func (r *RefStore) WriteSymbolic(name string, ref string) (bool, error) {
+	if r.s == nil {
+		r.s = make(map[string]string)
+	}
+	if existingRef, exists := r.s[name]; exists {
+		if existingRef == ref {
+			return false, nil
+		}
+	}
+	r.s[name] = ref
+	return true, nil
+}
+
 func (r *RefStore) Retrieve(name string) (*packing.Hash, error) {
 	if existingRef, exists := r.r[name]; exists {
 		return &existingRef, nil
 	}
 	return nil, ErrUnknownRef
+}
+
+func (r *RefStore) RetrieveSymbolic(name string) (string, error) {
+	if existingRef, exists := r.s[name]; exists {
+		return existingRef, nil
+	}
+	return "", ErrUnknownSymbolicRef
 }

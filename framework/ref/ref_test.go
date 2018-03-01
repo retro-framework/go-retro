@@ -37,6 +37,9 @@ func Test_DB(t *testing.T) {
 					Bytes:    sha256.New().Sum([]byte("bar")),
 				}
 			)
+			t.Run("ensures that ref starts with refs/", func(t *testing.T) {
+				t.Skip()
+			})
 			t.Run("returns true when writing a ref for the first time", func(t *testing.T) {
 				changed, err := db.Write("refs/heads/main", fooHash)
 				test.H(t).IsNil(err)
@@ -59,6 +62,30 @@ func Test_DB(t *testing.T) {
 			})
 			t.Run("returns unknown ref error for non existent objects in store", func(t *testing.T) {
 				_, err := db.Retrieve("refs/heads/non existent")
+				test.H(t).NotNil(err)
+			})
+			t.Run("write symbolic fails if the ref name is not all caps", func(t *testing.T) {
+				t.Skip("not implemented yet")
+				_, err := db.WriteSymbolic("head", "refs/heads/mainline")
+				test.H(t).NotNil(err)
+			})
+			t.Run("write symbolic returns true if the symbolic ref was created or changed", func(t *testing.T) {
+				changed, err := db.WriteSymbolic("HEAD", "refs/heads/mainline")
+				test.H(t).IsNil(err)
+				test.H(t).BoolEql(changed, true)
+			})
+			t.Run("write symbolic returns false if the symbolic ref was created or changed", func(t *testing.T) {
+				changed, err := db.WriteSymbolic("HEAD", "refs/heads/mainline")
+				test.H(t).IsNil(err)
+				test.H(t).BoolEql(changed, false)
+			})
+			t.Run("retrive symbolic returns symbolic ref correctly", func(t *testing.T) {
+				ref, err := db.RetrieveSymbolic("HEAD")
+				test.H(t).IsNil(err)
+				test.H(t).StringEql(ref, "refs/heads/mainline")
+			})
+			t.Run("retrive symbolic returns error on non existent ref", func(t *testing.T) {
+				_, err := db.RetrieveSymbolic("ANYTHING ELSE")
 				test.H(t).NotNil(err)
 			})
 		})

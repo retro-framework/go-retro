@@ -3,6 +3,7 @@ package fs
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -81,6 +82,60 @@ func (s *RefStore) Write(name string, hash packing.Hash) (bool, error) {
 	return false, nil
 }
 
+func (s *RefStore) WriteSymbolic(name, ref string) (bool, error) {
+
+	// TODO: What if basepath points to a _file_ not a dir?
+	if _, err := os.Stat(s.BasePath); os.IsNotExist(err) {
+		if err := s.mkdirAll(s.BasePath); err != nil {
+			return false, ErrUnableToCreateBaseDir
+		}
+	}
+
+	var (
+		symRefPath = filepath.Join(s.BasePath, name)
+		symRefDir  = filepath.Dir(symRefPath)
+	)
+
+	symRefContents := fmt.Sprintf("ref: %s", ref)
+
+	var writeRefFile = func() error {
+		f, err := os.Create(symRefPath)
+		if err != nil {
+			return ErrUnableToCreateRefFile
+		}
+		defer f.Close()
+
+		n, err := f.WriteString(symRefContents)
+		if err != nil {
+			return ErrUnableToWriteRef
+		}
+
+		if n != len(ref)+5 {
+			return ErrUnableToCompletelyWriteRef
+		}
+
+		return nil
+	}
+
+	if _, err := os.Stat(symRefPath); os.IsNotExist(err) {
+		if err := s.mkdirAll(symRefDir); err != nil {
+			return false, ErrUnableToCreateRefDir
+		}
+		return true, writeRefFile()
+	} else {
+		// Check if we have to write the file, read it first
+		fileData, err := ioutil.ReadFile(symRefPath)
+		if err != nil {
+			return false, ErrUnableToReadRefFile
+		}
+		if string(fileData) != symRefContents {
+			return true, writeRefFile()
+		}
+		return false, nil
+	}
+	return false, nil
+}
+
 func (s *RefStore) Retrieve(name string) (*packing.Hash, error) {
 
 	var refPath = filepath.Join(s.BasePath, name)
@@ -110,5 +165,27 @@ func (s *RefStore) Retrieve(name string) (*packing.Hash, error) {
 		AlgoName: packing.HashAlgoNameSHA256,
 		Bytes:    dst,
 	}, nil
+
+}
+
+func (s *RefStore) RetrieveSymbolic(name string) (string, error) {
+
+	var symRefPath = filepath.Join(s.BasePath, name)
+
+	if _, err := os.Stat(symRefPath); os.IsNotExist(err) {
+		return "", ErrNoSuchRef
+	}
+
+	hashData, err := ioutil.ReadFile(symRefPath)
+	if err != nil {
+		return "", ErrUnableToReadRefFile
+	}
+
+	parts := strings.Split(string(hashData), ": ") // ["sha256", "hexbyteshexbtytes"]
+	if len(parts) != 2 {
+		return "", ErrBadHashForRetrieve
+	}
+
+	return parts[1], nil
 
 }
