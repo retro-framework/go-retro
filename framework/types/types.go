@@ -9,7 +9,7 @@ type Aggregate interface {
 	ReactTo(Event) error
 }
 
-type AggregateItterator interface {
+type AggregateIterator interface {
 	Len() (int, bool)
 	Next() Aggregate
 }
@@ -19,7 +19,7 @@ type AggregateItterator interface {
 // It must serialize and deserialize cleanly for storage reasons.
 type Event interface{}
 
-// EventItterator is a simple Itterator interface which should mean that we
+// EventIterator is a simple Iterator interface which should mean that we
 // are never in a situation where an aggregate with a large number of
 // events causes massive allocations or other resource starvation when
 // being rehydrated.
@@ -31,7 +31,7 @@ type Event interface{}
 //
 // Beware that failing to read some itterator implementations to the end
 // may hold locks on some underlaying resources.
-type EventItterator interface {
+type EventIterator interface {
 	Len() (int, bool)
 	Next() Event
 }
