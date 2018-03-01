@@ -37,27 +37,46 @@ func Test_UnpackPack(t *testing.T) {
 
 		// Arrange
 		var (
-			jp   = NewJSONPacker()
-			hash = hashStr("foo")
+			jp    = NewJSONPacker()
+			hash  = hashStr("foo")
+			affix = Affix{"baz/123": []Hash{hash}, "bar/123": []Hash{hash}}
 		)
 
 		// Act
-		packed, _ := jp.PackAffix(Affix{"baz/123": []Hash{hash}, "bar/123": []Hash{hash}})
-		aggregateEvHashes, err := jp.UnpackAffix(packed.Contents())
+		packed, _ := jp.PackAffix(affix)
+		unpackedAffix, err := jp.UnpackAffix(packed.Contents())
 
 		// Assert
 		test.H(t).IsNil(err)
-		var want = map[PartitionName][]string{
-			PartitionName("bar/123"): []string{"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"},
-			PartitionName("baz/123"): []string{"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"},
-		}
-		if cmp.Equal(aggregateEvHashes, want) != true {
-			t.Fatalf("equality assertion failed: %s", cmp.Diff(aggregateEvHashes, want))
+		if cmp.Equal(unpackedAffix, affix) != true {
+			t.Fatalf("equality assertion failed: %s", cmp.Diff(unpackedAffix, affix))
 		}
 	})
 
 	t.Run("exemplary checkpoint", func(t *testing.T) {
-		t.Skip("not implemented yet")
+
+		var (
+			jp = NewJSONPacker()
+
+			affixHash      = hashStr("affix")
+			checkpointHash = hashStr("checkpoint")
+			checkpoint     = Checkpoint{
+				AffixHash:    affixHash,
+				CommandDesc:  []byte(`{"foo":"bar"}`),
+				Fields:       map[string]string{"session": "hello world"},
+				ParentHashes: []Hash{checkpointHash},
+			}
+		)
+
+		packed, _ := jp.PackCheckpoint(checkpoint)
+		unpackedCheckpoint, err := jp.UnpackCheckpoint(packed.Contents())
+
+		// Assert
+		test.H(t).IsNil(err)
+		if cmp.Equal(unpackedCheckpoint, checkpoint) != true {
+			t.Fatalf("equality assertion failed: %s", cmp.Diff(unpackedCheckpoint, checkpoint))
+		}
+
 	})
 }
 
@@ -129,10 +148,8 @@ func Test_Pack(t *testing.T) {
 		checkpoint := Checkpoint{
 			AffixHash:    hash,
 			CommandDesc:  []byte(`{"foo":"bar"}`),
-			Error:        nil,
 			Fields:       map[string]string{"session": "hello world"},
 			ParentHashes: []Hash{},
-			SessionID:    "hello world",
 		}
 		res, err := jp.PackCheckpoint(checkpoint)
 

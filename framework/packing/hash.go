@@ -30,9 +30,10 @@ func (h Hash) ToPathName() string {
 // TODO: make this more robust
 func HashStrToHash(str string) Hash {
 	parts := strings.Split(str, ":")
-	return Hash{HashAlgoNameSHA256, []byte(parts[1])}
+	return hashStr(parts[1])
 }
 
+// TODO: make this respect algoname in the given string
 func hashStr(str string) Hash {
 	var s = sha256.Sum256([]byte("foo"))
 	return Hash{AlgoName: HashAlgoNameSHA256, Bytes: s[:]}

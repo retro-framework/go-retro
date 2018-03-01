@@ -22,23 +22,20 @@ func NewJSONPacker() *JSONPacker {
 	}
 }
 
-// JSONPacker packs events, affixes and checkpoints
-// as payloads including hashing. The packer includes
-// a mutex because the hash engine is shared and must
-// be reset before use to clear buffers.
+// JSONPacker packs events, affixes and checkpoints as payloads including
+// hashing. The packer includes a mutex because the hash engine is shared and
+// must be reset before use to clear buffers.
 type JSONPacker struct {
 	hashFn func() hash.Hash
 	nowFn  func() time.Time
 }
 
-// PackEvent packs an Event type object into an envelope
-// and returns it with a hashed payload attached.
-// An event is packed with a header and a hint about it's
-// type and encoding, followed by the raw bytes, terminated
-// with a null byte.
+// PackEvent packs an Event type object into an envelope and returns it with a
+// hashed payload attached.  An event is packed with a header and a hint about
+// it's type and encoding, followed by the raw bytes, terminated with a null
+// byte.
 //
-// See the tests for an example of how the on-disk format
-// looks.
+// See the tests for an example of how the on-disk format looks.
 func (jp *JSONPacker) PackEvent(evName string, ev types.Event) (HashedObject, error) {
 
 	var payload bytes.Buffer
@@ -83,9 +80,9 @@ func (jp *JSONPacker) UnpackEvent(b []byte) (string, []byte, error) {
 
 // Returns an unpacked affix
 // TODO: ensure bytes given are actually an affix!
-func (jp *JSONPacker) UnpackAffix(b []byte) (map[PartitionName][]string, error) {
+func (jp *JSONPacker) UnpackAffix(b []byte) (Affix, error) {
 	var (
-		res = make(map[PartitionName][]string)
+		res = Affix{}
 
 		chunks  = bytes.SplitN(b, []byte(HeaderContentSepRune), 2)
 		payload = chunks[1]
@@ -96,12 +93,54 @@ func (jp *JSONPacker) UnpackAffix(b []byte) (map[PartitionName][]string, error) 
 		var (
 			cols          = strings.SplitN(scanner.Text(), " ", 3)
 			partitionName = PartitionName(cols[1])
-			evHash        = cols[2]
+			evHash        = HashStrToHash(cols[2])
 		)
 		res[partitionName] = append(res[partitionName], evHash)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err // TODO: Wrap properly
+	}
+
+	return res, nil
+}
+
+func (jp *JSONPacker) UnpackCheckpoint(b []byte) (Checkpoint, error) {
+	var (
+		res = Checkpoint{Fields: make(map[string]string)}
+
+		kvHeadersRead bool
+
+		chunks  = bytes.SplitN(b, []byte(HeaderContentSepRune), 2)
+		payload = chunks[1]
+	)
+
+	scanner := bufio.NewScanner(bytes.NewReader(payload))
+	for scanner.Scan() {
+		if len(scanner.Text()) == 0 {
+			kvHeadersRead = true
+			continue
+		}
+
+		if !kvHeadersRead {
+			var (
+				cols = strings.SplitN(scanner.Text(), " ", 2)
+			)
+			switch cols[0] {
+			case "affix":
+				res.AffixHash = HashStrToHash(cols[1])
+			case "parent":
+				res.ParentHashes = append(res.ParentHashes, HashStrToHash(cols[1]))
+			default:
+				res.Fields[cols[0]] = cols[1]
+			}
+			fmt.Println(cols)
+		} else {
+			res.CommandDesc = []byte(scanner.Text())
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return res, err // TODO: Wrap properly
 	}
 
 	return res, nil
@@ -158,13 +197,16 @@ func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (HashedObject, error) {
 	)
 
 	cpB.WriteString(fmt.Sprintf("%s %s\n", ObjectTypeAffix, cp.AffixHash.String()))
-	cpB.WriteString(fmt.Sprintf("session %s\n", cp.SessionID))
-
-	cpB.WriteString(fmt.Sprintf("\n%s\n", cp.CommandDesc))
 
 	for _, parentHash := range cp.ParentHashes {
-		cpB.WriteString(fmt.Sprintf("parent %d", parentHash.String()))
+		cpB.WriteString(fmt.Sprintf("parent %s\n", parentHash.String()))
 	}
+
+	for key, value := range cp.Fields {
+		cpB.WriteString(fmt.Sprintf("%s %s\n", key, value))
+	}
+
+	cpB.WriteString(fmt.Sprintf("\n%s\n", cp.CommandDesc))
 
 	payload.WriteString(fmt.Sprintf("%s %d", ObjectTypeCheckpoint, len(cpB.Bytes())))
 	payload.WriteString(HeaderContentSepRune)

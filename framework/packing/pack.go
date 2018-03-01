@@ -51,10 +51,8 @@ type Affix map[PartitionName][]Hash
 // an error incase the command failed.
 type Checkpoint struct {
 	AffixHash    Hash
-	CommandDesc  []byte
-	Error        error
 	ParentHashes []Hash
 	Fields       map[string]string
 	Summary      string
-	SessionID    string
+	CommandDesc  []byte
 }
