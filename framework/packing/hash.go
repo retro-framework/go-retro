@@ -1,6 +1,10 @@
 package packing
 
-import "fmt"
+import (
+	"crypto/sha256"
+	"fmt"
+	"strings"
+)
 
 // Hash returns a hashed in raw bytes (not hex encoded)
 // and a HashAlgoName alias.
@@ -21,4 +25,15 @@ func (h Hash) String() string {
 // bigger space (longer hashes) a two-level hierarchy seemed prudent.
 func (h Hash) ToPathName() string {
 	return fmt.Sprintf("%x/%x/%x", h.Bytes[0:2], h.Bytes[2:4], h.Bytes[4:])
+}
+
+// TODO: make this more robust
+func HashStrToHash(str string) Hash {
+	parts := strings.Split(str, ":")
+	return Hash{HashAlgoNameSHA256, []byte(parts[1])}
+}
+
+func hashStr(str string) Hash {
+	var s = sha256.Sum256([]byte("foo"))
+	return Hash{AlgoName: HashAlgoNameSHA256, Bytes: s[:]}
 }

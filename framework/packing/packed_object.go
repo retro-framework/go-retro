@@ -22,17 +22,33 @@ func NewPackedObject(payloadStr string) PackedObject {
 	}
 }
 
-func (po *PackedObject) Contents() []byte { return po.payload }
-func (po *PackedObject) Hash() Hash       { return po.hash }
+func (po *PackedObject) Contents() []byte {
+	return po.payload
+}
+func (po *PackedObject) Hash() Hash {
+	return po.hash
+}
 
-type PackedEvent struct{ PackedObject }
+type PackedEvent struct {
+	PackedObject
+}
 
-func (pe *PackedEvent) TypeName() ObjectTypeName { return ObjectTypeEvent }
+func (pe *PackedEvent) TypeName() ObjectTypeName {
+	return ObjectTypeEvent
+}
 
-type PackedAffix struct{ PackedObject }
+type PackedAffix struct {
+	PackedObject
+}
 
-func (pe *PackedAffix) TypeName() ObjectTypeName { return ObjectTypeAffix }
+func (pe *PackedAffix) TypeName() ObjectTypeName {
+	return ObjectTypeAffix
+}
 
-type PackedCheckpoint struct{ PackedObject }
+type PackedCheckpoint struct {
+	PackedObject
+}
 
-func (pe *PackedCheckpoint) TypeName() ObjectTypeName { return ObjectTypeCheckpoint }
+func (pc *PackedCheckpoint) TypeName() ObjectTypeName {
+	return ObjectTypeCheckpoint
+}

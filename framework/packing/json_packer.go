@@ -1,12 +1,14 @@
 package packing
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"hash"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -61,6 +63,50 @@ func (jp *JSONPacker) PackEvent(evName string, ev types.Event) (HashedObject, er
 
 }
 
+// Unpack event takes a byte slice and returns an event name, and a payload
+// which can be unmarahelled into that event tyype, because of limitations of
+// the type safety system a event name and payload are the best we can do here.
+// The caller should use the event name to request an zero value event with
+// that name from the event registry and then decode it.
+//
+// TODO: ensure that the byte slice given actually contains an event (e.g look
+// at the frontmatter)
+func (jp *JSONPacker) UnpackEvent(b []byte) (string, []byte, error) {
+	var (
+		chunks      = bytes.SplitN(b, []byte(HeaderContentSepRune), 2)
+		frontMatter = chunks[0]
+		payload     = chunks[1]
+		parts       = strings.SplitN(string(frontMatter), " ", 4)
+	)
+	return parts[2], payload, nil
+}
+
+// Returns an unpacked affix
+// TODO: ensure bytes given are actually an affix!
+func (jp *JSONPacker) UnpackAffix(b []byte) (map[PartitionName][]string, error) {
+	var (
+		res = make(map[PartitionName][]string)
+
+		chunks  = bytes.SplitN(b, []byte(HeaderContentSepRune), 2)
+		payload = chunks[1]
+	)
+
+	scanner := bufio.NewScanner(bytes.NewReader(payload))
+	for scanner.Scan() {
+		var (
+			cols          = strings.SplitN(scanner.Text(), " ", 3)
+			partitionName = PartitionName(cols[1])
+			evHash        = cols[2]
+		)
+		res[partitionName] = append(res[partitionName], evHash)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err // TODO: Wrap properly
+	}
+
+	return res, nil
+}
+
 // PackAffix packs an affix by rendering a text-table
 // and injecting the prefix header, etc
 func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
@@ -84,7 +130,7 @@ func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
 	for i, partition := range partitions {
 		prefix := fmt.Sprintf("%d %s", i, partition)
 		for _, h := range affix[partition] {
-			affB.WriteString(fmt.Sprintf("%s %s:%x\n", prefix, h.AlgoName, h.Bytes))
+			affB.WriteString(fmt.Sprintf("%s %s\n", prefix, h.String()))
 		}
 	}
 
@@ -111,17 +157,13 @@ func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (HashedObject, error) {
 		payload bytes.Buffer
 	)
 
-	if cp.Affix == nil {
-		return nil, ErrCheckpointWithoutAffix
-	}
-
-	cpB.WriteString(fmt.Sprintf("%s %s:%x\n", ObjectTypeAffix, cp.Affix.Hash().AlgoName, cp.Affix.Hash().Bytes))
+	cpB.WriteString(fmt.Sprintf("%s %s\n", ObjectTypeAffix, cp.AffixHash.String()))
 	cpB.WriteString(fmt.Sprintf("session %s\n", cp.SessionID))
 
 	cpB.WriteString(fmt.Sprintf("\n%s\n", cp.CommandDesc))
 
-	for _, parent := range cp.Parents {
-		cpB.WriteString(fmt.Sprintf("parent %d", parent))
+	for _, parentHash := range cp.ParentHashes {
+		cpB.WriteString(fmt.Sprintf("parent %d", parentHash.String()))
 	}
 
 	payload.WriteString(fmt.Sprintf("%s %d", ObjectTypeCheckpoint, len(cpB.Bytes())))

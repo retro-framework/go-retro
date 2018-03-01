@@ -50,11 +50,11 @@ type Affix map[PartitionName][]Hash
 // and persistence of the resulting events. It stores
 // an error incase the command failed.
 type Checkpoint struct {
-	Affix       HashedObject
-	CommandDesc []byte
-	Error       error
-	Parents     []Checkpoint
-	Fields      map[string]string
-	Summary     string
-	SessionID   string
+	AffixHash    Hash
+	CommandDesc  []byte
+	Error        error
+	ParentHashes []Hash
+	Fields       map[string]string
+	Summary      string
+	SessionID    string
 }

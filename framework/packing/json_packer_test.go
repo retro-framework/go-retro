@@ -6,12 +6,59 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 type DummyEvent struct {
 	Foo string `json:"foo"`
 	Bar string `json:"bar"`
+}
+
+func Test_UnpackPack(t *testing.T) {
+
+	t.Run("exemplary event", func(t *testing.T) {
+
+		// Arrange
+		jp := NewJSONPacker()
+
+		// Act
+		packed, _ := jp.PackEvent("dummy", DummyEvent{"hello", "world"})
+		name, payload, err := jp.UnpackEvent(packed.Contents())
+
+		// Assert
+		test.H(t).IsNil(err)
+		test.H(t).StringEql(name, "dummy")
+		test.H(t).StringEql(string(payload), `{"foo":"hello","bar":"world"}`)
+
+	})
+
+	t.Run("exemplary affix", func(t *testing.T) {
+
+		// Arrange
+		var (
+			jp   = NewJSONPacker()
+			hash = hashStr("foo")
+		)
+
+		// Act
+		packed, _ := jp.PackAffix(Affix{"baz/123": []Hash{hash}, "bar/123": []Hash{hash}})
+		aggregateEvHashes, err := jp.UnpackAffix(packed.Contents())
+
+		// Assert
+		test.H(t).IsNil(err)
+		var want = map[PartitionName][]string{
+			PartitionName("bar/123"): []string{"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"},
+			PartitionName("baz/123"): []string{"sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"},
+		}
+		if cmp.Equal(aggregateEvHashes, want) != true {
+			t.Fatalf("equality assertion failed: %s", cmp.Diff(aggregateEvHashes, want))
+		}
+	})
+
+	t.Run("exemplary checkpoint", func(t *testing.T) {
+		t.Skip("not implemented yet")
+	})
 }
 
 func Test_Pack(t *testing.T) {
@@ -41,11 +88,10 @@ func Test_Pack(t *testing.T) {
 	t.Run("exemplary affix", func(t *testing.T) {
 
 		// Arrange
-		jp := NewJSONPacker()
-		hash := Hash{
-			AlgoName: HashAlgoNameSHA256,
-			Bytes:    sha256.New().Sum([]byte("foo")),
-		}
+		var (
+			jp   = NewJSONPacker()
+			hash = hashStr("foo")
+		)
 
 		// Act
 		res, err := jp.PackAffix(Affix{"baz/123": []Hash{hash}, "bar/123": []Hash{hash}})
@@ -53,10 +99,10 @@ func Test_Pack(t *testing.T) {
 		// Assert
 		test.H(t).IsNil(err)
 		var (
-			wantContents = `affix 176` + HeaderContentSepRune + `0 bar/123 sha256:666f6fe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-1 baz/123 sha256:666f6fe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+			wantContents = `affix 164` + HeaderContentSepRune + `0 bar/123 sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
+1 baz/123 sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
 `
-			wantHash = `sha256:b9371e220f8a4c8fe071a6e7d7b2e6788f243ba2f88553a15e258219251876f7`
+			wantHash = `sha256:f51b6e929c8f79300603460b9d545c51993cfc5c7d2f05808357baec29f84a4d`
 		)
 		test.H(t).StringEql(string(res.Contents()), wantContents)
 		test.H(t).StringEql(res.Hash().String(), wantHash)
@@ -76,34 +122,29 @@ func Test_Pack(t *testing.T) {
 				hashFn: func() hash.Hash { return sha256.New() },
 				nowFn:  func() time.Time { return time.Time{} },
 			}
-			hash = Hash{
-				AlgoName: HashAlgoNameSHA256,
-				Bytes:    sha256.New().Sum([]byte("foo")),
-			}
-			packedAffix, _ = jp.PackAffix(Affix{"baz/123": []Hash{hash}, "bar/123": []Hash{hash}})
+			hash = hashStr("hello")
 		)
 
 		// Act
 		checkpoint := Checkpoint{
-			Affix: packedAffix,
-			// Summary:     "test checkpoint",
-			CommandDesc: []byte(`{"foo":"bar"}`),
-			Error:       nil,
-			Fields:      map[string]string{"session": "hello world"},
-			Parents:     []Checkpoint{},
-			SessionID:   "hello world",
+			AffixHash:    hash,
+			CommandDesc:  []byte(`{"foo":"bar"}`),
+			Error:        nil,
+			Fields:       map[string]string{"session": "hello world"},
+			ParentHashes: []Hash{},
+			SessionID:    "hello world",
 		}
 		res, err := jp.PackCheckpoint(checkpoint)
 
 		// Assert
 		test.H(t).IsNil(err)
 		var (
-			wantContents = `checkpoint 113` + HeaderContentSepRune + `affix sha256:b9371e220f8a4c8fe071a6e7d7b2e6788f243ba2f88553a15e258219251876f7
+			wantContents = `checkpoint 113` + HeaderContentSepRune + `affix sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
 session hello world
 
 {"foo":"bar"}
 `
-			wantHash = `sha256:e830337714408778866b7111778c79c4d437ddd48008169dc4d7a44484f2aeee`
+			wantHash = `sha256:922d43b9cfa0911fdb69dc17aab1221e9906c2343a0db876b18c555c1aef8da0`
 		)
 		test.H(t).StringEql(string(res.Contents()), wantContents)
 		test.H(t).StringEql(res.Hash().String(), wantHash)
