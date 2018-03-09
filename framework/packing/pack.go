@@ -13,13 +13,12 @@ var (
 // Object is a storable object, they are
 // created by
 type Object interface {
-	TypeName() ObjectTypeName
 	Contents() []byte
 }
 
 // HashedObject is an object from the hash.
 type HashedObject interface {
-	Object
+	Contents() []byte
 	Hash() Hash
 }
 

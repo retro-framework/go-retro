@@ -9,9 +9,8 @@ type Aggregate interface {
 	ReactTo(Event) error
 }
 
-type AggregateIterator interface {
-	Len() (int, bool)
-	Next() Aggregate
+type PartitionIterator interface {
+	Next()
 }
 
 // Event interface may be any type which may carry any baggage it likes.
@@ -32,7 +31,6 @@ type Event interface{}
 // Beware that failing to read some itterator implementations to the end
 // may hold locks on some underlaying resources.
 type EventIterator interface {
-	Len() (int, bool)
 	Next() Event
 }
 
@@ -49,12 +47,16 @@ type Depot interface {
 	Claim(context.Context, string) bool
 	Release(string)
 
+	// Retrieve a specific aggregate by applying events to it
+	// concerned with mostly "Command" execution.
 	Rehydrate(context.Context, Aggregate, string) error
-	GetByDirname(context.Context, string) AggregateItterator
 
-	Exists(string) bool
+	// For enumerating or matching on
+	Glob(context.Context, string) PartitionIterator
 
-	AppendEvs(string, []Event) (int, error)
+	// Exists(string) bool
+	//
+	// AppendEvs(string, []Event) (int, error)
 }
 
 // Logger is the generic logging interface. It explicitly avoids including

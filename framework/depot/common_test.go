@@ -1,9 +1,15 @@
 package depot
 
 import (
+	"fmt"
+	"io/ioutil"
 	"testing"
 
+	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/storage/fs"
+	"github.com/retro-framework/go-retro/framework/storage/memory"
 )
 
 type DummyEvSetAuthorName struct {
@@ -69,12 +75,42 @@ func Test_Depot(t *testing.T) {
 		})
 	)
 
-	_ = third_checkpoint
+	tmpdir, err := ioutil.TempDir("", "depot_common_test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// depots := map[string]types.Depot{
-	// 	"in-memory": memory.NewEmptyDepot(),
-	// 	"redis":     redis.NewDepot(),
-	// }
+	fmt.Println(tmpdir)
+
+	odbs := map[string]object.DB{
+		"memory": &memory.ObjectStore{},
+		"fs":     &fs.ObjectStore{BasePath: tmpdir},
+	}
+	refdbs := map[string]ref.DB{
+		"memory": &memory.RefStore{},
+		"fs":     &fs.RefStore{BasePath: tmpdir},
+	}
+
+	for _, odb := range odbs {
+		odb.WritePacked(set_author_name_1)
+		odb.WritePacked(set_article_title_1)
+		odb.WritePacked(associate_article_author_1)
+		odb.WritePacked(set_article_title_2)
+		odb.WritePacked(set_article_body_1)
+
+		odb.WritePacked(affix_1)
+		odb.WritePacked(affix_2)
+		odb.WritePacked(affix_3)
+
+		odb.WritePacked(first_checkpoint)
+		odb.WritePacked(second_checkpoint)
+		odb.WritePacked(third_checkpoint)
+	}
+
+	for _, refdb := range refdbs {
+		refdb.Write("refs/heads/main", third_checkpoint.Hash())
+	}
+
 }
 
 // 	for name, depot := range depots {

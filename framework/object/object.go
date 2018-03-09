@@ -10,14 +10,14 @@ import (
 // already in storage. Packed objects are not compressed, they
 // are simply packed bytes with an associated hash.
 type Store interface {
-	WritePacked(packing.PackedObject) (int, error)
+	WritePacked(packing.HashedObject) (int, error)
 }
 
 // Source takes a string in the format of a hash with prefix (e.g
 // sha256:b937....19251876f7) and returned a Hashed object which can
 // be parsed by the caller.
 type Source interface {
-	RetrievePacked(string) (*packing.PackedObject, error)
+	RetrievePacked(string) (packing.HashedObject, error)
 }
 
 type DB interface {

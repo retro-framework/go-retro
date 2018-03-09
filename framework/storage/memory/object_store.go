@@ -18,7 +18,7 @@ type ObjectStore struct {
 	o map[string][]byte
 }
 
-func (os *ObjectStore) WritePacked(p packing.PackedObject) (int, error) {
+func (os *ObjectStore) WritePacked(p packing.HashedObject) (int, error) {
 
 	if os.o == nil {
 		os.o = make(map[string][]byte)
@@ -44,7 +44,7 @@ func (os *ObjectStore) WritePacked(p packing.PackedObject) (int, error) {
 // TODO: should also parse the aglo out of the string and set the PO Hash
 // algo/etc to the right values., the new PackedObject could be kept and
 // maybe simply take an AlgoName in the second position?
-func (os *ObjectStore) RetrievePacked(s string) (*packing.PackedObject, error) {
+func (os *ObjectStore) RetrievePacked(s string) (packing.HashedObject, error) {
 	if poB, ok := os.o[s]; ok {
 
 		b := bytes.NewReader(poB)

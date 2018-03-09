@@ -63,7 +63,7 @@ func (d *Depot) Rehydrate(ctx context.Context, dest types.Aggregate, path string
 	return nil
 }
 
-func (d *Depot) GetByDirname(ctx context.Context, path string) types.AggregateIterator {
+func (d *Depot) GetByDirname(ctx context.Context, path string) types.PartitionIterator {
 	return nil
 }
 
