@@ -5,18 +5,29 @@ import (
 	"time"
 )
 
+type CancelFunc func()
+
 type Aggregate interface {
 	ReactTo(Event) error
 }
 
+// PartitionIterator
 type PartitionIterator interface {
 	Next()
+	Pattern() string
+	Partitions() (<-chan EventIterator, CancelFunc)
 }
 
 // Event interface may be any type which may carry any baggage it likes.
 //
 // It must serialize and deserialize cleanly for storage reasons.
 type Event interface{}
+
+type PersistedEvent interface {
+	Times() time.Time
+	Name() string
+	Bytes() []byte
+}
 
 // EventIterator is a simple Iterator interface which should mean that we
 // are never in a situation where an aggregate with a large number of
@@ -32,6 +43,8 @@ type Event interface{}
 // may hold locks on some underlaying resources.
 type EventIterator interface {
 	Next() Event
+	Pattern() string
+	Events() (<-chan Event, CancelFunc)
 }
 
 // Depot is a general storage interface for application related data. The

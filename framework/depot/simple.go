@@ -3,6 +3,7 @@ package depot
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -10,8 +11,8 @@ import (
 )
 
 type Simple struct {
-	odb object.DB
-	rdb ref.DB
+	objdb object.DB
+	refdb ref.DB
 }
 
 // TODO: make this respect the actual value that might come in a context
@@ -40,38 +41,64 @@ func (s *Simple) Glob(partition string) types.PartitionIterator {
 	return &SimplePartitionIterator{}
 }
 
+func (s *Simple) GetEvents(partition string) types.PartitionIterator {
+	return &SimplePartitionIterator{pattern: partition}
+}
+
+type SimplePartitionEvent struct{}
+
+func (s *SimplePartitionEvent) Time() time.Time {
+	return time.Time{}
+}
+
+func (s *SimplePartitionEvent) Name() string {
+	return "demo"
+}
+
+func (s *SimplePartitionEvent) Bytes() []byte {
+	return []byte{}
+}
+
 type SimplePartitionIterator struct {
+	pattern string
+	c       chan types.EventIterator
+}
+
+func (s *SimplePartitionIterator) Pattern() string {
+	return s.pattern
 }
 
 func (s *SimplePartitionIterator) Next() {
 	fmt.Println("next called on simplepartition")
 }
 
-// func (g *Simple) Glob()
+// Partitions returns a channel which emits partition event iterators
+// which in turn emit events
+func (s *SimplePartitionIterator) Partitions() (<-chan types.EventIterator, types.CancelFunc) {
+	if s.c == nil {
+		s.c = make(chan types.EventIterator)
+	}
+	// TODO make something go looking for partitions on the stream
+	return s.c, func() { close(s.c) }
+}
 
-// Depot stores events, commands, etc. It is heavily inspired
-// by Git's model of generic object and ref stores linked with
-// pointers. It's aim is to be correct, not fast. To be verifiable,
-// and duplicable.
-// type Depot interface {
-//
-// 	// StoreEvent takes a domain event and returns a Hash
-// 	// the must be deterministic and not affected by PRNG
-// 	// or types, just the serialization format (repository
-// 	// is a storage concern)
-// 	StoreEvent(Event) (Hash, error)
-//
-// 	// StoreAffix stores an affix. An affix may contain
-// 	// a new set of events for one or more partitions, given
-// 	// that we know the name of the aggregate being changed
-// 	// most affixes will contain one partition name and one
-// 	// or more event hashes.
-// 	StoreAffix(Affix) (Hash, error)
-//
-// 	// StoreCheckpoint stores a checkpoint. A checkpoint
-// 	// is approximately equivilant to a Git commit. An
-// 	// object under heavy writes however may "auto branch"
-// 	// checkpoints (multiple checkpoints with a common parent)
-// 	// which we will have to resolve deterministically later
-// 	StoreCheckpoint(Checkpoint) (Hash, error)
-// }
+// SimpleEventIter emits events on a given partition
+type SimpleEventIterator struct {
+	pattern string
+	c       chan types.PersistedEvent
+}
+
+func (s *SimpleEventIterator) Pattern() string {
+	return s.pattern
+}
+
+func (s *SimpleEventIterator) Next() {
+	fmt.Println("next called on simplepartition")
+}
+
+func (s *SimpleEventIterator) Events() (<-chan types.PersistedEvent, types.CancelFunc) {
+	if s.c == nil {
+		s.c = make(chan types.PersistedEvent)
+	}
+	return s.c, func() { close(s.c) }
+}

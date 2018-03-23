@@ -3,7 +3,9 @@ package depot
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -75,12 +77,12 @@ func Test_Depot(t *testing.T) {
 		})
 	)
 
+	// TODO: I should test this with more than the file implementation of the odb
 	tmpdir, err := ioutil.TempDir("", "depot_common_test")
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	fmt.Println(tmpdir)
+	defer os.RemoveAll(tmpdir)
 
 	odbs := map[string]object.DB{
 		"memory": &memory.ObjectStore{},
@@ -109,6 +111,19 @@ func Test_Depot(t *testing.T) {
 
 	for _, refdb := range refdbs {
 		refdb.Write("refs/heads/main", third_checkpoint.Hash())
+	}
+
+	depot := Simple{objdb: odbs["memory"], refdb: refdbs["memory"]}
+
+	res := depot.GetEvents("*")
+	pIter, cancel := res.Partitions()
+	go func() {
+		time.Sleep(15 * time.Second)
+		cancel()
+	}()
+
+	for eIter := range pIter {
+		fmt.Println(eIter.Pattern())
 	}
 
 }
