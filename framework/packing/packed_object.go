@@ -1,6 +1,7 @@
 package packing
 
 import (
+	"bytes"
 	"crypto/sha256"
 )
 
@@ -22,9 +23,21 @@ func NewPackedObject(payloadStr string) PackedObject {
 	}
 }
 
+// Type returns a ObjectTypeName of either Affix, Checkpoint or Event
+func (po *PackedObject) Type() ObjectTypeName {
+	parts := bytes.SplitN(po.payload, []byte(" "), 2)
+	for _, kot := range KnownObjectTypes {
+		if kot == ObjectTypeName(string(parts[0])) {
+			return kot
+		}
+	}
+	return ObjectTypeUnknown
+}
+
 func (po *PackedObject) Contents() []byte {
 	return po.payload
 }
+
 func (po *PackedObject) Hash() Hash {
 	return po.hash
 }

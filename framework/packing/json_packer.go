@@ -78,7 +78,7 @@ func (jp *JSONPacker) UnpackEvent(b []byte) (string, []byte, error) {
 	return parts[2], payload, nil
 }
 
-// Returns an unpacked affix
+// UnpackAffix returns an unpacked affix given a byte stream containing an affix
 // TODO: ensure bytes given are actually an affix!
 func (jp *JSONPacker) UnpackAffix(b []byte) (Affix, error) {
 	var (
@@ -98,7 +98,8 @@ func (jp *JSONPacker) UnpackAffix(b []byte) (Affix, error) {
 		res[partitionName] = append(res[partitionName], evHash)
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, err // TODO: Wrap properly
+		// TODO: Wrap err properly
+		return nil, err
 	}
 
 	return res, nil
@@ -133,7 +134,7 @@ func (jp *JSONPacker) UnpackCheckpoint(b []byte) (Checkpoint, error) {
 			default:
 				res.Fields[cols[0]] = cols[1]
 			}
-			fmt.Println(cols)
+			// fmt.Println(cols)
 		} else {
 			res.CommandDesc = []byte(scanner.Text())
 		}
@@ -159,7 +160,7 @@ func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
 	// Write the affix text representation in lexographical
 	// order, probably. Go 1.0+ _intentionally_ randomizes has
 	// iteration order.
-	for key, _ := range affix {
+	for key := range affix {
 		partitions = append(partitions, key)
 	}
 	sort.SliceStable(partitions, func(i, j int) bool {

@@ -14,8 +14,12 @@ type Aggregate interface {
 // PartitionIterator
 type PartitionIterator interface {
 	Next()
+
 	Pattern() string
-	Partitions() (<-chan EventIterator, CancelFunc)
+	Partitions(context.Context) (<-chan EventIterator, CancelFunc)
+
+	HasErrors() bool
+	Errors() []error
 }
 
 // Event interface may be any type which may carry any baggage it likes.
@@ -44,7 +48,7 @@ type PersistedEvent interface {
 type EventIterator interface {
 	Next() Event
 	Pattern() string
-	Events() (<-chan Event, CancelFunc)
+	Events(context.Context) (<-chan Event, CancelFunc)
 }
 
 // Depot is a general storage interface for application related data. The

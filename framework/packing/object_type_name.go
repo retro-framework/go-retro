@@ -4,7 +4,11 @@ package packing
 type ObjectTypeName string
 
 const (
-	ObjectTypeEvent      ObjectTypeName = "event"
 	ObjectTypeAffix      ObjectTypeName = "affix"
 	ObjectTypeCheckpoint ObjectTypeName = "checkpoint"
+	ObjectTypeEvent      ObjectTypeName = "event"
+
+	ObjectTypeUnknown ObjectTypeName = "unknown object type"
 )
+
+var KnownObjectTypes []ObjectTypeName = []ObjectTypeName{ObjectTypeAffix, ObjectTypeCheckpoint, ObjectTypeEvent}

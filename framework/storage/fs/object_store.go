@@ -5,6 +5,7 @@ import (
 	"compress/zlib"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -33,6 +34,13 @@ type ObjectStore struct {
 
 func (s *ObjectStore) mkdirAll(path string) error {
 	return os.MkdirAll(path, 0766)
+}
+
+func (s *ObjectStore) ListObjects() {
+	files, _ := filepath.Glob(filepath.Join(s.BasePath, "**/*"))
+	for file := range files {
+		fmt.Println(file)
+	}
 }
 
 func (s *ObjectStore) WritePacked(p packing.HashedObject) (int, error) {

@@ -2,7 +2,9 @@ package packing
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -27,14 +29,18 @@ func (h Hash) ToPathName() string {
 	return fmt.Sprintf("%x/%x/%x", h.Bytes[0:2], h.Bytes[2:4], h.Bytes[4:])
 }
 
-// TODO: make this more robust
 func HashStrToHash(str string) Hash {
 	parts := strings.Split(str, ":")
-	return hashStr(parts[1])
+	decoded, err := hex.DecodeString(parts[1])
+	if err != nil {
+		// TODO: do this better, not many call sites, maybe :MUST: is wise?
+		log.Fatal(err)
+	}
+	return Hash{AlgoName: HashAlgoNameSHA256, Bytes: decoded}
 }
 
 // TODO: make this respect algoname in the given string
 func hashStr(str string) Hash {
-	var s = sha256.Sum256([]byte("foo"))
+	var s = sha256.Sum256([]byte(str))
 	return Hash{AlgoName: HashAlgoNameSHA256, Bytes: s[:]}
 }

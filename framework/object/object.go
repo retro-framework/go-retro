@@ -17,6 +17,7 @@ type Store interface {
 // sha256:b937....19251876f7) and returned a Hashed object which can
 // be parsed by the caller.
 type Source interface {
+	ListObjects()
 	RetrievePacked(string) (packing.HashedObject, error)
 }
 

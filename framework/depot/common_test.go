@@ -1,6 +1,7 @@
 package depot
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -36,44 +37,44 @@ func Test_Depot(t *testing.T) {
 
 	// Events
 	var (
-		set_author_name_1, _ = jp.PackEvent("set_author_name", DummyEvSetAuthorName{"Maxine Mustermann"})
+		setAuthorName1, _ = jp.PackEvent("set_author_name", DummyEvSetAuthorName{"Maxine Mustermann"})
 
-		set_article_title_1, _        = jp.PackEvent("set_article_title", DummyEvSetArticleTitle{"event graph for noobs"})
-		associate_article_author_1, _ = jp.PackEvent("associate_article_author", DummyEvAssociateArticleAuthor{"author/maxine"})
+		setArticleTitle1, _        = jp.PackEvent("set_article_title", DummyEvSetArticleTitle{"event graph for noobs"})
+		associateArticleAuthor1, _ = jp.PackEvent("associate_article_author", DummyEvAssociateArticleAuthor{"author/maxine"})
 
-		set_article_title_2, _ = jp.PackEvent("set_article_title", DummyEvSetArticleTitle{"learning event graph"})
-		set_article_body_1, _  = jp.PackEvent("set_article_body", DummyEvSetArticleBody{"lorem ipsum ..."})
+		setArticleTitle2, _ = jp.PackEvent("set_article_title", DummyEvSetArticleTitle{"learning event graph"})
+		setArticleBody1, _  = jp.PackEvent("set_article_body", DummyEvSetArticleBody{"lorem ipsum ..."})
 	)
 
 	// Affixes
 	var (
-		affix_1, _ = jp.PackAffix(packing.Affix{"author/maxine": []packing.Hash{set_author_name_1.Hash()}})
+		affixOne, _ = jp.PackAffix(packing.Affix{"author/maxine": []packing.Hash{setAuthorName1.Hash()}})
 
-		affix_2, _ = jp.PackAffix(packing.Affix{"article/first": []packing.Hash{set_article_title_1.Hash(), associate_article_author_1.Hash()}})
+		affixTwo, _ = jp.PackAffix(packing.Affix{"article/first": []packing.Hash{setArticleTitle1.Hash(), associateArticleAuthor1.Hash()}})
 
-		affix_3, _ = jp.PackAffix(packing.Affix{"article/first": []packing.Hash{set_article_title_2.Hash(), set_article_body_1.Hash()}})
+		affixThree, _ = jp.PackAffix(packing.Affix{"article/first": []packing.Hash{setArticleTitle2.Hash(), setArticleBody1.Hash()}})
 	)
 
 	// Checkpoints
 	var (
-		first_checkpoint, _ = jp.PackCheckpoint(packing.Checkpoint{
-			AffixHash:   affix_1.Hash(),
+		checkpointOne, _ = jp.PackCheckpoint(packing.Checkpoint{
+			AffixHash:   affixOne.Hash(),
 			CommandDesc: []byte(`{"create":"author"}`),
 			Fields:      map[string]string{"session": "hello world"},
 		})
 
-		second_checkpoint, _ = jp.PackCheckpoint(packing.Checkpoint{
-			AffixHash:    affix_2.Hash(),
+		checkpointTwo, _ = jp.PackCheckpoint(packing.Checkpoint{
+			AffixHash:    affixTwo.Hash(),
 			CommandDesc:  []byte(`{"draft:"article"}`),
 			Fields:       map[string]string{"session": "hello world"},
-			ParentHashes: []packing.Hash{first_checkpoint.Hash()},
+			ParentHashes: []packing.Hash{checkpointOne.Hash()},
 		})
 
-		third_checkpoint, _ = jp.PackCheckpoint(packing.Checkpoint{
-			AffixHash:    affix_3.Hash(),
+		checkpointThree, _ = jp.PackCheckpoint(packing.Checkpoint{
+			AffixHash:    affixThree.Hash(),
 			CommandDesc:  []byte(`{"update":"article"}`),
 			Fields:       map[string]string{"session": "hello world"},
-			ParentHashes: []packing.Hash{second_checkpoint.Hash()},
+			ParentHashes: []packing.Hash{checkpointTwo.Hash()},
 		})
 	)
 
@@ -94,36 +95,42 @@ func Test_Depot(t *testing.T) {
 	}
 
 	for _, odb := range odbs {
-		odb.WritePacked(set_author_name_1)
-		odb.WritePacked(set_article_title_1)
-		odb.WritePacked(associate_article_author_1)
-		odb.WritePacked(set_article_title_2)
-		odb.WritePacked(set_article_body_1)
+		odb.WritePacked(setAuthorName1)
+		odb.WritePacked(setArticleTitle1)
+		odb.WritePacked(associateArticleAuthor1)
+		odb.WritePacked(setArticleTitle2)
+		odb.WritePacked(setArticleBody1)
 
-		odb.WritePacked(affix_1)
-		odb.WritePacked(affix_2)
-		odb.WritePacked(affix_3)
+		odb.WritePacked(affixOne)
+		odb.WritePacked(affixTwo)
+		odb.WritePacked(affixThree)
 
-		odb.WritePacked(first_checkpoint)
-		odb.WritePacked(second_checkpoint)
-		odb.WritePacked(third_checkpoint)
+		odb.WritePacked(checkpointOne)
+		odb.WritePacked(checkpointTwo)
+		odb.WritePacked(checkpointThree)
 	}
 
 	for _, refdb := range refdbs {
-		refdb.Write("refs/heads/main", third_checkpoint.Hash())
+		refdb.Write("refs/heads/main", checkpointThree.Hash())
 	}
 
 	depot := Simple{objdb: odbs["memory"], refdb: refdbs["memory"]}
 
-	res := depot.GetEvents("*")
-	pIter, cancel := res.Partitions()
+	pIter := depot.Glob("*")
+	eIterCh, cancel := pIter.Partitions(context.TODO())
+
+	if pIter.HasErrors() {
+		t.Fatalf("Partition Iterator Had Errors %#v\n", pIter.Errors())
+	}
+
 	go func() {
-		time.Sleep(15 * time.Second)
+		time.Sleep(3 * time.Second)
+		fmt.Println(pIter.Errors())
 		cancel()
 	}()
 
-	for eIter := range pIter {
-		fmt.Println(eIter.Pattern())
+	for eIter := range eIterCh {
+		fmt.Println("eIter Pattern", eIter.Pattern())
 	}
 
 }

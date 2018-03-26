@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"errors"
+	"fmt"
 	"io/ioutil"
 
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -16,6 +17,12 @@ var (
 
 type ObjectStore struct {
 	o map[string][]byte
+}
+
+func (os *ObjectStore) ListObjects() {
+	for k, _ := range os.o {
+		fmt.Println(k)
+	}
 }
 
 func (os *ObjectStore) WritePacked(p packing.HashedObject) (int, error) {

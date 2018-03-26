@@ -2,8 +2,6 @@ package depot
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -15,9 +13,13 @@ type Simple struct {
 	refdb ref.DB
 }
 
+func refFromCtx(ctx context.Context) string {
+	return "refs/heads/main"
+}
+
 // TODO: make this respect the actual value that might come in a context
 func (s *Simple) refFromCtx(ctx context.Context) string {
-	return "refs/heads/mainline"
+	return "refs/heads/main"
 }
 
 func (s *Simple) Claim(ctx context.Context, partition string) bool {
@@ -35,70 +37,32 @@ func (s *Simple) Rehydrate(partition string, dst types.Aggregate, sid types.Sess
 	return nil
 }
 
-// Glob
+// Glob makes the world go round
 func (s *Simple) Glob(partition string) types.PartitionIterator {
-	// TODO: Implement locking properly
-	return &SimplePartitionIterator{}
-}
-
-func (s *Simple) GetEvents(partition string) types.PartitionIterator {
-	return &SimplePartitionIterator{pattern: partition}
-}
-
-type SimplePartitionEvent struct{}
-
-func (s *SimplePartitionEvent) Time() time.Time {
-	return time.Time{}
-}
-
-func (s *SimplePartitionEvent) Name() string {
-	return "demo"
-}
-
-func (s *SimplePartitionEvent) Bytes() []byte {
-	return []byte{}
-}
-
-type SimplePartitionIterator struct {
-	pattern string
-	c       chan types.EventIterator
-}
-
-func (s *SimplePartitionIterator) Pattern() string {
-	return s.pattern
-}
-
-func (s *SimplePartitionIterator) Next() {
-	fmt.Println("next called on simplepartition")
-}
-
-// Partitions returns a channel which emits partition event iterators
-// which in turn emit events
-func (s *SimplePartitionIterator) Partitions() (<-chan types.EventIterator, types.CancelFunc) {
-	if s.c == nil {
-		s.c = make(chan types.EventIterator)
+	return &SimplePartitionIterator{
+		objdb:   s.objdb,
+		refdb:   s.refdb,
+		pattern: partition,
 	}
-	// TODO make something go looking for partitions on the stream
-	return s.c, func() { close(s.c) }
 }
 
-// SimpleEventIter emits events on a given partition
-type SimpleEventIterator struct {
-	pattern string
-	c       chan types.PersistedEvent
+type Hash interface {
+	String() string
 }
 
-func (s *SimpleEventIterator) Pattern() string {
-	return s.pattern
+type relevantCheckpoint struct {
+	checkpointHash Hash
 }
 
-func (s *SimpleEventIterator) Next() {
-	fmt.Println("next called on simplepartition")
+type cpAffixStack struct{ h []Hash }
+
+func (os *cpAffixStack) Push(h Hash) { os.h = append(os.h, h) }
+func (os *cpAffixStack) Pop() Hash {
+	var x Hash
+	x, os.h = os.h[0], os.h[1:]
+	return x
 }
 
-func (s *SimpleEventIterator) Events() (<-chan types.PersistedEvent, types.CancelFunc) {
-	if s.c == nil {
-		s.c = make(chan types.PersistedEvent)
-	}
-	return s.c, func() { close(s.c) }
+type PatternMatcher interface {
+	DoesMatch(pattern, partition string) (bool, error)
 }

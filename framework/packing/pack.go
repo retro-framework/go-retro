@@ -18,6 +18,7 @@ type Object interface {
 
 // HashedObject is an object from the hash.
 type HashedObject interface {
+	Type() ObjectTypeName
 	Contents() []byte
 	Hash() Hash
 }
