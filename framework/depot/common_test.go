@@ -125,7 +125,7 @@ func Test_Depot(t *testing.T) {
 
 	go func() {
 		time.Sleep(3 * time.Second)
-		fmt.Println(pIter.Errors())
+		fmt.Println("errors on partition iterator:", pIter.Errors())
 		cancel()
 	}()
 

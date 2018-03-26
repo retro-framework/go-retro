@@ -82,7 +82,13 @@ func (s *SimplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 				break
 			}
 		}
-		fmt.Println("done")
+
+		// TODO: Now I need to distinct the items on the stack and emit
+		// unique event iterators for each partitions I have seen. The
+		// structure in oStack might need some work? cpAffixStack may be
+		// extendable to maintain a list of seen partitions since Push()
+		// has access to the affix metadata on Push()
+
 	}()
 
 	// TODO make something go looking for partitions on the stream
@@ -142,7 +148,10 @@ func (s *SimplePartitionIterator) enqueueCheckpointIfRelevant(checkpointObjHash 
 			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, s.pattern))
 		}
 		if matched {
-			st.Push(checkpointObjHash)
+			st.Push(relevantCheckpoint{
+				checkpointHash: packedCheckpoint.Hash(),
+				affix:          affix,
+			})
 		}
 	}
 

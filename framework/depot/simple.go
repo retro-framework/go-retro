@@ -2,6 +2,9 @@ package depot
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/retro-framework/go-retro/framework/packing"
 
 	"github.com/golang-collections/collections/stack"
 
@@ -53,23 +56,29 @@ type Hash interface {
 }
 
 type relevantCheckpoint struct {
-	checkpointHash Hash
+	checkpointHash packing.Hash
+	affix          packing.Affix
+}
+
+func (rc relevantCheckpoint) String() string {
+	return fmt.Sprintf("Checkpoint: %s (%v)", rc.checkpointHash.String(), rc.affix)
 }
 
 type cpAffixStack struct {
 	s stack.Stack
 }
 
-func (os *cpAffixStack) Push(h Hash) {
+func (os *cpAffixStack) Push(h relevantCheckpoint) {
 	os.s.Push(h)
 }
 
-func (os *cpAffixStack) Pop() Hash {
+func (os *cpAffixStack) Pop() *relevantCheckpoint {
 	v := os.s.Pop()
 	if v == nil {
 		return nil
 	}
-	return v.(Hash)
+	rcp := v.(relevantCheckpoint)
+	return &rcp
 }
 
 type PatternMatcher interface {
