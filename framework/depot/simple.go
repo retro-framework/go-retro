@@ -3,6 +3,8 @@ package depot
 import (
 	"context"
 
+	"github.com/golang-collections/collections/stack"
+
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/types"
@@ -54,13 +56,20 @@ type relevantCheckpoint struct {
 	checkpointHash Hash
 }
 
-type cpAffixStack struct{ h []Hash }
+type cpAffixStack struct {
+	s stack.Stack
+}
 
-func (os *cpAffixStack) Push(h Hash) { os.h = append(os.h, h) }
+func (os *cpAffixStack) Push(h Hash) {
+	os.s.Push(h)
+}
+
 func (os *cpAffixStack) Pop() Hash {
-	var x Hash
-	x, os.h = os.h[0], os.h[1:]
-	return x
+	v := os.s.Pop()
+	if v == nil {
+		return nil
+	}
+	return v.(Hash)
 }
 
 type PatternMatcher interface {

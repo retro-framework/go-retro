@@ -44,3 +44,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/zyedidia/glob"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/golang-collections/collections"

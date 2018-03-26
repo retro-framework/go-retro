@@ -57,6 +57,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/golang-collections/collections"
+  packages = ["stack"]
+  revision = "604e922904d35e97f98a774db7881f049cd8d970"
+
+[[projects]]
+  branch = "master"
   name = "github.com/golang/snappy"
   packages = ["."]
   revision = "553a641470496b2327abcac10b36396bd98e45c9"
@@ -148,6 +154,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c202ffdd2c5b9ccabe96c055e2071a085caee25f1e5eae2d6201dedab67a2cf3"
+  inputs-digest = "99a1ea5b8ff2d9353f5064fb1f75dc8c0ee33d4107a15a73f189f8d6c133943a"
   solver-name = "gps-cdcl"
   solver-version = 1
