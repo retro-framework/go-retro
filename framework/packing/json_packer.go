@@ -92,7 +92,7 @@ func (jp *JSONPacker) UnpackAffix(b []byte) (Affix, error) {
 	for scanner.Scan() {
 		var (
 			cols          = strings.SplitN(scanner.Text(), " ", 3)
-			partitionName = PartitionName(cols[1])
+			partitionName = types.PartitionName(cols[1])
 			evHash        = HashStrToHash(cols[2])
 		)
 		res[partitionName] = append(res[partitionName], evHash)
@@ -154,7 +154,7 @@ func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
 	var (
 		affB       bytes.Buffer
 		payload    bytes.Buffer
-		partitions []PartitionName
+		partitions []types.PartitionName
 	)
 
 	// Write the affix text representation in lexographical

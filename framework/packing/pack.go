@@ -1,6 +1,10 @@
 package packing
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/retro-framework/go-retro/framework/types"
+)
 
 const (
 	HeaderContentSepRune = "\u0000"
@@ -26,12 +30,6 @@ type HashedObject interface {
 // Event ns anything serializable for the future
 type Event interface{}
 
-// PartitionName as alias for string to make
-// the documentation and code examples more
-// speaking. Detail should not leak beyond the
-// plumbing package.
-type PartitionName string
-
 // Affix is a map of partition names to slices of events.
 // Affixes are closely related to checkpoints. If a command
 // emits a bunch of related events they will be packed into
@@ -44,7 +42,7 @@ type PartitionName string
 // a partial affix, but checkpoint it with an error. The reader
 // may prefer to ignore these events, but they do form par
 // of our conceptual model.
-type Affix map[PartitionName][]Hash
+type Affix map[types.PartitionName][]Hash
 
 // A checkpoint represents a DDD command object execution
 // and persistence of the resulting events. It stores

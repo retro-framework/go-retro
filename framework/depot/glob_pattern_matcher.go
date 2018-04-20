@@ -8,7 +8,7 @@ import (
 // TODO: test me one way or another (can't rely on upstream lib globbing without local tests)
 type GlobPatternMatcher struct{}
 
-func (_ *GlobPatternMatcher) DoesMatch(pattern, partition string) (bool, error) {
+func (_ GlobPatternMatcher) DoesMatch(pattern, partition string) (bool, error) {
 	glob, err := glob.Compile(pattern)
 	if err != nil {
 		return false, errors.Wrap(err, "can't compile glob pattern")

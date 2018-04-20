@@ -16,19 +16,24 @@ type PartitionIterator interface {
 	Next()
 
 	Pattern() string
-	Partitions(context.Context) (<-chan EventIterator, CancelFunc)
+	Partitions(context.Context) (<-chan EventIterator, error)
 
 	HasErrors() bool
 	Errors() []error
 }
 
 // Event interface may be any type which may carry any baggage it likes.
-//
 // It must serialize and deserialize cleanly for storage reasons.
 type Event interface{}
 
+// EventName
+type EventNameTuple struct {
+	Name  string
+	Event Event
+}
+
 type PersistedEvent interface {
-	Times() time.Time
+	Time() time.Time
 	Name() string
 	Bytes() []byte
 }
@@ -46,10 +51,12 @@ type PersistedEvent interface {
 // Beware that failing to read some itterator implementations to the end
 // may hold locks on some underlaying resources.
 type EventIterator interface {
-	Next() Event
+	Next() PersistedEvent
 	Pattern() string
-	Events(context.Context) (<-chan Event, CancelFunc)
+	Events(context.Context) (<-chan PersistedEvent, error)
 }
+
+type PartitionName string
 
 // Depot is a general storage interface for application related data. The
 // name is chosen to draw parallels with the Repository concept sometimes
@@ -66,7 +73,7 @@ type Depot interface {
 
 	// Retrieve a specific aggregate by applying events to it
 	// concerned with mostly "Command" execution.
-	Rehydrate(context.Context, Aggregate, string) error
+	Rehydrate(context.Context, Aggregate, PartitionName) error
 
 	// For enumerating or matching on
 	Glob(context.Context, string) PartitionIterator

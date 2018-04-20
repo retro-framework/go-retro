@@ -3,8 +3,12 @@ package depot
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/storage/memory"
 
 	"github.com/golang-collections/collections/stack"
 
@@ -12,6 +16,56 @@ import (
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/types"
 )
+
+// NewSimpleStub returns a simple Depot stub which checkpoints the fixture events
+// given into a single checkpoint as part of one affix with a generic set of messages.
+func NewSimpleStub(t *testing.T,
+	objDB object.DB,
+	refDB ref.DB,
+	fixture map[string][]types.EventNameTuple,
+) types.Depot {
+	var (
+		jp    = packing.NewJSONPacker()
+		affix = packing.Affix{}
+	)
+	for aggName, evNameTuples := range fixture {
+		var (
+			evHashesForAffix []packing.Hash
+		)
+		for _, evNameTuple := range evNameTuples {
+			packedEv, err := jp.PackEvent(evNameTuple.Name, evNameTuple.Event)
+			if err != nil {
+				t.Errorf("error packing event in NewSimpleStub: %s", err)
+			}
+			objDB.WritePacked(packedEv)
+			evHashesForAffix = append(evHashesForAffix, packedEv.Hash())
+		}
+		affix[types.PartitionName(aggName)] = evHashesForAffix
+	}
+	packedAffix, err := jp.PackAffix(affix)
+	if err != nil {
+		t.Errorf("error packing affix in NewSimpleStub: %s", err)
+	}
+	checkpoint := packing.Checkpoint{
+		AffixHash:   packedAffix.Hash(),
+		CommandDesc: []byte(`{"stub":"article"}`),
+		Fields:      map[string]string{"session": "hello world"},
+	}
+	packedCheckpoint, err := jp.PackCheckpoint(checkpoint)
+	if err != nil {
+		t.Errorf("error packing checkpoint in NewSimpleStub: %s", err)
+	}
+	refDB.Write("refs/heads/main", packedCheckpoint.Hash())
+	return Simple{objdb: objDB, refdb: refDB}
+}
+
+// EmptySimpleMemory returns an empty depot to keep the type system happy
+func EmptySimpleMemory() types.Depot {
+	return Simple{
+		objdb: &memory.ObjectStore{},
+		refdb: &memory.RefStore{},
+	}
+}
 
 type Simple struct {
 	objdb object.DB
@@ -23,31 +77,59 @@ func refFromCtx(ctx context.Context) string {
 }
 
 // TODO: make this respect the actual value that might come in a context
-func (s *Simple) refFromCtx(ctx context.Context) string {
+func (s Simple) refFromCtx(ctx context.Context) string {
 	return "refs/heads/main"
 }
 
-func (s *Simple) Claim(ctx context.Context, partition string) bool {
+func (s Simple) Claim(ctx context.Context, partition string) bool {
 	// TODO: Implement locking properly
 	return true
 }
 
-func (s *Simple) Release(partition string) {
+func (s Simple) Release(partition string) {
 	// TODO: Implement locking properly
 	return
 }
 
-// Rehydrate
-func (s *Simple) Rehydrate(partition string, dst types.Aggregate, sid types.SessionID) error {
+// Rehydrate replays the events onto an aggregate
+func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
+
+	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "depot.Simple.Rehydrate")
+	defer spnRehydrate.Finish()
+
+	pIter := s.Glob(ctx, string(partitionName))
+	eIterCh, err := pIter.Partitions(ctx)
+	if err != nil {
+		panic(err) // TODO: can never happen, hard-coded nil
+	}
+	select {
+	case <-ctx.Done(): // TODO: test for this somehow?
+		return fmt.Errorf("context cancelled waiting to start rehydrate of %s", string(partitionName))
+	case eIter := <-eIterCh:
+		partitionEvs, err := eIter.Events(ctx)
+		for ev := range partitionEvs {
+			spnReactToEv := opentracing.StartSpan("aggregate react to ev", opentracing.ChildOf(spnRehydrate.Context()))
+			spnReactToEv.LogKV("ev.object", ev)
+			err = dst.ReactTo(ev)
+			spnReactToEv.Finish()
+			if err != nil {
+				err := fmt.Errorf("broke here")
+				spnRehydrate.LogKV("event", "error", "error.object", err)
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
 // Glob makes the world go round
-func (s *Simple) Glob(partition string) types.PartitionIterator {
-	return &SimplePartitionIterator{
+func (s Simple) Glob(_ context.Context, partition string) types.PartitionIterator {
+	return &simplePartitionIterator{
 		objdb:   s.objdb,
 		refdb:   s.refdb,
 		pattern: partition,
+		matcher: GlobPatternMatcher{},
 	}
 }
 
@@ -56,20 +138,37 @@ type Hash interface {
 }
 
 type relevantCheckpoint struct {
+	time           time.Time
 	checkpointHash packing.Hash
 	affix          packing.Affix
 }
 
 func (rc relevantCheckpoint) String() string {
-	return fmt.Sprintf("Checkpoint: %s (%v)", rc.checkpointHash.String(), rc.affix)
+	return fmt.Sprintf("Relevant Checkpoint: %s", rc.checkpointHash.String())
 }
 
 type cpAffixStack struct {
 	s stack.Stack
+
+	// Ordered from "youngest" to "oldest"
+	knownPartitions []types.PartitionName
 }
 
-func (os *cpAffixStack) Push(h relevantCheckpoint) {
-	os.s.Push(h)
+// Push pushes a relavantCheckpoint onto a stack as we walk
+// the object graph. It also maintains a youngest-to-oldest
+func (os *cpAffixStack) Push(rc relevantCheckpoint) {
+	os.s.Push(rc)
+	for partitionName := range rc.affix {
+		var partitionNameKnown bool
+		for _, kp := range os.knownPartitions {
+			if partitionName == kp {
+				partitionNameKnown = true
+			}
+		}
+		if !partitionNameKnown {
+			os.knownPartitions = append(os.knownPartitions, partitionName)
+		}
+	}
 }
 
 func (os *cpAffixStack) Pop() *relevantCheckpoint {

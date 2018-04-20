@@ -2,7 +2,6 @@ package packing
 
 import (
 	"bytes"
-	"crypto/sha256"
 )
 
 // Packed event represents a packed event in memory. The payload is a zlib
@@ -16,10 +15,7 @@ type PackedObject struct {
 func NewPackedObject(payloadStr string) PackedObject {
 	return PackedObject{
 		payload: []byte(payloadStr),
-		hash: Hash{
-			AlgoName: HashAlgoNameSHA256,
-			Bytes:    sha256.New().Sum([]byte(payloadStr)),
-		},
+		hash:    hashStr(payloadStr),
 	}
 }
 

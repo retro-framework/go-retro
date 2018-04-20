@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 type DummyEvSetAuthorName struct {
@@ -33,7 +36,9 @@ type DummyEvAssociateArticleAuthor struct {
 
 func Test_Depot(t *testing.T) {
 
-	jp := packing.NewJSONPacker()
+	defer leaktest.Check(t)()
+
+	var jp = packing.NewJSONPacker()
 
 	// Events
 	var (
@@ -65,7 +70,7 @@ func Test_Depot(t *testing.T) {
 
 		checkpointTwo, _ = jp.PackCheckpoint(packing.Checkpoint{
 			AffixHash:    affixTwo.Hash(),
-			CommandDesc:  []byte(`{"draft:"article"}`),
+			CommandDesc:  []byte(`{"draft":"article"}`),
 			Fields:       map[string]string{"session": "hello world"},
 			ParentHashes: []packing.Hash{checkpointOne.Hash()},
 		})
@@ -78,7 +83,6 @@ func Test_Depot(t *testing.T) {
 		})
 	)
 
-	// TODO: I should test this with more than the file implementation of the odb
 	tmpdir, err := ioutil.TempDir("", "depot_common_test")
 	if err != nil {
 		t.Fatal(err)
@@ -92,6 +96,12 @@ func Test_Depot(t *testing.T) {
 	refdbs := map[string]ref.DB{
 		"memory": &memory.RefStore{},
 		"fs":     &fs.RefStore{BasePath: tmpdir},
+	}
+	depots := map[string]types.Depot{
+		"memory":    Simple{objdb: odbs["memory"], refdb: refdbs["memory"]},
+		"fs":        Simple{objdb: odbs["fs"], refdb: refdbs["fs"]},
+		"fs+memory": Simple{objdb: odbs["memory"], refdb: refdbs["fs"]},
+		"memory+fs": Simple{objdb: odbs["fs"], refdb: refdbs["memory"]},
 	}
 
 	for _, odb := range odbs {
@@ -114,25 +124,48 @@ func Test_Depot(t *testing.T) {
 		refdb.Write("refs/heads/main", checkpointThree.Hash())
 	}
 
-	depot := Simple{objdb: odbs["memory"], refdb: refdbs["memory"]}
+	for name, depot := range depots {
+		t.Run(name, func(t *testing.T) {
+			t.Run("correct events in correct order", func(t *testing.T) {
 
-	pIter := depot.Glob("*")
-	eIterCh, cancel := pIter.Partitions(context.TODO())
+				var (
+					wg            sync.WaitGroup
+					ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
+				)
+				wg.Add(5)
 
-	if pIter.HasErrors() {
-		t.Fatalf("Partition Iterator Had Errors %#v\n", pIter.Errors())
+				go func() {
+					wg.Wait()
+					cancelFn()
+				}()
+
+				// Calling Glob() on a depot returns a PartitionIterator
+				// a PartitionIterator's "Partitions" method returns a channel
+				// of EventIterators and a cancellation function. The cancellation
+				// function will self-cancel when the given Context expires.
+				pIter := depot.Glob(ctx, "*")
+				eIterCh, err := pIter.Partitions(ctx)
+				if err != nil {
+					panic(err) // TODO: can never happen, hard-coded nil
+				}
+
+				// An EventIterator comes with some metadata about the "partition" in question
+				// and it's own way to emit events.
+				for eIter := range eIterCh {
+					go func(eIter types.EventIterator) {
+						partitionEvs, err := eIter.Events(ctx)
+						if err != nil {
+							panic(err) // TODO: can never happen, hard-coded nil
+						}
+						for ev := range partitionEvs {
+							fmt.Println(ev.Name(), ":", string(ev.Bytes()), "on", eIter.Pattern())
+							wg.Done()
+						}
+					}(eIter)
+				}
+			})
+		})
 	}
-
-	go func() {
-		time.Sleep(3 * time.Second)
-		fmt.Println("errors on partition iterator:", pIter.Errors())
-		cancel()
-	}()
-
-	for eIter := range eIterCh {
-		fmt.Println("eIter Pattern", eIter.Pattern())
-	}
-
 }
 
 // 	for name, depot := range depots {

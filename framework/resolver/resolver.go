@@ -136,7 +136,7 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 		return nil, Error{"agg-cmd-lookup", fmt.Errorf("no command registered with name %s for aggregate %v", cmdDesc.Name, reflect.TypeOf(agg).Elem().Name())}
 	}
 
-	err = depot.Rehydrate(ctx, agg, cmdDesc.Path)
+	err = depot.Rehydrate(ctx, agg, types.PartitionName(cmdDesc.Path))
 	if err != nil {
 		return nil, Error{"agg-rehydrate", err}
 	}

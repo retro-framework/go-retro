@@ -38,6 +38,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/fortytw2/leaktest"
+  packages = ["."]
+  revision = "a5ef70473c97b71626b9abeda80ee92ba2a7de9e"
+  version = "v1.2.0"
+
+[[projects]]
   name = "github.com/go-logfmt/logfmt"
   packages = ["."]
   revision = "390ab7935ee28ec6b286364bba9b4dd6410cb3d5"
@@ -154,6 +160,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "99a1ea5b8ff2d9353f5064fb1f75dc8c0ee33d4107a15a73f189f8d6c133943a"
+  inputs-digest = "bfb8f253602ec9f28899480ef39236344f17887f6902d55136a8febd8d8f7e8a"
   solver-name = "gps-cdcl"
   solver-version = 1
