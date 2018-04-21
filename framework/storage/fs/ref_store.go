@@ -68,18 +68,18 @@ func (s *RefStore) Write(name string, hash packing.Hash) (bool, error) {
 			return false, ErrUnableToCreateRefDir
 		}
 		return true, writeRefFile()
-	} else {
-		// Check if we have to write the file, read it first
-		fileData, err := ioutil.ReadFile(refPath)
-		if err != nil {
-			return false, ErrUnableToReadRefFile
-		}
-		if string(fileData) != hash.String() {
-			return true, writeRefFile()
-		}
-		return false, nil
+	}
+
+	// Check if we have to write the file, read it first
+	fileData, err := ioutil.ReadFile(refPath)
+	if err != nil {
+		return false, ErrUnableToReadRefFile
+	}
+	if string(fileData) != hash.String() {
+		return true, writeRefFile()
 	}
 	return false, nil
+
 }
 
 func (s *RefStore) WriteSymbolic(name, ref string) (bool, error) {
@@ -122,16 +122,15 @@ func (s *RefStore) WriteSymbolic(name, ref string) (bool, error) {
 			return false, ErrUnableToCreateRefDir
 		}
 		return true, writeRefFile()
-	} else {
-		// Check if we have to write the file, read it first
-		fileData, err := ioutil.ReadFile(symRefPath)
-		if err != nil {
-			return false, ErrUnableToReadRefFile
-		}
-		if string(fileData) != symRefContents {
-			return true, writeRefFile()
-		}
-		return false, nil
+	}
+
+	// Check if we have to write the file, read it first
+	fileData, err := ioutil.ReadFile(symRefPath)
+	if err != nil {
+		return false, ErrUnableToReadRefFile
+	}
+	if string(fileData) != symRefContents {
+		return true, writeRefFile()
 	}
 	return false, nil
 }

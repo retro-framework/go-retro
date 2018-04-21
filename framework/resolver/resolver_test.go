@@ -128,8 +128,8 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 				&memory.RefStore{},
 				map[string][]types.EventNameTuple{
 					"agg/123": []types.EventNameTuple{
-						{"one", OneEvent{}},
-						{"other", OtherEvent{}},
+						{Name: "one", Event: OneEvent{}},
+						{Name: "one", Event: OtherEvent{}},
 					},
 				},
 			)
@@ -176,8 +176,8 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 				&memory.RefStore{},
 				map[string][]types.EventNameTuple{
 					"agg/456": []types.EventNameTuple{
-						{"one", OneEvent{}},
-						{"other", OtherEvent{}},
+						{Name: "one", Event: OneEvent{}},
+						{Name: "one", Event: OtherEvent{}},
 					},
 				},
 			)
@@ -229,8 +229,8 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 				&memory.RefStore{},
 				map[string][]types.EventNameTuple{
 					"agg/456": []types.EventNameTuple{
-						{"one", OneEvent{}},
-						{"other", OtherEvent{}},
+						{Name: "one", Event: OneEvent{}},
+						{Name: "one", Event: OtherEvent{}},
 					},
 				},
 			)
@@ -270,8 +270,8 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 				&memory.RefStore{},
 				map[string][]types.EventNameTuple{
 					"agg/456": []types.EventNameTuple{
-						{"one", OneEvent{}},
-						{"other", OtherEvent{}},
+						{Name: "one", Event: OneEvent{}},
+						{Name: "one", Event: OtherEvent{}},
 					},
 				},
 			)

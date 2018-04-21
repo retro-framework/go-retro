@@ -22,7 +22,7 @@ func Test_DB(t *testing.T) {
 
 	dbs := map[string]DB{
 		"memory": &memory.RefStore{},
-		"fs":     &fs.RefStore{tmpdir},
+		"fs":     &fs.RefStore{BasePath: tmpdir},
 	}
 
 	for name, db := range dbs {
