@@ -37,7 +37,9 @@ func NewSimpleStub(t *testing.T,
 			if err != nil {
 				t.Errorf("error packing event in NewSimpleStub: %s", err)
 			}
-			objDB.WritePacked(packedEv)
+			if _, err := objDB.WritePacked(packedEv); err != nil {
+				t.Errorf("error writing packedEv to odb in NewSimpleStub")
+			}
 			evHashesForAffix = append(evHashesForAffix, packedEv.Hash())
 		}
 		affix[types.PartitionName(aggName)] = evHashesForAffix
@@ -45,6 +47,9 @@ func NewSimpleStub(t *testing.T,
 	packedAffix, err := jp.PackAffix(affix)
 	if err != nil {
 		t.Errorf("error packing affix in NewSimpleStub: %s", err)
+	}
+	if _, err := objDB.WritePacked(packedAffix); err != nil {
+		t.Errorf("error writing packedAffix to odb in NewSimpleStub")
 	}
 	checkpoint := packing.Checkpoint{
 		AffixHash:   packedAffix.Hash(),
@@ -54,6 +59,9 @@ func NewSimpleStub(t *testing.T,
 	packedCheckpoint, err := jp.PackCheckpoint(checkpoint)
 	if err != nil {
 		t.Errorf("error packing checkpoint in NewSimpleStub: %s", err)
+	}
+	if _, err := objDB.WritePacked(packedCheckpoint); err != nil {
+		t.Errorf("error writing packedCheckpoint to odb in NewSimpleStub")
 	}
 	refDB.Write("refs/heads/main", packedCheckpoint.Hash())
 	return Simple{objdb: objDB, refdb: refDB}
