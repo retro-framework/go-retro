@@ -20,7 +20,7 @@ func NewPackedObject(payloadStr string) PackedObject {
 }
 
 // Type returns a ObjectTypeName of either Affix, Checkpoint or Event
-func (po *PackedObject) Type() ObjectTypeName {
+func (po PackedObject) Type() ObjectTypeName {
 	parts := bytes.SplitN(po.payload, []byte(" "), 2)
 	for _, kot := range KnownObjectTypes {
 		if kot == ObjectTypeName(string(parts[0])) {
@@ -30,11 +30,11 @@ func (po *PackedObject) Type() ObjectTypeName {
 	return ObjectTypeUnknown
 }
 
-func (po *PackedObject) Contents() []byte {
+func (po PackedObject) Contents() []byte {
 	return po.payload
 }
 
-func (po *PackedObject) Hash() Hash {
+func (po PackedObject) Hash() Hash {
 	return po.hash
 }
 
@@ -42,7 +42,7 @@ type PackedEvent struct {
 	PackedObject
 }
 
-func (pe *PackedEvent) TypeName() ObjectTypeName {
+func (pe PackedEvent) TypeName() ObjectTypeName {
 	return ObjectTypeEvent
 }
 
@@ -50,7 +50,7 @@ type PackedAffix struct {
 	PackedObject
 }
 
-func (pe *PackedAffix) TypeName() ObjectTypeName {
+func (pe PackedAffix) TypeName() ObjectTypeName {
 	return ObjectTypeAffix
 }
 
@@ -58,6 +58,6 @@ type PackedCheckpoint struct {
 	PackedObject
 }
 
-func (pc *PackedCheckpoint) TypeName() ObjectTypeName {
+func (pc PackedCheckpoint) TypeName() ObjectTypeName {
 	return ObjectTypeCheckpoint
 }

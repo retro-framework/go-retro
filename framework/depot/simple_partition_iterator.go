@@ -16,9 +16,17 @@ type simplePartitionIterator struct {
 	objdb object.DB
 	refdb ref.DB
 
+	// tipHash is the known "tip" where we started,
+	// name is chosen to avoid conflating "head" and "ref"
+	// when starting a partition iterator which will start
+	// the event iterator, tipHash will be equal to the head
+	// ref, but symbolic refs are just for user friendliness
+	tipHash *packing.Hash
+
 	pattern string
 
-	c chan types.EventIterator
+	c   chan types.EventIterator
+	err chan error
 
 	matcher PatternMatcher
 
@@ -26,11 +34,28 @@ type simplePartitionIterator struct {
 }
 
 func (s *simplePartitionIterator) HasErrors() bool {
+
 	return len(s.errors) > 0
 }
 
 func (s *simplePartitionIterator) Errors() []error {
+
 	return s.errors
+}
+
+func (s *simplePartitionIterator) pushErr(err error) {
+	fmt.Println("spi pushing an err", err)
+	// FERR:
+	// 	for {
+	// 		select {
+	// 		case s.err <- err:
+	// 			fmt.Fprintf(os.Stdout, "pushed error %s", err)
+	// 			break FERR
+	// 		default:
+	// 			fmt.Fprintf(os.Stdout, "⛳️")
+	// 		}
+	// 	}
+	s.errors = append(s.errors, err)
 }
 
 func (s *simplePartitionIterator) Pattern() string {
@@ -48,22 +73,18 @@ func (s *simplePartitionIterator) Next() {
 // Reminder: errors are values
 func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.EventIterator, error) {
 
-	var (
-		oStack cpAffixStack
-		// cancelFn = func() {
-		// 	close(s.c)
-		// 	s.c = nil
-		// }
-	)
+	var oStack cpAffixStack
+
 	if s.c == nil {
 		s.c = make(chan types.EventIterator)
 	}
 
 	go func() {
 		<-ctx.Done()
-		close(s.c)
-		s.c = nil
-		// return
+		if s.c != nil {
+			close(s.c)
+			s.c = nil
+		}
 	}()
 
 	go func() {
@@ -71,7 +92,11 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		// Resolve the head ref for the given ctx
 		checkpointHash, err := s.refdb.Retrieve(refFromCtx(ctx))
 		if err != nil {
-			s.errors = append(s.errors, errors.Wrap(err, "unknown reference, can't lookup partitions"))
+			s.pushErr(errors.Wrap(err, "unknown reference, can't lookup partitions"))
+		}
+
+		if s.tipHash == nil {
+			s.tipHash = checkpointHash
 		}
 
 		// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
@@ -79,8 +104,11 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		// breaks the loop and we come back here.
 		err = s.enqueueCheckpointIfRelevant(*checkpointHash, &oStack)
 		if err != nil {
-			s.errors = append(s.errors, errors.Wrap(err, "error when stacking relevant partitions"))
+			s.pushErr(errors.Wrap(err, "error when stacking relevant partitions"))
 		}
+
+		// TODO: If we get here with no knownPartitions we never continue
+		// we should test for that.
 
 		// At this point the oStack should contain all Checkpoints that
 		// historically contained an Affix which contained a partition
@@ -98,6 +126,7 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 				objdb:   s.objdb,
 				matcher: s.matcher,
 				pattern: string(kp),
+				tipHash: s.tipHash,
 				stack:   oStack.s, // a copy of the stack, so we don't mutate it (?)
 			}
 			s.c <- evIter
@@ -105,6 +134,12 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 			// select {
 			// case s.c <- evIter:
 			// }
+		}
+
+		// Signal that we're finished
+		if s.c != nil {
+			close(s.c)
+			s.c = nil
 		}
 
 	}()

@@ -99,7 +99,7 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		sessionPath := filepath.Join("session", string(sid))
 		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
 		defer spnRehydrateSesh.Finish()
-		err := a.depot.Rehydrate(ctx, seshAgg, sessionPath)
+		err := a.depot.Rehydrate(ctx, seshAgg, types.PartitionName(sessionPath))
 		if err != nil {
 			err := Error{"session-lookup", err, "could not look up session"}
 			spnRehydrateSesh.LogKV("event", "error", "error.object", err)

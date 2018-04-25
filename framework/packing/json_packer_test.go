@@ -63,7 +63,7 @@ func Test_UnpackPack(t *testing.T) {
 			checkpoint     = Checkpoint{
 				AffixHash:    affixHash,
 				CommandDesc:  []byte(`{"foo":"bar"}`),
-				Fields:       map[string]string{"session": "hello world"},
+				Fields:       map[string]string{"session": "DEADBEEF-SESSIONID"},
 				ParentHashes: []Hash{checkpointHash},
 			}
 		)
@@ -148,7 +148,7 @@ func Test_Pack(t *testing.T) {
 		checkpoint := Checkpoint{
 			AffixHash:    hash,
 			CommandDesc:  []byte(`{"foo":"bar"}`),
-			Fields:       map[string]string{"session": "hello world"},
+			Fields:       map[string]string{"session": "DEADBEEF-SESSIONID"},
 			ParentHashes: []Hash{},
 		}
 		res, err := jp.PackCheckpoint(checkpoint)
@@ -156,12 +156,12 @@ func Test_Pack(t *testing.T) {
 		// Assert
 		test.H(t).IsNil(err)
 		var (
-			wantContents = `checkpoint 113` + HeaderContentSepRune + `affix sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
-session hello world
+			wantContents = `checkpoint 120` + HeaderContentSepRune + `affix sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+session DEADBEEF-SESSIONID
 
 {"foo":"bar"}
 `
-			wantHash = `sha256:922d43b9cfa0911fdb69dc17aab1221e9906c2343a0db876b18c555c1aef8da0`
+			wantHash = `sha256:7903903299257e21884b0fd0f5fa50145bdf47ef0b0ffac60dbf52642b758044`
 		)
 		test.H(t).StringEql(string(res.Contents()), wantContents)
 		test.H(t).StringEql(res.Hash().String(), wantHash)

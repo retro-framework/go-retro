@@ -99,17 +99,30 @@ func (s Simple) Release(partition string) {
 	return
 }
 
+func (s Simple) Exists(partitionName types.PartitionName) bool {
+	// TODO: could probably use an early return statement to avoid walking back to 0 throug
+	// naïve usage of
+	return false
+}
+
 // Rehydrate replays the events onto an aggregate
 func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
+
+	// TODO: this should ensure we don't get more than one partition
+	// (although, the interal implementation would probavly stack any
+	// partitions matching the name, if the glob matcher is case insensitive,
+	// for example)
 
 	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "depot.Simple.Rehydrate")
 	defer spnRehydrate.Finish()
 
 	pIter := s.Glob(ctx, string(partitionName))
+
 	eIterCh, err := pIter.Partitions(ctx)
 	if err != nil {
 		panic(err) // TODO: can never happen, hard-coded nil
 	}
+
 	select {
 	case <-ctx.Done(): // TODO: test for this somehow?
 		return fmt.Errorf("context cancelled waiting to start rehydrate of %s", string(partitionName))
@@ -121,13 +134,11 @@ func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionNam
 			err = dst.ReactTo(ev)
 			spnReactToEv.Finish()
 			if err != nil {
-				err := fmt.Errorf("broke here")
 				spnRehydrate.LogKV("event", "error", "error.object", err)
 				return err
 			}
 		}
 	}
-
 	return nil
 }
 

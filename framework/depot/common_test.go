@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fortytw2/leaktest"
+	// "github.com/fortytw2/leaktest"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -36,7 +36,7 @@ type DummyEvAssociateArticleAuthor struct {
 
 func Test_Depot(t *testing.T) {
 
-	defer leaktest.Check(t)()
+	// defer leaktest.Check(t)()
 
 	var jp = packing.NewJSONPacker()
 
@@ -125,6 +125,13 @@ func Test_Depot(t *testing.T) {
 	}
 
 	for name, depot := range depots {
+
+		t.Run(name, func(t *testing.T) {
+			t.Run("correctly checking for existence of aggregates", func(t *testing.T) {
+				t.Skip("not implemented yet")
+			})
+		})
+
 		t.Run(name, func(t *testing.T) {
 			t.Run("correct events in correct order", func(t *testing.T) {
 

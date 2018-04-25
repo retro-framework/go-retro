@@ -116,8 +116,6 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 
 	t.Run("resolves to an existing aggregate and retrieves it's history successfully", func(t *testing.T) {
 
-		t.Skip("currently failing because depot.Simple.Rehydrate() doesn't know when to break the consume eIter loop")
-
 		t.Parallel()
 
 		// Arrange

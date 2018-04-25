@@ -5,7 +5,9 @@ import (
 	"time"
 )
 
-type CancelFunc func()
+type Hash interface {
+	String() string
+}
 
 type Aggregate interface {
 	ReactTo(Event) error
@@ -36,6 +38,7 @@ type PersistedEvent interface {
 	Time() time.Time
 	Name() string
 	Bytes() []byte
+	CheckpointHash() Hash
 }
 
 // EventIterator is a simple Iterator interface which should mean that we
@@ -53,6 +56,7 @@ type PersistedEvent interface {
 type EventIterator interface {
 	Next() PersistedEvent
 	Pattern() string
+	TipHash() Hash
 	Events(context.Context) (<-chan PersistedEvent, error)
 }
 
@@ -70,6 +74,8 @@ type PartitionName string
 type Depot interface {
 	Claim(context.Context, string) bool
 	Release(string)
+
+	Exists(PartitionName) bool
 
 	// Retrieve a specific aggregate by applying events to it
 	// concerned with mostly "Command" execution.

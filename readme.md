@@ -128,3 +128,25 @@ Because commits are "branchable" and affixes are bound to partitions
 there may be a race condition where you have a stale parent checkpoint
 and then fail to be able to commit, but Git solves this by implicitly
 making a branch, or having commits with two parents
+
+## Example Packed Checkpoint
+
+    $ cat test.file
+    checkpoint 120affix sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+    session DEADBEEF-SESSIONID
+
+    {"foo":"bar"}
+
+Hex dumping it shows the null byte (00) between the `checkpoint 120` and `affix`:
+
+    $ hexdump -C -n128  test.file
+    00000000  63 68 65 63 6b 70 6f 69  6e 74 20 31 32 30 00 61  |checkpoint 120.a|
+    00000010  66 66 69 78 20 73 68 61  32 35 36 3a 32 63 66 32  |ffix sha256:2cf2|
+    00000020  34 64 62 61 35 66 62 30  61 33 30 65 32 36 65 38  |4dba5fb0a30e26e8|
+    00000030  33 62 32 61 63 35 62 39  65 32 39 65 31 62 31 36  |3b2ac5b9e29e1b16|
+    00000040  31 65 35 63 31 66 61 37  34 32 35 65 37 33 30 34  |1e5c1fa7425e7304|
+    00000050  33 33 36 32 39 33 38 62  39 38 32 34 0a 73 65 73  |3362938b9824.ses|
+    00000060  73 69 6f 6e 20 44 45 41  44 42 45 45 46 2d 53 45  |sion DEADBEEF-SE|
+    00000070  53 53 49 4f 4e 49 44 0a  0a 7b 22 66 6f 6f 22 3a  |SSIONID..{"foo":|
+    00000080
+

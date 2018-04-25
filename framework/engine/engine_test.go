@@ -7,10 +7,11 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/retro-framework/go-retro/framework/depot"
+
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/framework/resolver"
-	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/types"
 )
@@ -88,7 +89,7 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Arrange
 		var (
-			emd  = memory.NewEmptyDepot()
+			emd  = depot.EmptySimpleMemory()
 			idFn = func() (string, error) {
 				return "123-stub-id", nil
 			}
@@ -102,7 +103,7 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Act
 		sid, err := e.StartSession(context.Background())
-		test.H(t).BoolEql(true, emd.Exists(fmt.Sprintf("session/%s", sid)))
+		test.H(t).BoolEql(true, emd.Exists(types.PartitionName(fmt.Sprintf("session/%s", sid))))
 		test.H(t).IsNil(err)
 
 		_, err = e.StartSession(context.Background())
@@ -114,7 +115,7 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Arrange
 		var (
-			emd  = memory.NewEmptyDepot()
+			emd  = depot.EmptySimpleMemory()
 			idFn = func() (string, error) {
 				return fmt.Sprintf("%x", rand.Uint64()), nil
 			}
@@ -131,7 +132,7 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Assert
 		test.H(t).IsNil(err)
-		test.H(t).BoolEql(true, emd.Exists(fmt.Sprintf("session/%s", sid)))
+		test.H(t).BoolEql(true, emd.Exists(types.PartitionName(fmt.Sprintf("session/%s", sid))))
 	})
 
 	t.Run("forwards errors from the resolvefn to the caller", func(t *testing.T) {
@@ -140,7 +141,7 @@ func Test_Engine_StartSession(t *testing.T) {
 		// Arrange
 		var (
 			resolverErr = fmt.Errorf("error from resolveFn")
-			emd         = memory.NewEmptyDepot()
+			emd         = depot.EmptySimpleMemory()
 			idFn        = func() (string, error) {
 				return fmt.Sprintf("%x", rand.Uint64()), nil
 			}
@@ -182,7 +183,7 @@ func Test_Engine_Apply(t *testing.T) {
 			t.Parallel()
 			// Arrange
 			var (
-				emd = memory.NewEmptyDepot()
+				emd = depot.EmptySimpleMemory()
 
 				idFn = func() (string, error) {
 					return fmt.Sprintf("%x", rand.Uint64()), nil
@@ -221,7 +222,7 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Arrange
 			var (
-				emd = memory.NewEmptyDepot()
+				emd = depot.EmptySimpleMemory()
 
 				idFn = func() (string, error) {
 					return fmt.Sprintf("%x", rand.Uint64()), nil
@@ -254,7 +255,7 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Assert
 			test.H(t).StringEql("ok", resStr)
-			test.H(t).BoolEql(true, emd.Exists("agg/123"))
+			test.H(t).BoolEql(true, emd.Exists(types.PartitionName("agg/123")))
 		})
 
 		t.Run("raises error if session is not findable", func(t *testing.T) {
