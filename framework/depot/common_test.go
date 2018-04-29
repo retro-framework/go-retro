@@ -130,7 +130,7 @@ func Test_Depot(t *testing.T) {
 	}
 
 	for _, refdb := range refdbs {
-		refdb.Write("refs/heads/main", checkpointThree.Hash())
+		refdb.Write(DefaultBranchName, checkpointThree.Hash())
 	}
 
 	for name, depot := range depots {
