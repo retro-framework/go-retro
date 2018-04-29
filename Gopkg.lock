@@ -14,6 +14,12 @@
   version = "0.11.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/buger/goterm"
+  packages = ["."]
+  revision = "6d19e6a8df12fdfc44a90a24b677a6d04a80b91f"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -36,12 +42,6 @@
   packages = ["."]
   revision = "44cc805cf13205b55f69e14bcb69867d1ae92f98"
   version = "v1.1.0"
-
-[[projects]]
-  name = "github.com/fortytw2/leaktest"
-  packages = ["."]
-  revision = "a5ef70473c97b71626b9abeda80ee92ba2a7de9e"
-  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/go-logfmt/logfmt"
@@ -157,9 +157,15 @@
   packages = ["context"]
   revision = "c7086645de248775cbf2373cf5ca4d2fa664b8c1"
 
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "cbbc999da32df943dac6cd71eb3ee39e1d7838b9"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bfb8f253602ec9f28899480ef39236344f17887f6902d55136a8febd8d8f7e8a"
+  inputs-digest = "e8f25dd8f648905768bf73a3ce557ccf84fca936934f961bf590ab7809127324"
   solver-name = "gps-cdcl"
   solver-version = 1

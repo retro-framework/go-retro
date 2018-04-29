@@ -23,6 +23,7 @@ type dummyAggregate struct {
 }
 
 func (da *dummyAggregate) ReactTo(ev types.Event) error {
+	fmt.Println("In ReactTo 🍒")
 	da.seenEvents = append(da.seenEvents, ev)
 	return nil
 }
@@ -85,6 +86,9 @@ func (dcwa *dummyCmdWithArgs) SetArgs(args types.CommandArgs) error {
 func Test_Resolver_AggregateLookup(t *testing.T) {
 
 	t.Run("does not command to aggregate without ID", func(t *testing.T) {
+
+		t.Skip("foo")
+
 		t.Parallel()
 		// Arrange
 		var (

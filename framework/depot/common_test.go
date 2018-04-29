@@ -62,11 +62,11 @@ func Test_Depot(t *testing.T) {
 
 	// Affixes
 	var (
-		affixOne, _ = jp.PackAffix(packing.Affix{"author/maxine": []packing.Hash{setAuthorName1.Hash()}})
+		affixOne, _ = jp.PackAffix(packing.Affix{"author/maxine": []types.Hash{setAuthorName1.Hash()}})
 
-		affixTwo, _ = jp.PackAffix(packing.Affix{"article/first": []packing.Hash{setArticleTitle1.Hash(), associateArticleAuthor1.Hash()}})
+		affixTwo, _ = jp.PackAffix(packing.Affix{"article/first": []types.Hash{setArticleTitle1.Hash(), associateArticleAuthor1.Hash()}})
 
-		affixThree, _ = jp.PackAffix(packing.Affix{"article/first": []packing.Hash{setArticleTitle2.Hash(), setArticleBody1.Hash()}})
+		affixThree, _ = jp.PackAffix(packing.Affix{"article/first": []types.Hash{setArticleTitle2.Hash(), setArticleBody1.Hash()}})
 	)
 
 	// Checkpoints
@@ -81,14 +81,14 @@ func Test_Depot(t *testing.T) {
 			AffixHash:    affixTwo.Hash(),
 			CommandDesc:  []byte(`{"draft":"article"}`),
 			Fields:       map[string]string{"session": "hello world"},
-			ParentHashes: []packing.Hash{checkpointOne.Hash()},
+			ParentHashes: []types.Hash{checkpointOne.Hash()},
 		})
 
 		checkpointThree, _ = jp.PackCheckpoint(packing.Checkpoint{
 			AffixHash:    affixThree.Hash(),
 			CommandDesc:  []byte(`{"update":"article"}`),
 			Fields:       map[string]string{"session": "hello world"},
-			ParentHashes: []packing.Hash{checkpointTwo.Hash()},
+			ParentHashes: []types.Hash{checkpointTwo.Hash()},
 		})
 	)
 

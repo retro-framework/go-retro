@@ -1,7 +1,7 @@
 package memory
 
 import (
-	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -45,12 +45,12 @@ func (r *RefStore) Retrieve(name string) (types.Hash, error) {
 	if existingRef, exists := r.r[name]; exists {
 		return existingRef, nil
 	}
-	return nil, ref.ErrUnknown
+	return nil, storage.ErrUnknownRef
 }
 
 func (r *RefStore) RetrieveSymbolic(name string) (string, error) {
 	if existingRef, exists := r.s[name]; exists {
 		return existingRef, nil
 	}
-	return "", ref.ErrUnknownSymbolic
+	return "", storage.ErrUnknownSymbolicRef
 }

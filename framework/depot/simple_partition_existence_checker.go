@@ -8,6 +8,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -49,7 +50,7 @@ func (s simplePartitionExistenceChecker) returnTruOnMatching(checkpointObjHash t
 	packedCheckpoint, err := s.objdb.RetrievePacked(checkpointObjHash.String())
 	if err != nil {
 		// database is likely
-		if err == ref.ErrUnknown {
+		if err == storage.ErrUnknownRef {
 			return false, nil
 		}
 		// TODO: test this case

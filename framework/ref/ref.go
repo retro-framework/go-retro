@@ -1,14 +1,7 @@
 package ref
 
 import (
-	"errors"
-
 	"github.com/retro-framework/go-retro/framework/types"
-)
-
-var (
-	ErrUnknown         = errors.New("ref: ref unknown")
-	ErrUnknownSymbolic = errors.New("ref: symbolic ref unknown")
 )
 
 // Store writes a named reference to a packing.Hash. It should return boolean
@@ -16,6 +9,10 @@ var (
 type Store interface {
 	Write(string, types.Hash) (bool, error)
 	WriteSymbolic(string, string) (bool, error)
+}
+
+type ListableStore interface {
+	Ls() []types.Hash
 }
 
 // Retrieve returns a packing hash given a symbolic name will return a

@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/retro-framework/go-retro/framework/packing"
-	"github.com/retro-framework/go-retro/framework/storage/memory"
-
+	tm "github.com/buger/goterm"
 	"github.com/golang-collections/collections/stack"
+	"github.com/pkg/errors"
 
 	"github.com/retro-framework/go-retro/framework/object"
+	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/storage/memory"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -65,7 +65,7 @@ func NewSimpleStub(t *testing.T,
 	if _, err := objDB.WritePacked(packedCheckpoint); err != nil {
 		t.Errorf("error writing packedCheckpoint to odb in NewSimpleStub")
 	}
-	refDB.Write("refs/heads/main", packedCheckpoint.Hash())
+	refDB.Write(DefaultBranchName, packedCheckpoint.Hash())
 	return Simple{objdb: objDB, refdb: refDB}
 }
 
@@ -139,6 +139,21 @@ func (s Simple) StorePacked(packed ...types.HashedObject) error {
 		}
 	}
 	return nil
+}
+
+func (s Simple) Dump() {
+
+	started := 100
+	finished := 250
+
+	// Based on http://golang.org/pkg/text/tabwriter
+	totals := tm.NewTable(0, 10, 5, ' ', 0)
+	fmt.Fprintf(totals, "Time\tStarted\tActive\tFinished\n")
+	fmt.Fprintf(totals, "%s\t%d\t%d\t%d\n", "All", started, started-finished, finished)
+	tm.Println(totals)
+
+	tm.Flush()
+
 }
 
 // TODO: check for fastforward 🔜 before allowing write and/or something
