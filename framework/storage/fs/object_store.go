@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 var (
@@ -43,7 +44,7 @@ func (s *ObjectStore) ListObjects() {
 	}
 }
 
-func (s *ObjectStore) WritePacked(p packing.HashedObject) (int, error) {
+func (s *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
 
 	// TODO: What if basepath points to a _file_ not a dir?
 	if _, err := os.Stat(s.BasePath); os.IsNotExist(err) {
@@ -61,7 +62,7 @@ func (s *ObjectStore) WritePacked(p packing.HashedObject) (int, error) {
 	w.Close()
 
 	var (
-		objPath = filepath.Join(s.BasePath, p.Hash().ToPathName())
+		objPath = filepath.Join(s.BasePath, fmt.Sprintf("%x/%x/%x", p.Hash().String()[0:1], p.Hash().String()[1:2], p.Hash().String()[2:]))
 		objDir  = filepath.Dir(objPath)
 	)
 
@@ -96,7 +97,7 @@ func (s *ObjectStore) WritePacked(p packing.HashedObject) (int, error) {
 // TODO: should also parse the aglo out of the string and set the PO Hash
 // algo/etc to the right values., the new PackedObject could be kept and
 // maybe simply take an AlgoName in the second position?
-func (s *ObjectStore) RetrievePacked(str string) (packing.HashedObject, error) {
+func (s *ObjectStore) RetrievePacked(str string) (types.HashedObject, error) {
 
 	parts := strings.Split(str, ":") // ["sha256", "hexbyteshexbtytes"]
 	if len(parts) != 2 {
@@ -118,7 +119,7 @@ func (s *ObjectStore) RetrievePacked(str string) (packing.HashedObject, error) {
 		Bytes:    dst,
 	}
 
-	objPath := filepath.Join(s.BasePath, h.ToPathName())
+	objPath := filepath.Join(s.BasePath, fmt.Sprintf("%x/%x/%x", h.String()[0:1], h.String()[1:2], h.String()[2:]))
 
 	content, err := ioutil.ReadFile(objPath)
 	if err != nil {
@@ -137,5 +138,5 @@ func (s *ObjectStore) RetrievePacked(str string) (packing.HashedObject, error) {
 	orig, _ := ioutil.ReadAll(r)
 
 	po := packing.NewPackedObject(string(orig))
-	return &po, nil
+	return po, nil
 }

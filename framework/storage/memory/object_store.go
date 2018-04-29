@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 var (
@@ -25,7 +26,7 @@ func (os *ObjectStore) ListObjects() {
 	}
 }
 
-func (os *ObjectStore) WritePacked(p packing.HashedObject) (int, error) {
+func (os *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
 
 	if os.o == nil {
 		os.o = make(map[string][]byte)
@@ -51,7 +52,7 @@ func (os *ObjectStore) WritePacked(p packing.HashedObject) (int, error) {
 // TODO: should also parse the aglo out of the string and set the PO Hash
 // algo/etc to the right values., the new PackedObject could be kept and
 // maybe simply take an AlgoName in the second position?
-func (os *ObjectStore) RetrievePacked(s string) (packing.HashedObject, error) {
+func (os *ObjectStore) RetrievePacked(s string) (types.HashedObject, error) {
 	if poB, ok := os.o[s]; ok {
 
 		b := bytes.NewReader(poB)
@@ -63,8 +64,7 @@ func (os *ObjectStore) RetrievePacked(s string) (packing.HashedObject, error) {
 
 		orig, _ := ioutil.ReadAll(r)
 
-		po := packing.NewPackedObject(string(orig))
-		return &po, nil
+		return packing.NewPackedObject(string(orig)), nil
 	}
 	return nil, ErrNoSuchObject
 }

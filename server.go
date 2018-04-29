@@ -46,7 +46,7 @@ func main() {
 		emd  = redis.NewDepot(events.DefaultManifest, time.Now)
 		idFn = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
 		r    = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest)
-		e    = engine.New(emd, r.Resolve, idFn, aggregates.DefaultManifest)
+		e    = engine.New(emd, r.Resolve, idFn, aggregates.DefaultManifest, events.DefaultManifest)
 	)
 
 	mux := http.NewServeMux()
@@ -55,11 +55,13 @@ func main() {
 			http.NotFound(w, req)
 			return
 		}
+
 		sid, err := e.StartSession(req.Context())
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+
 		fmt.Fprintf(w, string(sid))
 	})
 

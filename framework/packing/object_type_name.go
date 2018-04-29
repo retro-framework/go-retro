@@ -1,14 +1,13 @@
 package packing
 
-// ObjectTypeName represents the
-type ObjectTypeName string
+import "github.com/retro-framework/go-retro/framework/types"
 
 const (
-	ObjectTypeAffix      ObjectTypeName = "affix"
-	ObjectTypeCheckpoint ObjectTypeName = "checkpoint"
-	ObjectTypeEvent      ObjectTypeName = "event"
+	ObjectTypeAffix      types.ObjectTypeName = "affix"
+	ObjectTypeCheckpoint types.ObjectTypeName = "checkpoint"
+	ObjectTypeEvent      types.ObjectTypeName = "event"
 
-	ObjectTypeUnknown ObjectTypeName = "unknown object type"
+	ObjectTypeUnknown types.ObjectTypeName = "unknown object type"
 )
 
-var KnownObjectTypes []ObjectTypeName = []ObjectTypeName{ObjectTypeAffix, ObjectTypeCheckpoint, ObjectTypeEvent}
+var KnownObjectTypes []types.ObjectTypeName = []types.ObjectTypeName{ObjectTypeAffix, ObjectTypeCheckpoint, ObjectTypeEvent}

@@ -36,7 +36,7 @@ type JSONPacker struct {
 // byte.
 //
 // See the tests for an example of how the on-disk format looks.
-func (jp *JSONPacker) PackEvent(evName string, ev types.Event) (HashedObject, error) {
+func (jp *JSONPacker) PackEvent(evName string, ev types.Event) (types.HashedObject, error) {
 
 	var payload bytes.Buffer
 
@@ -53,7 +53,7 @@ func (jp *JSONPacker) PackEvent(evName string, ev types.Event) (HashedObject, er
 	hash.Write(payload.Bytes())
 
 	return &PackedEvent{
-		PackedObject{
+		po{
 			hash:    Hash{HashAlgoNameSHA256, hash.Sum(nil)},
 			payload: payload.Bytes(),
 		}}, nil
@@ -149,7 +149,7 @@ func (jp *JSONPacker) UnpackCheckpoint(b []byte) (Checkpoint, error) {
 
 // PackAffix packs an affix by rendering a text-table
 // and injecting the prefix header, etc
-func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
+func (jp *JSONPacker) PackAffix(affix Affix) (types.HashedObject, error) {
 
 	var (
 		affB       bytes.Buffer
@@ -182,7 +182,7 @@ func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
 	hash.Write(payload.Bytes())
 
 	return &PackedAffix{
-		PackedObject{
+		po{
 			hash:    Hash{HashAlgoNameSHA256, hash.Sum(nil)},
 			payload: payload.Bytes(),
 		}}, nil
@@ -190,7 +190,7 @@ func (jp *JSONPacker) PackAffix(affix Affix) (HashedObject, error) {
 
 // PackCheckpoint packs a checkpoint by rendering an email
 // or HTTP style set of headers and injecting the prefix header, etc
-func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (HashedObject, error) {
+func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (types.HashedObject, error) {
 
 	var (
 		cpB     bytes.Buffer
@@ -217,7 +217,7 @@ func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (HashedObject, error) {
 	hash.Write(payload.Bytes())
 
 	return &PackedCheckpoint{
-		PackedObject{
+		po{
 			hash:    Hash{HashAlgoNameSHA256, hash.Sum(nil)},
 			payload: payload.Bytes(),
 		}}, nil

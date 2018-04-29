@@ -162,8 +162,6 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 
 	t.Run("returns empty aggregate in case of non-exixtent ID", func(t *testing.T) {
 
-		t.Skip("currently failing because depot.Simple.Rehydrate() doesn't know when to break the consume eIter loop")
-
 		t.Parallel()
 
 		// Arrange
@@ -215,8 +213,6 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 
 	t.Run("should raise an error if args are given and the command doesn't implement tyeps.CommandWithArgs", func(t *testing.T) {
 
-		t.Skip("currently failing because depot.Simple.Rehydrate() doesn't know when to break the consume eIter loop")
-
 		t.Parallel()
 
 		// Arrange
@@ -255,8 +251,6 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 	})
 
 	t.Run("should parse cmd with args and set them on the object", func(t *testing.T) {
-
-		t.Skip("currently failing because depot.Simple.Rehydrate() doesn't know when to break the consume eIter loop")
 
 		t.Parallel()
 

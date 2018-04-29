@@ -3,7 +3,6 @@ package depot
 import (
 	"time"
 
-	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -14,7 +13,7 @@ type PersistedEv struct {
 
 	// The hash of the checkpoint which referred to the affix
 	// from which this event was retrieved/unpacked.
-	cpHash packing.Hash
+	cpHash types.Hash
 }
 
 func (pEv PersistedEv) Time() time.Time {

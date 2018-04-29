@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 var (
@@ -31,7 +32,7 @@ func (r *RefStore) mkdirAll(path string) error {
 	return os.MkdirAll(path, 0766)
 }
 
-func (s *RefStore) Write(name string, hash packing.Hash) (bool, error) {
+func (s *RefStore) Write(name string, hash types.Hash) (bool, error) {
 
 	// TODO: What if basepath points to a _file_ not a dir?
 	if _, err := os.Stat(s.BasePath); os.IsNotExist(err) {
@@ -135,7 +136,7 @@ func (s *RefStore) WriteSymbolic(name, ref string) (bool, error) {
 	return false, nil
 }
 
-func (s *RefStore) Retrieve(name string) (*packing.Hash, error) {
+func (s *RefStore) Retrieve(name string) (types.Hash, error) {
 
 	var refPath = filepath.Join(s.BasePath, name)
 

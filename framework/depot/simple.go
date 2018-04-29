@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 
@@ -16,6 +16,8 @@ import (
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/types"
 )
+
+const DefaultBranchName = "refs/heads/master"
 
 // NewSimpleStub returns a simple Depot stub which checkpoints the fixture events
 // given into a single checkpoint as part of one affix with a generic set of messages.
@@ -30,7 +32,7 @@ func NewSimpleStub(t *testing.T,
 	)
 	for aggName, evNameTuples := range fixture {
 		var (
-			evHashesForAffix []packing.Hash
+			evHashesForAffix []types.Hash
 		)
 		for _, evNameTuple := range evNameTuples {
 			packedEv, err := jp.PackEvent(evNameTuple.Name, evNameTuple.Event)
@@ -78,15 +80,13 @@ func EmptySimpleMemory() types.Depot {
 type Simple struct {
 	objdb object.DB
 	refdb ref.DB
-}
 
-func refFromCtx(ctx context.Context) string {
-	return "refs/heads/main"
+	eventManifest types.EventManifest
 }
 
 // TODO: make this respect the actual value that might come in a context
-func (s Simple) refFromCtx(ctx context.Context) string {
-	return "refs/heads/main"
+func refFromCtx(ctx context.Context) string {
+	return DefaultBranchName
 }
 
 func (s Simple) Claim(ctx context.Context, partition string) bool {
@@ -100,46 +100,25 @@ func (s Simple) Release(partition string) {
 }
 
 func (s Simple) Exists(partitionName types.PartitionName) bool {
-	// TODO: could probably use an early return statement to avoid walking back to 0 throug
-	// naïve usage of
-	return false
+	found, _ := simplePartitionExistenceChecker{
+		objdb:   s.objdb,
+		refdb:   s.refdb,
+		pattern: partitionName,
+		matcher: GlobPatternMatcher{},
+	}.Exists(context.TODO(), partitionName)
+	return found
 }
 
-// Rehydrate replays the events onto an aggregate
+// Rehydrate replays the events onto an aggregate, it's kinda brutal in that it completely
+// walks from the tip until the first orphan checkpoint, and stacks all relevant partitions
+// then emits them all, it's v. expensive.
 func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
-
-	// TODO: this should ensure we don't get more than one partition
-	// (although, the interal implementation would probavly stack any
-	// partitions matching the name, if the glob matcher is case insensitive,
-	// for example)
-
-	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "depot.Simple.Rehydrate")
-	defer spnRehydrate.Finish()
-
-	pIter := s.Glob(ctx, string(partitionName))
-
-	eIterCh, err := pIter.Partitions(ctx)
-	if err != nil {
-		panic(err) // TODO: can never happen, hard-coded nil
-	}
-
-	select {
-	case <-ctx.Done(): // TODO: test for this somehow?
-		return fmt.Errorf("context cancelled waiting to start rehydrate of %s", string(partitionName))
-	case eIter := <-eIterCh:
-		partitionEvs, err := eIter.Events(ctx)
-		for ev := range partitionEvs {
-			spnReactToEv := opentracing.StartSpan("aggregate react to ev", opentracing.ChildOf(spnRehydrate.Context()))
-			spnReactToEv.LogKV("ev.object", ev)
-			err = dst.ReactTo(ev)
-			spnReactToEv.Finish()
-			if err != nil {
-				spnRehydrate.LogKV("event", "error", "error.object", err)
-				return err
-			}
-		}
-	}
-	return nil
+	return simpleAggregateRehydrater{
+		objdb:   s.objdb,
+		refdb:   s.refdb,
+		pattern: partitionName,
+		matcher: GlobPatternMatcher{},
+	}.Rehydrate(ctx, dst, partitionName)
 }
 
 // Glob makes the world go round
@@ -152,13 +131,30 @@ func (s Simple) Glob(_ context.Context, partition string) types.PartitionIterato
 	}
 }
 
+func (s Simple) StorePacked(packed ...types.HashedObject) error {
+	for _, p := range packed {
+		_, err := s.objdb.WritePacked(p)
+		if err != nil {
+			return errors.Wrap(err, "can't store packed")
+		}
+	}
+	return nil
+}
+
+// TODO: check for fastforward 🔜 before allowing write and/or something
+// to make this not totally unsafe
+func (s Simple) MoveHeadPointer(old, new types.Hash) error {
+	_, err := s.refdb.Write(DefaultBranchName, new)
+	return err
+}
+
 type Hash interface {
 	String() string
 }
 
 type relevantCheckpoint struct {
 	time           time.Time
-	checkpointHash packing.Hash
+	checkpointHash types.Hash
 	affix          packing.Affix
 }
 

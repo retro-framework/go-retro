@@ -1,8 +1,6 @@
 package object
 
-import (
-	"github.com/retro-framework/go-retro/framework/packing"
-)
+import "github.com/retro-framework/go-retro/framework/types"
 
 // Store takes a packed object and stores it, it may apply some
 // disk compression. A 0 byte return indicate that the object was
@@ -10,7 +8,7 @@ import (
 // already in storage. Packed objects are not compressed, they
 // are simply packed bytes with an associated hash.
 type Store interface {
-	WritePacked(packing.HashedObject) (int, error)
+	WritePacked(types.HashedObject) (int, error)
 }
 
 // Source takes a string in the format of a hash with prefix (e.g
@@ -18,7 +16,7 @@ type Store interface {
 // be parsed by the caller.
 type Source interface {
 	ListObjects()
-	RetrievePacked(string) (packing.HashedObject, error)
+	RetrievePacked(string) (types.HashedObject, error)
 }
 
 type DB interface {

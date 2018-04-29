@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/retro-framework/go-retro/framework/packing"
+
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/types"
@@ -22,23 +24,26 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
-func New(d types.Depot, r types.ResolveFunc, i types.IDFactory, a types.AggregateManifest) Engine {
+func New(d types.Depot, r types.ResolveFunc, i types.IDFactory, a types.AggregateManifest, e types.EventManifest) Engine {
 	return Engine{
 		depot:        d,
 		resolver:     r,
 		idFactory:    i,
 		aggm:         a,
+		evm:          e,
 		claimTimeout: 5 * time.Second,
 	}
 }
 
 type Engine struct {
-	depot     types.Depot
+	depot types.Depot
+
 	resolver  types.ResolveFunc
 	idFactory types.IDFactory
 
 	// TODO: this is a big hammer for finding out which aggregate is registered at "session"
 	aggm types.AggregateManifest
+	evm  types.EventManifest
 
 	claimTimeout time.Duration
 }
@@ -109,14 +114,14 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	}
 
 	spnResolveCmd := opentracing.StartSpan("resolve command", opentracing.ChildOf(spnApply.Context()))
-	callable, err := a.resolver(ctx, a.depot, cmd)
+	commandFn, err := a.resolver(ctx, a.depot, cmd)
 	if err != nil {
 		return "", errors.Errorf("Couldn't resolve %s", cmd)
 	}
 	spnResolveCmd.Finish()
 
 	spnApplyCmd := opentracing.StartSpan("apply command", opentracing.ChildOf(spnApply.Context()))
-	newEvs, err := callable(ctx, seshAgg, a.depot)
+	newEvs, err := commandFn(ctx, seshAgg, a.depot)
 	if err != nil {
 		return "", errors.Wrap(err, "error applying command")
 	}
@@ -130,18 +135,12 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		return "", Error{"peek-path", err, "could not peek into cmd desc to determine path"}
 	}
 
-	// TODO: The repo/depot should also store the results
-	// of the command and the errors, if any. It should also
-	// store the timing of the execution, and respect the
-	// Durability of the event. (crit, optimistic)
-	spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
-	n, err := a.depot.AppendEvs(peek.Path, newEvs)
-	if n != len(newEvs) {
-		return "", Error{"depot-partial-store", nil, "depot encountered error storing events for aggregate"}
+	if err := a.persistEvs(peek.Path, newEvs); err != nil {
+		return "", err // TODO: wrap me
+	} else {
+		return "ok", nil
 	}
-	spnAppendEvs.Finish()
 
-	return "ok", nil
 }
 
 // StartSession will attempt to summon a Session aggregate into existence by
@@ -168,7 +167,7 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnResolve.Context()))
 	path := fmt.Sprintf("session/%s", sid)
 
-	if e.depot.Exists(path) {
+	if e.depot.Exists(types.PartitionName(path)) {
 		return sid, Error{"guard-unique-session-id", err, "session id was not unique in depot, can't start."}
 	}
 
@@ -190,20 +189,79 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
 	sessionStart, err := e.resolver(ctx, e.depot, b)
 	if err != nil {
-		return sid, Error{"resolve-session-start-cmd", err, "can't resolve session start command, no aggregate or command registered"}
+		return sid, Error{"resolve-session-start-cmd", err, "can't resolve session start command"}
 	}
 
-	evs, err := sessionStart(ctx, nil, e.depot)
+	sessionStartedEvents, err := sessionStart(ctx, nil, e.depot)
 	if err != nil {
-		return sid, Error{"execute-session-start-cmd", err, "can't call session start command, an error was returned"}
+		return sid, Error{"execute-session-start-cmd", err, "error calling session start command"}
 	}
 
-	spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
-	n, err := e.depot.AppendEvs(path, evs)
-	if n != len(evs) {
-		return sid, Error{"depot-partial-store", err, "depot encountered error storing events for aggregate"}
-	}
-	spnAppendEvs.Finish()
+	return sid, e.persistEvs(path, sessionStartedEvents)
 
-	return sid, nil
+	// spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
+	// // n, err := e.depot.AppendEvs(path, evs)
+	// // if n != len(evs) {
+	// // 	return sid, Error{"depot-partial-store", err, "depot encountered error storing events for aggregate"}
+	// // }
+	// spnAppendEvs.Finish()
+
+	// return sid, nil
+}
+
+// TODO: fix all the error messages (or Error types, etc, who knows.)
+func (e *Engine) persistEvs(path string, evs []types.Event) error {
+
+	var (
+		jp          = packing.NewJSONPacker()
+		affix       = packing.Affix{}
+		packedeObjs []types.HashedObject
+	)
+
+	for _, ev := range evs {
+
+		name, err := e.evm.KeyFor(ev)
+		if err != nil {
+			return Error{"persist-events-from-session-start", err, "error looking up event"}
+		}
+
+		packedEv, err := jp.PackEvent(name, ev)
+		if err != nil {
+			return Error{"persist-events-from-session-start", err, "error packing event"}
+		}
+
+		packedeObjs = append(packedeObjs, packedEv)
+		affix[types.PartitionName(path)] = append(affix[types.PartitionName(path)], packedEv.Hash())
+
+	}
+
+	packedAffix, err := jp.PackAffix(affix)
+	if err != nil {
+		return Error{"persist-evs", err, "error packing affix in NewSimpleStub: %s"}
+	}
+	packedeObjs = append(packedeObjs, packedAffix)
+
+	// TODO: packed checkpoint needs a parent, else we will make orphan stuff
+	checkpoint := packing.Checkpoint{
+		AffixHash:   packedAffix.Hash(),
+		CommandDesc: []byte(`{"stub":"article"}`),
+		Fields:      map[string]string{"session": "hello world"},
+	}
+
+	packedCheckpoint, err := jp.PackCheckpoint(checkpoint)
+	if err != nil {
+		return Error{"persist-evs", err, "error packing checkpoint in NewSimpleStub: %s"}
+	}
+	packedeObjs = append(packedeObjs, packedCheckpoint)
+
+	if err := e.depot.StorePacked(packedeObjs...); err != nil {
+		return Error{"persist-evs", err, "error writing packedAffix to odb in NewSimpleStub"}
+	}
+
+	if err := e.depot.MoveHeadPointer(nil, packedCheckpoint.Hash()); err != nil {
+		return Error{"persist-evs", err, "moving head pointer"}
+	}
+
+	return nil
+
 }

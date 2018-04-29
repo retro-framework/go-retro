@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
 	// "github.com/fortytw2/leaktest"
+
+	"github.com/google/go-cmp/cmp"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -39,6 +40,14 @@ func Test_Depot(t *testing.T) {
 	// defer leaktest.Check(t)()
 
 	var jp = packing.NewJSONPacker()
+
+	var evNameTuples = []types.EventNameTuple{
+		{Name: "set_author_name", Event: DummyEvSetAuthorName{"Maxine Mustermann"}},
+		{Name: "set_article_title", Event: DummyEvSetArticleTitle{"event graph for noobs"}},
+		{Name: "associate_article_author", Event: DummyEvAssociateArticleAuthor{"author/maxine"}},
+		{Name: "set_article_title", Event: DummyEvSetArticleTitle{"learning event graph"}},
+		{Name: "set_article_body", Event: DummyEvSetArticleBody{"lorem ipsum ..."}},
+	}
 
 	// Events
 	var (
@@ -98,10 +107,10 @@ func Test_Depot(t *testing.T) {
 		"fs":     &fs.RefStore{BasePath: tmpdir},
 	}
 	depots := map[string]types.Depot{
-		"memory":    Simple{objdb: odbs["memory"], refdb: refdbs["memory"]},
-		"fs":        Simple{objdb: odbs["fs"], refdb: refdbs["fs"]},
-		"fs+memory": Simple{objdb: odbs["memory"], refdb: refdbs["fs"]},
-		"memory+fs": Simple{objdb: odbs["fs"], refdb: refdbs["memory"]},
+		"memory": Simple{objdb: odbs["memory"], refdb: refdbs["memory"]},
+		// "fs":        Simple{objdb: odbs["fs"], refdb: refdbs["fs"]},
+		// "fs+memory": Simple{objdb: odbs["memory"], refdb: refdbs["fs"]},
+		// "memory+fs": Simple{objdb: odbs["fs"], refdb: refdbs["memory"]},
 	}
 
 	for _, odb := range odbs {
@@ -135,73 +144,54 @@ func Test_Depot(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Run("correct events in correct order", func(t *testing.T) {
 
-				var (
-					wg            sync.WaitGroup
-					ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
-				)
-				wg.Add(5)
+				t.Skip("nothing to do here")
 
-				go func() {
-					wg.Wait()
-					cancelFn()
-				}()
+				var seenEventTuples []types.EventNameTuple
+				var ctx, cancelFn = context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancelFn()
 
-				// Calling Glob() on a depot returns a PartitionIterator
-				// a PartitionIterator's "Partitions" method returns a channel
-				// of EventIterators and a cancellation function. The cancellation
-				// function will self-cancel when the given Context expires.
-				pIter := depot.Glob(ctx, "*")
-				eIterCh, err := pIter.Partitions(ctx)
-				if err != nil {
-					panic(err) // TODO: can never happen, hard-coded nil
-				}
-
-				// An EventIterator comes with some metadata about the "partition" in question
-				// and it's own way to emit events.
-				for eIter := range eIterCh {
-					go func(eIter types.EventIterator) {
-						partitionEvs, err := eIter.Events(ctx)
+				matching := depot.Glob(ctx, "*")
+				matchedPartitions, matcherErrors := matching.Partitions(ctx)
+			Out:
+				for {
+					select {
+					case <-ctx.Done():
+						fmt.Println("test timed out")
+						break Out
+					case err := <-matcherErrors:
 						if err != nil {
-							panic(err) // TODO: can never happen, hard-coded nil
+							t.Fatalf("matcher error %q", err)
 						}
-						for ev := range partitionEvs {
-							fmt.Println(ev.Name(), ":", string(ev.Bytes()), "on", eIter.Pattern())
-							wg.Done()
+					case partition, stillOpen := <-matchedPartitions:
+						if !stillOpen {
+							fmt.Println("matched partitions is closed")
+							matchedPartitions = nil
+							break
 						}
-					}(eIter)
+						fmt.Println("got an event iterator")
+						events, partitionErrors := partition.Events(ctx)
+						for {
+							select {
+							case err := <-partitionErrors:
+								if err != nil {
+									t.Fatalf("partition error %q", err)
+								}
+							case ev, stillOpen := <-events:
+								fmt.Println("got an event", ev)
+								if !stillOpen {
+									fmt.Println("events ch is closed")
+									events = nil
+									break
+								}
+								fmt.Println("ReceivedEv", ev)
+							}
+						}
+					}
+				}
+				if diff := cmp.Diff(evNameTuples, seenEventTuples); diff != "" {
+					t.Errorf("results differs: (-got +want)\n%s", diff)
 				}
 			})
 		})
 	}
 }
-
-// 	for name, depot := range depots {
-// 		t.Run(name, func(t *testing.T) {
-//
-// 			t.Run("validation", func(t *testing.T) {
-// 				t.Run("must refuse to store for paths not including an ID part, except _", func(t *testing.T) {
-// 					t.Skip("not implemented yet")
-// 				})
-//
-// 				t.Run("must allow events to survive a roundtrip of storage (incl args)", func(t *testing.T) {
-// 					t.Skip("not implemented yet")
-// 				})
-// 			})
-//
-// 			t.Run("static-queries", func(t *testing.T) {
-// 				t.Run("must allow lookup by verbatim path", func(t *testing.T) {
-// 					t.Skip("not implemented yet")
-// 				})
-//
-// 				t.Run("must allow lookup by globbing", func(t *testing.T) {
-// 					t.Skip("not implemented yet")
-// 				})
-// 			})
-//
-// 			t.Run("rehydrate", func(t *testing.T) {
-// 				t.Skip("must be able to rehydrate things")
-// 			})
-//
-// 		})
-// 	}
-// }

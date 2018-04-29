@@ -21,41 +21,10 @@ type simplePartitionIterator struct {
 	// when starting a partition iterator which will start
 	// the event iterator, tipHash will be equal to the head
 	// ref, but symbolic refs are just for user friendliness
-	tipHash *packing.Hash
+	tipHash types.Hash
 
 	pattern string
-
-	c   chan types.EventIterator
-	err chan error
-
 	matcher PatternMatcher
-
-	errors []error
-}
-
-func (s *simplePartitionIterator) HasErrors() bool {
-
-	return len(s.errors) > 0
-}
-
-func (s *simplePartitionIterator) Errors() []error {
-
-	return s.errors
-}
-
-func (s *simplePartitionIterator) pushErr(err error) {
-	fmt.Println("spi pushing an err", err)
-	// FERR:
-	// 	for {
-	// 		select {
-	// 		case s.err <- err:
-	// 			fmt.Fprintf(os.Stdout, "pushed error %s", err)
-	// 			break FERR
-	// 		default:
-	// 			fmt.Fprintf(os.Stdout, "⛳️")
-	// 		}
-	// 	}
-	s.errors = append(s.errors, err)
 }
 
 func (s *simplePartitionIterator) Pattern() string {
@@ -71,28 +40,27 @@ func (s *simplePartitionIterator) Next() {
 //
 // TODO: decide how this should handle errors.
 // Reminder: errors are values
-func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.EventIterator, error) {
+func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.EventIterator, <-chan error) {
 
-	var oStack cpAffixStack
-
-	if s.c == nil {
-		s.c = make(chan types.EventIterator)
-	}
-
-	go func() {
-		<-ctx.Done()
-		if s.c != nil {
-			close(s.c)
-			s.c = nil
-		}
-	}()
+	var (
+		oStack cpAffixStack
+		out    = make(chan types.EventIterator)
+		errOut = make(chan error, 1)
+	)
 
 	go func() {
+
+		defer close(out)
+		defer close(errOut)
+		defer func() {
+			fmt.Println("spi finished")
+		}()
 
 		// Resolve the head ref for the given ctx
 		checkpointHash, err := s.refdb.Retrieve(refFromCtx(ctx))
 		if err != nil {
-			s.pushErr(errors.Wrap(err, "unknown reference, can't lookup partitions"))
+			errOut <- errors.Wrap(err, "unknown reference, can't lookup partitions")
+			return
 		}
 
 		if s.tipHash == nil {
@@ -102,9 +70,10 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
 		// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
 		// breaks the loop and we come back here.
-		err = s.enqueueCheckpointIfRelevant(*checkpointHash, &oStack)
+		err = s.enqueueCheckpointIfRelevant(checkpointHash, &oStack)
 		if err != nil {
-			s.pushErr(errors.Wrap(err, "error when stacking relevant partitions"))
+			errOut <- errors.Wrap(err, "error when stacking relevant partitions")
+			return
 		}
 
 		// TODO: If we get here with no knownPartitions we never continue
@@ -120,41 +89,34 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		// things against it's own pattern and sent them to the consumer.
 		for _, kp := range oStack.knownPartitions {
 
-			// TODO: was just for debugging?
-			time.Sleep(100 * time.Millisecond)
-			evIter := simpleEventIterator{
+			evIter := &simpleEventIterator{
 				objdb:   s.objdb,
 				matcher: s.matcher,
 				pattern: string(kp),
 				tipHash: s.tipHash,
 				stack:   oStack.s, // a copy of the stack, so we don't mutate it (?)
 			}
-			s.c <- evIter
-			// TODO: reintroduce this, it'll show if the consumer is blocking
-			// select {
-			// case s.c <- evIter:
-			// }
+			select {
+			case out <- evIter:
+				fmt.Println("sent event iterator")
+			case <-ctx.Done():
+				return
+			}
 		}
-
-		// Signal that we're finished
-		if s.c != nil {
-			close(s.c)
-			s.c = nil
-		}
-
 	}()
 
 	// TODO: make something go looking for partitions on the stream
 	// maybe register a callback on the refdb to get changes in HEAD
 	// pointer?
-	return s.c, nil
+
+	return out, errOut
 }
 
 // enqueueCheckpointIfRelevant pushes checkpoint hashes and affix metadata onto a stack
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(checkpointObjHash packing.Hash, st *cpAffixStack) error {
+func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(checkpointObjHash types.Hash, st *cpAffixStack) error {
 
 	var jp *packing.JSONPacker
 

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 // Hash returns a hashed in raw bytes (not hex encoded)
@@ -25,11 +27,11 @@ func (h Hash) String() string {
 // millions of entries. Git uses a similar scheme using the first bytes
 // for a two-level hierarchy. Because Retro prefers SHA256 which has a
 // bigger space (longer hashes) a two-level hierarchy seemed prudent.
-func (h Hash) ToPathName() string {
-	return fmt.Sprintf("%x/%x/%x", h.Bytes[0:2], h.Bytes[2:4], h.Bytes[4:])
-}
+// func (h Hash) ToPathName() string {
+// 	return fmt.Sprintf("%x/%x/%x", h.Bytes[0:2], h.Bytes[2:4], h.Bytes[4:])
+// }
 
-func HashStrToHash(str string) Hash {
+func HashStrToHash(str string) types.Hash {
 	parts := strings.Split(str, ":")
 	decoded, err := hex.DecodeString(parts[1])
 	if err != nil {
@@ -40,7 +42,7 @@ func HashStrToHash(str string) Hash {
 }
 
 // TODO: make this respect algoname in the given string
-func hashStr(str string) Hash {
+func hashStr(str string) types.Hash {
 	var s = sha256.Sum256([]byte(str))
 	return Hash{AlgoName: HashAlgoNameSHA256, Bytes: s[:]}
 }

@@ -40,13 +40,14 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 	// Resolve the head ref for the given ctx
 	headRef, err := s.refdb.Retrieve(refFromCtx(ctx))
 	if err != nil {
-		return errors.Wrap(err, "unknown reference, can't lookup partitions")
+		return nil
+		return errors.Wrapf(err, "unknown ref, can't lookup partitions for %s", string(partitionName))
 	}
 
 	// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
 	// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
 	// breaks the loop and we come back here.
-	err = s.enqueueCheckpointIfRelevant(*headRef, &oStack)
+	err = s.enqueueCheckpointIfRelevant(headRef, &oStack)
 	if err != nil {
 		return errors.Wrap(err, "error when stacking relevant partitions")
 	}
@@ -108,7 +109,7 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s simpleAggregateRehydrater) enqueueCheckpointIfRelevant(checkpointObjHash packing.Hash, st *cpAffixStack) error {
+func (s simpleAggregateRehydrater) enqueueCheckpointIfRelevant(checkpointObjHash types.Hash, st *cpAffixStack) error {
 
 	var jp *packing.JSONPacker
 

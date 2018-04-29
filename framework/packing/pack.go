@@ -20,13 +20,6 @@ type Object interface {
 	Contents() []byte
 }
 
-// HashedObject is an object from the hash.
-type HashedObject interface {
-	Type() ObjectTypeName
-	Contents() []byte
-	Hash() Hash
-}
-
 // Event ns anything serializable for the future
 type Event interface{}
 
@@ -42,14 +35,14 @@ type Event interface{}
 // a partial affix, but checkpoint it with an error. The reader
 // may prefer to ignore these events, but they do form par
 // of our conceptual model.
-type Affix map[types.PartitionName][]Hash
+type Affix map[types.PartitionName][]types.Hash
 
 // A checkpoint represents a DDD command object execution
 // and persistence of the resulting events. It stores
 // an error incase the command failed.
 type Checkpoint struct {
-	AffixHash    Hash
-	ParentHashes []Hash
+	AffixHash    types.Hash
+	ParentHashes []types.Hash
 	Fields       map[string]string
 	Summary      string
 	CommandDesc  []byte
