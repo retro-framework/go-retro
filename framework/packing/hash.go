@@ -46,3 +46,7 @@ func hashStr(str string) types.Hash {
 	var s = sha256.Sum256([]byte(str))
 	return Hash{AlgoName: HashAlgoNameSHA256, Bytes: s[:]}
 }
+
+func HashStr(str string) types.Hash {
+	return hashStr(str)
+}

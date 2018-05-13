@@ -1,15 +1,17 @@
 package ref
 
 import (
-	"crypto/sha256"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 func Test_DB(t *testing.T) {
@@ -25,18 +27,14 @@ func Test_DB(t *testing.T) {
 		"fs":     &fs.RefStore{BasePath: tmpdir},
 	}
 
+	var (
+		fooHash = packing.HashStr("foo")
+		barHash = packing.HashStr("bar")
+	)
+
 	for name, db := range dbs {
 		t.Run(name, func(t *testing.T) {
-			var (
-				fooHash = packing.Hash{
-					AlgoName: packing.HashAlgoNameSHA256,
-					Bytes:    sha256.New().Sum([]byte("foo")),
-				}
-				barHash = packing.Hash{
-					AlgoName: packing.HashAlgoNameSHA256,
-					Bytes:    sha256.New().Sum([]byte("bar")),
-				}
-			)
+
 			t.Run("ensures that ref starts with refs/", func(t *testing.T) {
 				t.Skip()
 			})
@@ -89,6 +87,31 @@ func Test_DB(t *testing.T) {
 				test.H(t).NotNil(err)
 			})
 		})
+
+		t.Run("test listing objects", func(t *testing.T) {
+
+			_, err := db.Write("refs/heads/foo", fooHash)
+			test.H(t).IsNil(err)
+			_, err = db.Write("refs/heads/bar", barHash)
+			test.H(t).IsNil(err)
+
+			var want = map[string]types.Hash{
+				"refs/heads/bar": packing.HashStrToHash("sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"),
+				"refs/heads/foo": packing.HashStrToHash("sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"),
+			}
+
+			if ldb, ok := db.(ListableStore); !ok {
+				t.Skip(fmt.Sprintf("%s does not implement ListableStore interface", name))
+			} else {
+				res, err := ldb.Ls()
+				test.H(t).IsNil(err)
+				if diff := cmp.Diff(res, want); diff != "" {
+					t.Errorf("results differs: (-got +want)\n%s", diff)
+				}
+			}
+
+		})
+
 	}
 
 }

@@ -32,6 +32,29 @@ func (r *RefStore) mkdirAll(path string) error {
 	return os.MkdirAll(path, 0766)
 }
 
+func (s *RefStore) Ls() (map[string]types.Hash, error) {
+	var hashes = make(map[string]types.Hash)
+	files, err := filepath.Glob(fmt.Sprintf("%s/refs/**/*", s.BasePath))
+	if err != nil {
+		return hashes, err // TODO: Wrap me
+	}
+	for _, file := range files {
+		fi, err := os.Stat(file)
+		if err != nil {
+			return nil, err
+		}
+		switch mode := fi.Mode(); {
+		case mode.IsRegular():
+			contents, err := ioutil.ReadFile(file)
+			if err != nil {
+				return nil, err // TODO: wrap me
+			}
+			hashes[strings.TrimPrefix(file, fmt.Sprintf("%s/", s.BasePath))] = packing.HashStrToHash(string(contents))
+		}
+	}
+	return hashes, nil
+}
+
 func (s *RefStore) Write(name string, hash types.Hash) (bool, error) {
 
 	// TODO: What if basepath points to a _file_ not a dir?

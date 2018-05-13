@@ -12,7 +12,7 @@ type Store interface {
 }
 
 type ListableStore interface {
-	Ls() []types.Hash
+	Ls() (map[string]types.Hash, error)
 }
 
 // Retrieve returns a packing hash given a symbolic name will return a

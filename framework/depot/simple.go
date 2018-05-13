@@ -77,6 +77,10 @@ func EmptySimpleMemory() types.Depot {
 	}
 }
 
+func NewSimple(objdb object.DB, refdb ref.DB, eventManifest types.EventManifest) types.Depot {
+	return Simple{objdb, refdb, eventManifest}
+}
+
 type Simple struct {
 	objdb object.DB
 	refdb ref.DB

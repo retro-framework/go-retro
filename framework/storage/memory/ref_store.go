@@ -13,6 +13,10 @@ type RefStore struct {
 	s map[string]string
 }
 
+func (s *RefStore) Ls() (map[string]types.Hash, error) {
+	return s.r, nil
+}
+
 // Write ref returns a boolean indicating whether the ref was changed
 // or not, and errors incase of malformation, and misc problems.
 func (r *RefStore) Write(name string, newRef types.Hash) (bool, error) {
