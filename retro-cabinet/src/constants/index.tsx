@@ -1,0 +1,5 @@
+export const SET_SERVER_URL = 'SET_SERVER_URL';
+export type SET_SERVER_URL = typeof SET_SERVER_URL;
+
+export const SET_SELECTED_HEAD_REF = 'SET_SELECTED_HEAD_REF';
+export type SET_SELECTED_HEAD_REF = typeof SET_SELECTED_HEAD_REF;

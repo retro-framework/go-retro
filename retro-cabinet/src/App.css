@@ -1,0 +1,33 @@
+.Retro {
+  width: 100%;
+  height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.Retro__ConnInfo {
+  flex: 0 0 100%;
+  height: 50px;
+  justify-content: center;
+  align-items: center;
+  background-color: RGBA(243, 238, 224, 1.00);
+}
+
+.Retro__Panel {
+  width: 33.3%;
+  height: 50vh;
+  padding: 0 0.5rem;
+  flex-grow: 1;
+  flex-shrink: 1;
+  border-color: #e8eaed;
+  border-style: solid;
+  border-width: 1px 0 0 1px;
+  background-color: RGBA(245, 247, 249, 1.00);
+  box-sizing: border-box;
+}
+
+.Retro__Panel:nth-child(2) {
+  width: 66.6%;
+  background-color: #fff;
+}

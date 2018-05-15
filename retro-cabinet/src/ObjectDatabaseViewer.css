@@ -1,0 +1,52 @@
+.odbv {
+  list-style-type: none;
+  padding-left: 0;
+  font-family: monospace;
+}
+
+.odbv__checkpointHash {
+  color:darkred;
+  margin-right: .5rem;
+}
+
+.odbv__refIndicator {
+  color: RGBA(220, 185, 91, 1.00);
+}
+.odbv__refIndicator:before {
+  content: '(';
+}
+
+.odbv__refIndicator:after {
+  content: ')';
+  margin-right: .5rem;
+}
+
+.odbv__checkpointSubject {
+  color: darkslategrey;
+  margin-right: .5rem;
+}
+
+.odbv__datestamp {
+  color: darkkhaki;
+}
+
+.odbv__datestamp:before {
+  content: '(';
+}
+
+.odbv__datestamp:after {
+  content: ')';
+  margin-right: .5rem;
+}
+
+.odbv__authorName {
+  color: darkblue;
+}
+
+.odbv__authorName:before {
+  content: '<';
+}
+
+.odbv__authorName:after {
+  content: '>';
+}
