@@ -6,30 +6,22 @@ class RefSelector extends React.Component<any, any> {
     super(props);
     this.props = props;
   }
-  public componentDidMount() {
-    console.log("didmount", this.props.selectedHash);
-  }
-  public componentWillUpdate() {
-    if(this.props.value) {
-      this.props.handleChangedSelectedHeadRefHash(this.props.value);
-    }
-  }
   public update = (e: any) => {
     this.props.handleChangedSelectedHeadRefHash(e.target.value);
+  }
+  public componentDidUpdate() {
+    this.props.handleChangedSelectedHeadRefHash(this.props.selectedHash);
   }
   public render() {
     if (this.props.isLoading) {
       return "<span>Loading ...</span>"
     }
-    const options = this.props.refs.map((ref: any) => <option key={ref.hash} value={ref.hash}>{ref.name}</option>);
+    const options = this.props.refs.map((ref: any) => <option key={ref.hash.concat(ref.name)} value={ref.hash}>{ref.name}</option>);
     return (
-      <div>
-        <select className="RefSelector" value={this.props.selectedHash} onChange={this.update}>
-          <option>Choose…</option>
-          {options}
-        </select>
-        <pre>{this.props.selectedHash}</pre>
-      </div>
+      <select className="RefSelector" value={this.props.selectedHash} onChange={this.update}>
+        <option>Choose...</option>
+        {options}
+      </select>
       );
   }
 }

@@ -1,16 +1,15 @@
 import { connect, Dispatch } from 'react-redux';
-// import * as urljoin from 'url-join';
 
 import * as actions from '../actions/';
 import RefSelector from '../components/RefSelector';
-import { IPropsFromDispatch, IPropsFromState} from '../types/RefSelector';
+import { IPropsFromDispatch, IPropsFromState } from '../types/RefSelector';
 import IStoreState from '../types/store';
 
 export function mapStateToProps(state: IStoreState): IPropsFromState {
     return {
         loading: state.refSelector.loading,
         refs: state.refSelector.refs,
-        selectedHash: "",
+        selectedHash: state.refSelector.selectedHash,
     };
 }
 
@@ -25,7 +24,7 @@ async function getCheckpoints(startHash: string) {
     }
     const checkpoints: any[] = [];
     const firstCp = await getCheckpoint(startHash);
-    if(!firstCp) {
+    if (!firstCp) {
         return checkpoints;
     }
     checkpoints.push(firstCp);
