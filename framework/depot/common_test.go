@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"testing"
 	"time"
 
@@ -96,7 +95,10 @@ func Test_Depot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpdir)
+	// defer os.RemoveAll(tmpdir)
+	defer func() {
+		t.Logf("Tmpdir Is %s\n", tmpdir)
+	}()
 
 	odbs := map[string]object.DB{
 		"memory": &memory.ObjectStore{},
@@ -108,7 +110,7 @@ func Test_Depot(t *testing.T) {
 	}
 	depots := map[string]types.Depot{
 		"memory": Simple{objdb: odbs["memory"], refdb: refdbs["memory"]},
-		// "fs":        Simple{objdb: odbs["fs"], refdb: refdbs["fs"]},
+		"fs":     Simple{objdb: odbs["fs"], refdb: refdbs["fs"]},
 		// "fs+memory": Simple{objdb: odbs["memory"], refdb: refdbs["fs"]},
 		// "memory+fs": Simple{objdb: odbs["fs"], refdb: refdbs["memory"]},
 	}

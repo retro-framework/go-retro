@@ -5,9 +5,18 @@ export interface IInvalidateRefList {
     type: constants.REF_LIST_INVALIDATE,
 }
 
+export interface IODBVInvalidate {
+    type: constants.ODBV_INVALIDATE,
+}
+
 export interface IRefListEntriesAvailable {
     type: constants.REF_LIST_ENTRIES_AVAILABLE,
-    payload: types.IStoreRefHash[],
+    payload: types.IRefHash[],
+}
+
+export interface IODBVCheckpointsAvailable {
+    type: constants.ODBV_CHECKPOINTS_AVAILABLE,
+    payload: types.ICheckpoint[], // TODO: types
 }
 
 export interface ISetServerURL {
@@ -24,6 +33,10 @@ export function refListInvalidate(): IInvalidateRefList {
     return { type: constants.REF_LIST_INVALIDATE };
 }
 
+export function odbvInvalidate(): IODBVInvalidate {
+    return { type: constants.ODBV_INVALIDATE };
+}
+
 export function setServerURL(newURL: URL): ISetServerURL {
     return { type: constants.SERVER_SET_URL, payload: newURL };
 }
@@ -35,8 +48,15 @@ export function setSelectedHeadRefHash(newHeadRefHash: string): ISetSelectedHead
     }
 }
 
+export function odbvCheckpointsAvailable(checkpoints: any): IODBVCheckpointsAvailable {
+    return {
+        payload: checkpoints,
+        type: constants.ODBV_CHECKPOINTS_AVAILABLE,
+    }
+}
+
 export function refListEntriesAvailable(obj: any): IRefListEntriesAvailable {
-    const refs: types.IStoreRefHash[] = [];
+    const refs: types.IRefHash[] = [];
     for (const name in obj) {
         if (obj.hasOwnProperty(name)) {     
             refs.push({ name, hash: obj[name] });
@@ -53,4 +73,5 @@ export type Any =
     | IInvalidateRefList
     | IRefListEntriesAvailable
     | ISetSelectedHeadRefHash
-    | ISetServerURL;
+    | ISetServerURL
+    | IODBVInvalidate;

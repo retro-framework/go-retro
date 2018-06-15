@@ -17,6 +17,10 @@ type Hash struct {
 	Bytes    []byte
 }
 
+func (h Hash) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("%q", h.String())), nil
+}
+
 func (h Hash) String() string {
 	return fmt.Sprintf("%s:%x", h.AlgoName, h.Bytes)
 }

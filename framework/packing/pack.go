@@ -41,9 +41,9 @@ type Affix map[types.PartitionName][]types.Hash
 // and persistence of the resulting events. It stores
 // an error incase the command failed.
 type Checkpoint struct {
-	AffixHash    types.Hash
-	ParentHashes []types.Hash
-	Fields       map[string]string
-	Summary      string
-	CommandDesc  []byte
+	AffixHash    types.Hash        `json:"affixHash"`
+	ParentHashes []types.Hash      `json:"parentHashes"`
+	Fields       map[string]string `json:"fields"`
+	Summary      string            `json:"summary"`
+	CommandDesc  []byte            `json:"commandDesc"`
 }

@@ -1,0 +1,33 @@
+syntax = "proto3";
+option go_package = "pb";
+
+service ObjectDB {
+   rpc GetCheckpoint(Hash) returns (Checkpoint) {}
+}
+
+message Hash {
+    string algorithm = 1;
+    bytes  bytes = 2;
+}
+
+message Checkpoint {
+    Hash hash = 1;
+    string subject = 2;
+    repeated Hash parentHash = 3;
+}
+
+// https://stackoverflow.com/a/31772973/119669
+message Empty {}
+
+service RefDB {
+    rpc List(Empty) returns (RefList) {} 
+}
+
+message Ref {
+    string name = 1;
+    Hash hash = 2;
+}
+
+message RefList {
+    repeated Ref ref = 1;
+}

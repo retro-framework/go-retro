@@ -1,12 +1,14 @@
-import 'codemirror/lib/codemirror.css';
 import * as React from 'react';
-import { Provider } from 'react-redux';
 import DevTools from '../containers/DevTools';
+import ObjectDatabaseViewer from '../containers/ObjectDatabaseViewer';
 import RefSelector from '../containers/RefSelector';
 import ServerURL from '../containers/ServerURL';
 import store from '../store';
-import { IStoreState } from '../types/index';
-import ObjectDatabaseViewer from './ObjectDatabaseViewer';
+import IStoreState from '../types/store';
+
+import { Provider } from 'react-redux';
+
+import 'codemirror/lib/codemirror.css';
 
 class App extends React.Component<any, IStoreState> {
   constructor(props: any) {

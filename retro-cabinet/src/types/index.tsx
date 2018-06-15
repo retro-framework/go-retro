@@ -1,21 +1,20 @@
-
-export interface IStoreServerURLState {
-    readonly url: URL
+export interface IStateLoadable {
+    readonly loading: boolean
 }
 
-export interface IStoreRefHash {
+export interface IStateErrorable {
+    readonly error?: Error | undefined
+}
+
+export interface IRefHash {
     readonly hash: string
     readonly name: string
 }
 
-export interface IStoreRefSelectorState {
-    readonly error: Error | undefined
-    readonly loading: boolean
-    readonly refs: IStoreRefHash[]
-    readonly selectedHash: string
-}
-
-export interface IStoreState {
-    readonly server: IStoreServerURLState
-    readonly refSelector: IStoreRefSelectorState
+export interface ICheckpoint {
+    readonly hash: string
+    readonly parentHashes: string[]
+    readonly affixHash: string
+    readonly commandDesc: string
+    readonly summary: string
 }
