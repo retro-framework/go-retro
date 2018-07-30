@@ -19,6 +19,11 @@ export interface IODBVCheckpointsAvailable {
     payload: types.ICheckpoint[], // TODO: types
 }
 
+export interface ISelectedODBVCheckpointChanged {
+    type: constants.SELECTED_ODBV_CHECKPOINT_CHANGED,
+    payload: types.ICheckpoint,
+}
+
 export interface ISetServerURL {
     type: constants.SERVER_SET_URL;
     payload: URL,
@@ -65,6 +70,14 @@ export function refListEntriesAvailable(obj: any): IRefListEntriesAvailable {
     return {
         payload: refs,
         type: constants.REF_LIST_ENTRIES_AVAILABLE,
+    }
+}
+
+export function changeSelectedODBVCheckpoint(checkpoint: types.ICheckpoint): ISelectedODBVCheckpointChanged {
+    console.log("🤬");
+    return {
+        payload: checkpoint,
+        type: constants.SELECTED_ODBV_CHECKPOINT_CHANGED,
     }
 }
 

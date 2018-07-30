@@ -13,7 +13,9 @@ export function mapStateToProps(state: IStoreState): IPropsFromState {
 }
 
 function mapDispatchToProps(dispatch: Dispatch<actions.Any>): IPropsFromDispatch {
-    return { }
+    return {
+        changeSelectedCheckpoint: actions.changeSelectedODBVCheckpoint
+     }
 }
 
 export default connect<IPropsFromState, IPropsFromDispatch, void>(mapStateToProps, mapDispatchToProps)(ObjectDatabaseViewerComponent);

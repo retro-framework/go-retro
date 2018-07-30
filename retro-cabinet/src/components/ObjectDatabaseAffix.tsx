@@ -22,9 +22,9 @@ class ObjectDatabaseAffix extends React.Component<IObjectDatabaseAffixProps, any
         console.log("got here")
         if (this.state.affix.hash !== "") {
             fetch(`/obj/${this.state.affix.hash}`)
-            .then((response) => {
-                console.log(response);
-            })
+            // .then((response) => {
+            //     console.log(response);
+            // })
         }
     }
     public render() {
