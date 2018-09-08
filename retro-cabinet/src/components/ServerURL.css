@@ -1,8 +1,0 @@
-.ServerURL::before {
-    content: "Server URL:";
-}
-
-.ServerURL {
-    padding: 10px;
-    font-family: monospace;
-}
