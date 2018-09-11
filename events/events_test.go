@@ -18,7 +18,7 @@ func Test_Events_RegisterEv_TwiceSameEvRaisesError(t *testing.T) {
 }
 
 func Test_Events_RegisterEv_RaisesErrorUnlessFieldsAreExported(t *testing.T) {
-	s.Skip("dumb guard against events that won't survive marshal/unmarshal")
+	t.Skip("dumb guard against events that won't survive marshal/unmarshal")
 }
 
 func Test_Events_RegisterEv_TakesEitherPointerOrConcrete(t *testing.T) {

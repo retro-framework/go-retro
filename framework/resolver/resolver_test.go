@@ -23,7 +23,6 @@ type dummyAggregate struct {
 }
 
 func (da *dummyAggregate) ReactTo(ev types.Event) error {
-	fmt.Println("In ReactTo 🍒")
 	da.seenEvents = append(da.seenEvents, ev)
 	return nil
 }

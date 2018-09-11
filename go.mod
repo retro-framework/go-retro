@@ -23,9 +23,11 @@ require (
 	github.com/pierrec/lz4 v0.0.0-20171218195038-2fcda4cb7018
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20180125231941-8732c616f529
 	github.com/spf13/cobra v0.0.1
 	github.com/spf13/pflag v1.0.0
+	github.com/stretchr/testify v1.2.2 // indirect
 	github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
 	golang.org/x/net v0.0.0-20171123081856-c7086645de24
 	golang.org/x/sys v0.0.0-20180427151831-cbbc999da32d

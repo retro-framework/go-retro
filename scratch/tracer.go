@@ -1,4 +1,5 @@
 // +build ignore
+
 package main
 
 type Span interface{}
