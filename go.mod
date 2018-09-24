@@ -16,6 +16,7 @@ require (
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049
 	github.com/google/go-cmp v0.2.0
 	github.com/inconshreveable/mousetrap v1.0.0
+	github.com/karrick/godirwalk v1.7.3 // indirect
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 	github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492
 	github.com/opentracing/opentracing-go v1.0.2
@@ -28,6 +29,7 @@ require (
 	github.com/spf13/cobra v0.0.1
 	github.com/spf13/pflag v1.0.0
 	github.com/stretchr/testify v1.2.2 // indirect
+	github.com/uudashr/gopkgs v1.3.2 // indirect
 	github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
 	golang.org/x/net v0.0.0-20171123081856-c7086645de24
 	golang.org/x/sys v0.0.0-20180427151831-cbbc999da32d

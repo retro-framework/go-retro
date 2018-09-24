@@ -13,8 +13,8 @@ type RefStore struct {
 	s map[string]string
 }
 
-func (s *RefStore) Ls() (map[string]types.Hash, error) {
-	return s.r, nil
+func (r *RefStore) Ls() (map[string]types.Hash, error) {
+	return r.r, nil
 }
 
 // Write ref returns a boolean indicating whether the ref was changed
