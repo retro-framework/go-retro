@@ -22,9 +22,12 @@ func Test_DB(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpdir)
 
-	dbs := map[string]DB{
-		"memory": &memory.RefStore{},
-		"fs":     &fs.RefStore{BasePath: tmpdir},
+	dbs := map[string]func() DB{
+		"memory": func() DB { return &memory.RefStore{} },
+		"fs": func() DB {
+			os.RemoveAll(tmpdir)
+			return &fs.RefStore{BasePath: tmpdir}
+		},
 	}
 
 	var (
@@ -32,10 +35,7 @@ func Test_DB(t *testing.T) {
 		barHash = packing.HashStr("bar")
 	)
 
-	// TODO: find a way to reset the DB between tests
-	// that seems to be the issue below.
-
-	for name, db := range dbs {
+	for name, dbFn := range dbs {
 
 		t.Run(name, func(t *testing.T) {
 
@@ -43,73 +43,73 @@ func Test_DB(t *testing.T) {
 				t.Skip("not implemented yet")
 			})
 
-			// The following three tests rely on sharing state.. they could be one test
+			t.Run("various read/write", func(t *testing.T) {
 
-			t.Run("returns true when writing a ref for the first time", func(t *testing.T) {
-				changed, err := db.Write("refs/heads/main", fooHash)
-				test.H(t).IsNil(err)
-				test.H(t).BoolEql(changed, true)
-			})
+				var db = dbFn()
 
-			t.Run("returns false if hash is unchanged in store", func(t *testing.T) {
-				changed, err := db.Write("refs/heads/main", fooHash)
-				test.H(t).IsNil(err)
-				test.H(t).BoolEql(changed, false)
-			})
+				t.Run("returns true when writing a ref for the first time", func(t *testing.T) {
+					changed, err := db.Write("refs/heads/main", fooHash)
+					test.H(t).IsNil(err)
+					test.H(t).BoolEql(changed, true)
+				})
 
-			t.Run("returns true if hash is changed overwritten in store", func(t *testing.T) {
-				changed, err := db.Write("refs/heads/main", barHash)
-				test.H(t).IsNil(err)
-				test.H(t).BoolEql(changed, true)
-			})
+				t.Run("returns false if hash is unchanged in store", func(t *testing.T) {
+					changed, err := db.Write("refs/heads/main", fooHash)
+					test.H(t).IsNil(err)
+					test.H(t).BoolEql(changed, false)
+				})
 
-			t.Run("retrieves an existing object if already in store", func(t *testing.T) {
-				packedHash, err := db.Retrieve("refs/heads/main3")
-				test.H(t).IsNil(err)
-				test.H(t).StringEql(packedHash.String(), barHash.String())
-			})
+				t.Run("returns true if hash is changed overwritten in store", func(t *testing.T) {
+					changed, err := db.Write("refs/heads/main", barHash)
+					test.H(t).IsNil(err)
+					test.H(t).BoolEql(changed, true)
+				})
 
-			t.Run("returns unknown ref error for non existent objects in store", func(t *testing.T) {
-				_, err := db.Retrieve("refs/heads/non existent")
-				test.H(t).NotNil(err)
-			})
+				t.Run("retrieves an existing object if already in store", func(t *testing.T) {
+					packedHash, err := db.Retrieve("refs/heads/main")
+					test.H(t).IsNil(err)
+					test.H(t).StringEql(packedHash.String(), barHash.String())
+				})
 
-			t.Run("write symbolic fails if the ref name is not all caps", func(t *testing.T) {
-				t.Skip("not implemented yet")
-				_, err := db.WriteSymbolic("head", "refs/heads/mainline")
-				test.H(t).NotNil(err)
-			})
+				t.Run("returns unknown ref error for non existent objects in store", func(t *testing.T) {
+					_, err := db.Retrieve("refs/heads/non existent")
+					test.H(t).NotNil(err)
+				})
 
-			t.Run("write symbolic returns true if the symbolic ref was created or changed", func(t *testing.T) {
-				changed, err := db.WriteSymbolic("HEAD", "refs/heads/mainline")
-				test.H(t).IsNil(err)
-				test.H(t).BoolEql(changed, true)
-			})
+				t.Run("write symbolic fails if the ref name is not all caps", func(t *testing.T) {
+					t.Skip("not implemented yet")
+					_, err := db.WriteSymbolic("head", "refs/heads/mainline")
+					test.H(t).NotNil(err)
+				})
 
-			t.Run("write symbolic returns false if the symbolic ref was created or changed", func(t *testing.T) {
-				changed, err := db.WriteSymbolic("HEAD", "refs/heads/mainline")
-				test.H(t).IsNil(err)
-				test.H(t).BoolEql(changed, false)
-			})
+				t.Run("write symbolic returns true if the symbolic ref was created or changed", func(t *testing.T) {
+					changed, err := db.WriteSymbolic("HEAD", "refs/heads/mainline")
+					test.H(t).IsNil(err)
+					test.H(t).BoolEql(changed, true)
+				})
 
-			t.Run("retrive symbolic returns symbolic ref correctly", func(t *testing.T) {
-				ref, err := db.RetrieveSymbolic("HEAD")
-				test.H(t).IsNil(err)
-				test.H(t).StringEql(ref, "refs/heads/mainline")
-			})
+				t.Run("write symbolic returns false if the symbolic ref was created or changed", func(t *testing.T) {
+					changed, err := db.WriteSymbolic("HEAD", "refs/heads/mainline")
+					test.H(t).IsNil(err)
+					test.H(t).BoolEql(changed, false)
+				})
 
-			t.Run("retrive symbolic returns error on non existent ref", func(t *testing.T) {
-				_, err := db.RetrieveSymbolic("ANYTHING ELSE")
-				test.H(t).NotNil(err)
+				t.Run("retrive symbolic returns symbolic ref correctly", func(t *testing.T) {
+					ref, err := db.RetrieveSymbolic("HEAD")
+					test.H(t).IsNil(err)
+					test.H(t).StringEql(ref, "refs/heads/mainline")
+				})
+
+				t.Run("retrive symbolic returns error on non existent ref", func(t *testing.T) {
+					_, err := db.RetrieveSymbolic("ANYTHING ELSE")
+					test.H(t).NotNil(err)
+				})
+
 			})
 
 			t.Run("listing objects", func(t *testing.T) {
 
-				if rdb, ok := db.(ResettableDB); ok {
-					rdb.Reset(true, true, true, true)
-				} else {
-					t.Log("can't upgrade")
-				}
+				var db = dbFn()
 
 				_, err := db.Write("refs/heads/foo", fooHash)
 				test.H(t).IsNil(err)

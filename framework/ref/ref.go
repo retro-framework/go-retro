@@ -27,14 +27,6 @@ type Source interface {
 	RetrieveSymbolic(string) (string, error)
 }
 
-// ResettableDB is an optional interrace implemented and guarded using
-// build flags for test 👏 mode 👏 only 👏. The four arguments it takes
-// are all expected to be true, to prove you are 2² sure that you want
-// to reset the database.
-type ResettableDB interface {
-	Reset(bool, bool, bool, bool)
-}
-
 // DB is a combination of a Source and a Store. Both must be implemented
 // for a database to be usable. The interfaces are split for testing purposes
 // and to reflect the potential asymetry in storage and retrieval inherant
