@@ -15,6 +15,7 @@ require (
 	github.com/golang/protobuf v1.1.0
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049
 	github.com/google/go-cmp v0.2.0
+	github.com/gorilla/handlers v1.4.0
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/karrick/godirwalk v1.7.3 // indirect
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515

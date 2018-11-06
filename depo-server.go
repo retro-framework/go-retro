@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -141,8 +142,8 @@ func main() {
 	)
 
 	mux := http.NewServeMux()
-	mux.Handle("/obj/", objDBSrv)
-	mux.Handle("/ref/", refDBSrv)
+	mux.Handle("/obj/", handlers.CombinedLoggingHandler(os.Stdout, objDBSrv))
+	mux.Handle("/ref/", handlers.CombinedLoggingHandler(os.Stdout, refDBSrv))
 
 	s := &http.Server{
 		Addr:           ":8080",
