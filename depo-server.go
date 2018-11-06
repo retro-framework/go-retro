@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -53,9 +55,16 @@ func (srv objectDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			af, _ := jp.UnpackAffix(hashedObj.Contents())
 			jsonEnc.Encode(af)
 		case "event":
-			evName, ev, _ := jp.UnpackEvent(hashedObj.Contents())
-			jsonEnc.Encode(evName)
-			jsonEnc.Encode(ev)
+			var evPlaceholder map[string]interface{}
+			evName, evEncodedString, _ := jp.UnpackEvent(hashedObj.Contents())
+			err := json.Unmarshal(evEncodedString, &evPlaceholder)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error unmarshalling %s: %s\n", evEncodedString, err)
+			}
+			jsonEnc.Encode(struct {
+				Name    string      `json:"name"`
+				Payload interface{} `json:"payload"`
+			}{evName, evPlaceholder})
 		default:
 			http.Error(w, http.StatusText(http.StatusExpectationFailed), http.StatusExpectationFailed)
 			return
