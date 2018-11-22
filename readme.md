@@ -11,31 +11,16 @@
     > "our survey was retrospective"
     > synonyms:	backdated, retroactive, ex post facto, backward-looking
 
-A log structured CMS API project from which I hope to extract the log
-structured application one day soon.
-
 ## Usage
 
-    $ git clone https://github.com/retro-framework/go-retro.git some/path/src/github.com/retro-framework/go-retro
-    $ export GOPATH=some/path
-    $ brew install dep
-    $ (cd some/path/src/github.com/retro-framework/go-retro && dep ensure)
-    $ go test github.com/retro-framework/go-retro
+    $ git clone https://github.com/retro-framework/go-retro.git 
+    $ cd go-retro
+    $ go test ./framework/...
 
 **NOTE:** Some tests (integration, external server) are guarded by build tags, build with:
 
-    $ go test -tags 'redis integration' github.com/retro-framework/go-retro/framework/...
+    $ go test -tags 'redis integration' ./framework/...
   
-## Generator
-
-The ls-cms project includes a generator to assist with the creation of the
-nonsense boilerplate which is unavoidable.
-
-Usage:
-
-    $ go build .
-    $ ls-cms gen aggregate "I'm the name for an aggregate"
-
 ## Tests
 
 Testing is grouped into a few areas, aggregates, and whole application stack.
@@ -81,13 +66,13 @@ Testing is grouped into a few areas, aggregates, and whole application stack.
 
 ## Doctor
 
-The doctor sub programme needs to check for the following:
+The doctor executable needs to check for the following:
 
-- Command fn SetState having a non pointer receiver
-- Aggregates having non pointer receivers
-- Events having non-exported fields
-- Unmounted events, aggregates and commands
-- Session start function that returns no event
+- Command fn SetState having a non pointer receiver (defer to type system?)
+- Aggregates having non pointer receivers (defer to type system?)
+- Events having non-exported fields (as we can't inspect on them)
+- Unmounted events, aggregates and commands (warning, not an error)
+- Session start function that returns no event (static analysis?)
 
 ## Depot
 
