@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -37,6 +38,8 @@ func (srv objectDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			parts = append(parts, part)
 		}
 	}
+
+	time.Sleep(time.Duration(rand.Intn(750)) * time.Millisecond)
 
 	switch len(parts) {
 	case 2:
