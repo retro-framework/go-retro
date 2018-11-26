@@ -16,6 +16,8 @@ type simplePartitionIterator struct {
 	objdb object.DB
 	refdb ref.DB
 
+	eventManifest types.EventManifest
+
 	// tipHash is the known "tip" where we started,
 	// name is chosen to avoid conflating "head" and "ref"
 	// when starting a partition iterator which will start
@@ -48,13 +50,12 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		errOut = make(chan error, 1)
 	)
 
+	// panic("do we get here?")
+
 	go func() {
 
 		defer close(out)
 		defer close(errOut)
-		defer func() {
-			fmt.Println("spi finished")
-		}()
 
 		// Resolve the head ref for the given ctx
 		checkpointHash, err := s.refdb.Retrieve(refFromCtx(ctx))
@@ -90,15 +91,15 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		for _, kp := range oStack.knownPartitions {
 
 			evIter := &simpleEventIterator{
-				objdb:   s.objdb,
-				matcher: s.matcher,
-				pattern: string(kp),
-				tipHash: s.tipHash,
-				stack:   oStack.s, // a copy of the stack, so we don't mutate it (?)
+				objdb:         s.objdb,
+				matcher:       s.matcher,
+				eventManifest: s.eventManifest,
+				pattern:       string(kp),
+				tipHash:       s.tipHash,
+				stack:         oStack.s, // a copy of the stack, so we don't mutate it (?)
 			}
 			select {
 			case out <- evIter:
-				fmt.Println("sent event iterator")
 			case <-ctx.Done():
 				return
 			}

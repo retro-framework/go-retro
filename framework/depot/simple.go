@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	tm "github.com/buger/goterm"
 	"github.com/golang-collections/collections/stack"
 	"github.com/pkg/errors"
 
@@ -17,10 +16,12 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
+// DefaultBranchName is defined so that without an override changes
+// will move the ref named by this branch name
 const DefaultBranchName = "refs/heads/master"
 
-// NewSimpleStub returns a simple Depot stub which checkpoints the fixture events
-// given into a single checkpoint as part of one affix with a generic set of messages.
+// NewSimpleStub returns a simple Depot stub which will yield the given events in the fixture
+// as a single checkpoint with a single affix with a generic set of placeholder metadata.
 func NewSimpleStub(t *testing.T,
 	objDB object.DB,
 	refDB ref.DB,
@@ -77,10 +78,15 @@ func EmptySimpleMemory() types.Depot {
 	}
 }
 
-func NewSimple(objdb object.DB, refdb ref.DB, eventManifest types.EventManifest) types.Depot {
-	return Simple{objdb, refdb, eventManifest}
-}
+// NewSimple constructs a Simple Depot for convenience
+// func NewSimple(objdb object.DB, refdb ref.DB, eventManifest types.EventManifest) types.Depot {
+// 	return Simple{objdb, refdb, eventManifest}
+// }
 
+// Simple is the simplest possible Depot implementation
+// it requires only a object and ref database implementation
+// and an event manifest to map the events from the object
+// db to a the time they are restored.
 type Simple struct {
 	objdb object.DB
 	refdb ref.DB
@@ -115,7 +121,7 @@ func (s Simple) Exists(partitionName types.PartitionName) bool {
 
 // Rehydrate replays the events onto an aggregate, it's kinda brutal in that it completely
 // walks from the tip until the first orphan checkpoint, and stacks all relevant partitions
-// then emits them all, it's v. expensive.
+// then emits them all, it's very expensive.
 func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
 	return simpleAggregateRehydrater{
 		objdb:   s.objdb,
@@ -128,13 +134,16 @@ func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionNam
 // Glob makes the world go round
 func (s Simple) Glob(_ context.Context, partition string) types.PartitionIterator {
 	return &simplePartitionIterator{
-		objdb:   s.objdb,
-		refdb:   s.refdb,
-		pattern: partition,
-		matcher: GlobPatternMatcher{},
+		objdb:         s.objdb,
+		refdb:         s.refdb,
+		eventManifest: s.eventManifest,
+		pattern:       partition,
+		matcher:       GlobPatternMatcher{},
 	}
 }
 
+// StorePacked takes a variable number of hashed objects, packs and stores them
+// in the object store backing the Simple Depot
 func (s Simple) StorePacked(packed ...types.HashedObject) error {
 	for _, p := range packed {
 		_, err := s.objdb.WritePacked(p)
@@ -145,30 +154,14 @@ func (s Simple) StorePacked(packed ...types.HashedObject) error {
 	return nil
 }
 
-func (s Simple) Dump() {
-
-	started := 100
-	finished := 250
-
-	// Based on http://golang.org/pkg/text/tabwriter
-	totals := tm.NewTable(0, 10, 5, ' ', 0)
-	fmt.Fprintf(totals, "Time\tStarted\tActive\tFinished\n")
-	fmt.Fprintf(totals, "%s\t%d\t%d\t%d\n", "All", started, started-finished, finished)
-	tm.Println(totals)
-
-	tm.Flush()
-
-}
-
+// MoveHeadPointer overwrites the DefaultBranchName with
+// the new reference given. It needs to be made safer, see TODO.
+//
 // TODO: check for fastforward 🔜 before allowing write and/or something
 // to make this not totally unsafe
 func (s Simple) MoveHeadPointer(old, new types.Hash) error {
 	_, err := s.refdb.Write(DefaultBranchName, new)
 	return err
-}
-
-type Hash interface {
-	String() string
 }
 
 type relevantCheckpoint struct {
@@ -184,7 +177,6 @@ func (rc relevantCheckpoint) String() string {
 type cpAffixStack struct {
 	s stack.Stack
 
-	// Ordered from "youngest" to "oldest"
 	knownPartitions []types.PartitionName
 }
 
@@ -214,6 +206,15 @@ func (os *cpAffixStack) Pop() *relevantCheckpoint {
 	return &rcp
 }
 
+// PatternMatcher defines a single function interface
+// for matching patterns. It is used to compare the aggregate
+// paths within an affix to the aggregate name being searched
+// for. In a sane implementation it should support at least
+// POSIX globbing and perhaps even Regular Expressions to
+// allow for matching such as `users/*` or similar.
+//
+// In testing, this pattern matcher may be replaced with a
+// no-op or static matcher.
 type PatternMatcher interface {
 	DoesMatch(pattern, partition string) (bool, error)
 }

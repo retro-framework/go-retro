@@ -15,6 +15,8 @@ import (
 type simpleEventIterator struct {
 	objdb object.DB
 
+	eventManifest types.EventManifest
+
 	// tipHash is the known "tip" where we started,
 	// name is chosen to avoid conflating "head" and "ref"
 	// when starting a partition iterator which will start
@@ -51,16 +53,12 @@ func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.Persiste
 
 		defer close(out)
 		defer close(errOut)
-		defer func() {
-			fmt.Println("sei finished")
-		}()
 
 		var jp *packing.JSONPacker
 
 		for {
 
 			rC := s.stack.Pop()
-			fmt.Println("Stack Len Is:", s.stack.Len())
 			if rC == nil {
 				break
 			}
@@ -72,7 +70,6 @@ func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.Persiste
 					errOut <- fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, s.pattern)
 					return
 				}
-				fmt.Println("cmp", string(partitionName), s.pattern)
 				if match {
 					for _, evHash := range affixEvHashes {
 
@@ -104,11 +101,9 @@ func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.Persiste
 						}
 						select {
 						case out <- pEv:
-							fmt.Println("😇")
 						case <-ctx.Done():
 							return
 						}
-						fmt.Println("escaped here")
 					}
 				}
 			}

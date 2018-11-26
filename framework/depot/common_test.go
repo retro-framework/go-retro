@@ -2,12 +2,12 @@ package depot
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
+	"sync"
 	"testing"
 	"time"
-
-	// "github.com/fortytw2/leaktest"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/retro-framework/go-retro/framework/object"
@@ -34,9 +34,19 @@ type DummyEvAssociateArticleAuthor struct {
 	AuthorURN string
 }
 
-func Test_Depot(t *testing.T) {
+func Example() {
+	tmpdir, err := ioutil.TempDir("", "example")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.RemoveAll(tmpdir)
+	_ = Simple{
+		objdb: &fs.ObjectStore{BasePath: tmpdir},
+		refdb: &fs.RefStore{BasePath: tmpdir},
+	}
+}
 
-	// defer leaktest.Check(t)()
+func Test_Depot(t *testing.T) {
 
 	var jp = packing.NewJSONPacker()
 
@@ -95,10 +105,7 @@ func Test_Depot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// defer os.RemoveAll(tmpdir)
-	defer func() {
-		t.Logf("Tmpdir Is %s\n", tmpdir)
-	}()
+	defer os.RemoveAll(tmpdir)
 
 	odbs := map[string]object.DB{
 		"memory": &memory.ObjectStore{},
@@ -110,7 +117,7 @@ func Test_Depot(t *testing.T) {
 	}
 	depots := map[string]types.Depot{
 		"memory": Simple{objdb: odbs["memory"], refdb: refdbs["memory"]},
-		"fs":     Simple{objdb: odbs["fs"], refdb: refdbs["fs"]},
+		// "fs":     Simple{objdb: odbs["fs"], refdb: refdbs["fs"]},
 		// "fs+memory": Simple{objdb: odbs["memory"], refdb: refdbs["fs"]},
 		// "memory+fs": Simple{objdb: odbs["fs"], refdb: refdbs["memory"]},
 	}
@@ -144,10 +151,10 @@ func Test_Depot(t *testing.T) {
 		})
 
 		t.Run(name, func(t *testing.T) {
-			t.Run("correct events in correct order", func(t *testing.T) {
 
-				t.Skip("nothing to do here")
+			t.Run("iterates over correct events in correct order", func(t *testing.T) {
 
+				var mxt sync.RWMutex
 				var seenEventTuples []types.EventNameTuple
 				var ctx, cancelFn = context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancelFn()
@@ -158,7 +165,6 @@ func Test_Depot(t *testing.T) {
 				for {
 					select {
 					case <-ctx.Done():
-						fmt.Println("test timed out")
 						break Out
 					case err := <-matcherErrors:
 						if err != nil {
@@ -166,30 +172,38 @@ func Test_Depot(t *testing.T) {
 						}
 					case partition, stillOpen := <-matchedPartitions:
 						if !stillOpen {
-							fmt.Println("matched partitions is closed")
 							matchedPartitions = nil
 							break
 						}
-						fmt.Println("got an event iterator")
-						events, partitionErrors := partition.Events(ctx)
-						for {
-							select {
-							case err := <-partitionErrors:
-								if err != nil {
-									t.Fatalf("partition error %q", err)
+						go func(ctx context.Context) {
+							events, partitionErrors := partition.Events(ctx)
+						Out:
+							for {
+								select {
+								case <-ctx.Done():
+									break Out
+								case err := <-partitionErrors:
+									if err != nil {
+										t.Fatalf("partition error %q", err)
+									}
+								case ev, stillOpen := <-events:
+									if !stillOpen {
+										events = nil
+										break
+									}
+									mxt.Lock()
+									seenEventTuples = append(seenEventTuples, types.EventNameTuple{
+										Name:  ev.Name(),
+										Event: ev,
+									})
+									mxt.Unlock()
 								}
-							case ev, stillOpen := <-events:
-								fmt.Println("got an event", ev)
-								if !stillOpen {
-									fmt.Println("events ch is closed")
-									events = nil
-									break
-								}
-								fmt.Println("ReceivedEv", ev)
 							}
-						}
+						}(ctx)
 					}
 				}
+				mxt.RLock()
+				defer mxt.RUnlock()
 				if diff := cmp.Diff(evNameTuples, seenEventTuples); diff != "" {
 					t.Errorf("results differs: (-got +want)\n%s", diff)
 				}
