@@ -33,10 +33,6 @@ func (s *simplePartitionIterator) Pattern() string {
 	return s.pattern
 }
 
-func (s *simplePartitionIterator) Next() {
-	fmt.Println("next called on simplepartition")
-}
-
 // Partitions returns a channel which emits partition event iterators
 // which in turn emit events.
 //
@@ -51,6 +47,8 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 	)
 
 	// panic("do we get here?")
+
+	fmt.Printf("in Partitions, eventManifest is %#v\n", s.eventManifest)
 
 	go func() {
 

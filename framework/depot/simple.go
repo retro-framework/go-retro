@@ -78,11 +78,6 @@ func EmptySimpleMemory() types.Depot {
 	}
 }
 
-// NewSimple constructs a Simple Depot for convenience
-// func NewSimple(objdb object.DB, refdb ref.DB, eventManifest types.EventManifest) types.Depot {
-// 	return Simple{objdb, refdb, eventManifest}
-// }
-
 // Simple is the simplest possible Depot implementation
 // it requires only a object and ref database implementation
 // and an event manifest to map the events from the object

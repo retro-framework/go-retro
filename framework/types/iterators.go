@@ -2,10 +2,36 @@ package types
 
 import "context"
 
-// PartitionIterator
+// EventCursor is a convenience for iterating over
+// events within a partition without concerning
+// the caller with channel semantics
+type EventCursor interface {
+	ParitionName() string
+	Value() PersistedEvent
+
+	Next() bool
+	Err() error
+	Close()
+}
+
+// PartitionCursor is a convenience for iterating over
+// events within a partition without concerning
+// the caller with channel semantics
+type PartitionCursor interface {
+	Value() EventCursor
+
+	Next() bool
+	Err() error
+	Close()
+}
+
+// PartitionIterator iterates over matched Partitions in a consistent way
+// it provides both a nested channel mechanism (Partitions) or a cursor
+// approach ideal for a for p.Next() use-case.
 type PartitionIterator interface {
 	Pattern() string
 	Partitions(context.Context) (<-chan EventIterator, <-chan error)
+	// PartitionCursor(context.Context) PartitionCursor
 }
 
 // EventIterator is a simple Iterator interface which should mean that we
