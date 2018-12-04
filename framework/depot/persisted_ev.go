@@ -1,8 +1,10 @@
 package depot
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -10,6 +12,8 @@ type PersistedEv struct {
 	time  time.Time
 	name  string
 	bytes []byte
+
+	eventManifest types.EventManifest
 
 	// The hash of the checkpoint which referred to the affix
 	// from which this event was retrieved/unpacked.
@@ -30,4 +34,12 @@ func (pEv PersistedEv) Bytes() []byte {
 
 func (pEv PersistedEv) CheckpointHash() types.Hash {
 	return pEv.cpHash
+}
+
+func (pEv PersistedEv) Event() (types.Event, error) {
+	evFromManifest, err := evManifest.ForName(recv.ev.Name())
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("can't retrieve event type from event manfest %#v", pEv.eventManifest))
+
+	}
 }

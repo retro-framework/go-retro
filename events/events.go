@@ -60,6 +60,13 @@ func (m *manifest) KeyFor(ev types.Event) (string, error) {
 	return "", errors.Wrap(ErrNotKnown, fmt.Sprintf("looking for %q in %q", m.toType(ev), strings.Join(registeredEvNames, ",")))
 }
 
+func (m *manifest) ForName(name string) (types.Event, error) {
+	if et, exists := m.m[name]; exists {
+		return reflect.New(et).Elem().Addr().Interface().(types.Event), nil
+	}
+	return nil, nil
+}
+
 func (m *manifest) toType(t types.Event) reflect.Type {
 	var v = reflect.ValueOf(t)
 	if reflect.Ptr == v.Kind() || reflect.Interface == v.Kind() {

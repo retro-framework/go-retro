@@ -206,6 +206,11 @@ func Test_Depot(t *testing.T) {
 				}) {
 					for recv := range received {
 						fmt.Printf("Found: %s\t%#v\n", recv.pn, recv.ev)
+						evFromManifest, err := evManifest.ForName(recv.ev.Name())
+						if err != nil {
+							t.Logf("⚠️ error getting event from manifest %s\n", err)
+						}
+						fmt.Printf("\n\nEvent ManifestForName: %#v\n", evFromManifest)
 					}
 				}(ctx, foundEvs)
 

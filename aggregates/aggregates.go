@@ -37,11 +37,6 @@ func (m *manifest) Register(path string, agg types.Aggregate) error {
 
 // ForPath looks up the reflect.Type registered for the string path given and
 // constructs a new zero value of that type using the reflect package.
-//
-// A pointer to that type is returned cast to the types.Aggregate interface it
-// is important that the type given defines its methods with a pointer receiver
-// to ensure that types returned by this function correctly implement the
-// types.Aggregate interface.
 func (m *manifest) ForPath(path string) (types.Aggregate, error) {
 	if et, exists := m.m[path]; exists {
 		return reflect.New(et).Elem().Addr().Interface().(types.Aggregate), nil

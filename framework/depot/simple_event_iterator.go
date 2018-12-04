@@ -94,10 +94,11 @@ func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.Persiste
 						}
 
 						pEv := PersistedEv{
-							time:   h.time,
-							bytes:  evPayload,
-							name:   evName,
-							cpHash: h.checkpointHash,
+							time:          h.time,
+							bytes:         evPayload,
+							name:          evName,
+							cpHash:        h.checkpointHash,
+							eventManifest: s.eventManifest,
 						}
 
 						fmt.Printf("eventManifest is %#v\n", s.eventManifest)

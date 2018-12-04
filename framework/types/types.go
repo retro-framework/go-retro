@@ -30,6 +30,7 @@ type PersistedEvent interface {
 	Name() string
 	Bytes() []byte
 	CheckpointHash() Hash
+	Event() (Event, error)
 }
 
 // Logger is the generic logging interface. It explicitly avoids including
