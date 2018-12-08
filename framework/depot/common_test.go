@@ -1,13 +1,15 @@
 package depot
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
-	"time"
+	"time" 
+	"sync"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -52,13 +54,15 @@ func Test_Depot(t *testing.T) {
 
 	var jp = packing.NewJSONPacker()
 
-	var evNameTuples = []types.EventNameTuple{
-		{Name: "set_author_name", Event: DummyEvSetAuthorName{"Maxine Mustermann"}},
-		{Name: "set_article_title", Event: DummyEvSetArticleTitle{"event graph for noobs"}},
-		{Name: "associate_article_author", Event: DummyEvAssociateArticleAuthor{"author/maxine"}},
-		{Name: "set_article_title", Event: DummyEvSetArticleTitle{"learning event graph"}},
-		{Name: "set_article_body", Event: DummyEvSetArticleBody{"lorem ipsum ..."}},
-	}
+	var expectedEvNames = []string{"set_author_name", "set_article_title","associate_article_author","set_article_title","set_article_body"}
+
+	// var evNameTuples = []types.EventNameTuple{
+	// 	{Name: "set_author_name", Event: DummyEvSetAuthorName{"Maxine Mustermann"}},
+	// 	{Name: "set_article_title", Event: DummyEvSetArticleTitle{"event graph for noobs"}},
+	// 	{Name: "associate_article_author", Event: DummyEvAssociateArticleAuthor{"author/maxine"}},
+	// 	{Name: "set_article_title", Event: DummyEvSetArticleTitle{"learning event graph"}},
+	// 	{Name: "set_article_body", Event: DummyEvSetArticleBody{"lorem ipsum ..."}},
+	// }
 
 	// Events
 	var (
@@ -161,7 +165,11 @@ func Test_Depot(t *testing.T) {
 			t.Run("iterates over correct events in correct order", func(t *testing.T) {
 
 				var (
-					testCompleted = make(chan struct{})
+					errs = make(chan error)
+
+					expectedConditionSeen = false
+					conditionMutex = &sync.RWMutex{}
+					lastDiff string
 
 					foundEvs = make(chan struct {
 						pn  types.PartitionName
@@ -170,33 +178,43 @@ func Test_Depot(t *testing.T) {
 					})
 
 					// fan-in channel to gather all errors from any event iterator
-					eventIterErrorFanIn = make(chan error)
+					// eventIterErrorFanIn = make(chan error)
 
 					// cancelFn will ensure we always clean up, this is what
 					// we always use to proportage the exit condition
 					ctx, cancelFn = context.WithTimeout(context.Background(), 5*time.Second)
 
 					// start conditions, we're globbing for any event on any partition
-					partitionInterator = depot.Glob(ctx, "*")
-					partitions, errors = partitionInterator.Partitions(ctx)
+					partitionInterator          = depot.Glob(ctx, "*")
+					partitions, partitionErrors = partitionInterator.Partitions(ctx)
 				)
 
 				defer cancelFn()
 
-				_ = evNameTuples
-
 				// This go routine aborts the test when the context timeout
-				// is reached.
+				// is reached. We can't FatalF in a go-routine, that kills
+				// onyl that goroutine. Send an error to the main goroutine.
 				go func(ctx context.Context) {
+					fmt.Println("entering goroutine david")
 					<-ctx.Done()
-					t.Fatalf("hit the timeout condition on the test context")
+					conditionMutex.Lock()
+					defer conditionMutex.Unlock()
+					if !expectedConditionSeen {
+						errs <- fmt.Errorf("timeout reached, failing, difference: %s", lastDiff)
+					}
 				}(ctx)
 
-				// This go routine handles the case that we found matcher errors
-				// in either the partition iterator or the event iterator.
-				go func(partitionErr <-chan error, eventError <-chan error) {
-
-				}(errors, eventIterErrorFanIn)
+				// // This go routine handles the case that we found matcher errors
+				// // in either the partition iterator or the event iterator.
+				go func(partitionErrs <-chan error) {
+					partitionErr := <-partitionErrs
+					// we should see a nil through this channel every time
+					// we don't fail, so squash those, as <-errs will finalize
+					// the test whatever value we send.
+					if err != nil {
+						errs <- partitionErr
+					}
+				}(partitionErrors)
 
 				// This Go routine is waiting for tuples with a partition name
 				// and an event, they are assumed to arrive in chronological order.
@@ -207,27 +225,29 @@ func Test_Depot(t *testing.T) {
 					pEv types.PersistedEvent
 					ev  types.Event
 				}) {
-					var seenEvNameTuples = []types.EventNameTuple{}
+
+					fmt.Println("entering goroutine alice")
+
+					var seenEvNames []string
 
 					for recv := range received {
-						seenEvNameTuples = append(seenEvNameTuples, types.EventNameTuple{Name: recv.pEv.Name(), Event: recv.ev})
-						diff := cmp.Diff(evNameTuples, seenEvNameTuples)
-						fmt.Println(diff)
-						// diff != "" {
-						// 	t.Logf("event tuple comparison failed (-got +want)\n%s", diff)
-						// } else {
-						// 	t.Log("event comparison passed 🎉")
-						// }
-						fmt.Print(".")
+						seenEvNames = append(seenEvNames, recv.pEv.Name())
+						lastDiff = cmp.Diff(expectedEvNames, seenEvNames)
+						if lastDiff == "" {
+							errs <- nil // signal the end of the test
+						}
 					}
+
+					fmt.Println("leaving goroutine alice")
+
 				}(ctx, foundEvs)
 
 				// Event handler makes a tuple of the data about the event, and sends
 				// it on the channel where the results are being collected
 				var eventHandler = func(ctx context.Context, pn types.PartitionName, pEv types.PersistedEvent) {
 					ev, err := pEv.Event()
-					if err != nil {
-						t.Fatalf("it's broke %s\n", err)
+					if err != nil { 
+						errs <- errors.Wrap(err, "error in event handler")
 					}
 					foundEvs <- struct {
 						pn  types.PartitionName
@@ -240,20 +260,26 @@ func Test_Depot(t *testing.T) {
 					}
 				}
 
-				// partitionHandler
 				var partitionHandler = func(ctx context.Context, evIter types.EventIterator) {
+					fmt.Println("entering goroutine charlie")
 					events, _ := evIter.Events(ctx)
 					for event := range events {
 						go eventHandler(ctx, types.PartitionName(evIter.Pattern()), event)
 					}
+					fmt.Println("entering goroutine charlie")
 				}
 
 				for partition := range partitions {
 					go partitionHandler(ctx, partition)
 				}
 
-				<-testCompleted
-				t.Logf("ending test…\n")
+				// wait for it to signal, anything other than nil
+				// indicates an error. whoever sends that error
+				// should send a useful debugging message.
+				err := <-errs
+				if err != nil {
+					t.Fatal(err)
+				}
 
 			})
 		})

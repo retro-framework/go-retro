@@ -3,6 +3,7 @@ package depot
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/pkg/errors"
@@ -38,7 +39,6 @@ func (pEv PersistedEv) CheckpointHash() types.Hash {
 }
 
 func (pEv PersistedEv) Event() (types.Event, error) {
-	var evFromManifest types.Event
 	evFromManifest, err := pEv.eventManifest.ForName(pEv.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can't retrieve event type from event manfest %#v", pEv.eventManifest))
@@ -47,5 +47,16 @@ func (pEv PersistedEv) Event() (types.Event, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can't unmarshal json into restored event type %#v", pEv.eventManifest))
 	}
-	return evFromManifest, nil
+
+	// ForName returns a pointer to a types.Event because of the way the reflection
+	// works, this unwraps it else raises an error. This unwrapping could feasibly
+	// be moved into the ForName function. For Aggregates the reasoning is different
+	// so we can afford to return a pointer (aggregates are modified as they are re-hydrated
+	// and thus need to be mutable as they are passed around, events are plain ol'
+	// value objects)
+	if reflect.TypeOf(evFromManifest).Kind() == reflect.Ptr {
+		return reflect.ValueOf(evFromManifest).Elem().Interface(), nil
+	} else {
+		return evFromManifest, errors.Wrap(err, fmt.Sprintf("expected to get a pointer back from eventManifest.ForName()"))
+	}
 }
