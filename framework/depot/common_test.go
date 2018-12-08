@@ -1,16 +1,17 @@
 package depot
 
 import (
-	"context"
 	"fmt"
+	"context"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/retro-framework/go-retro/events"
+	"github.com/google/go-cmp/cmp"
 
+	"github.com/retro-framework/go-retro/events"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -163,8 +164,9 @@ func Test_Depot(t *testing.T) {
 					testCompleted = make(chan struct{})
 
 					foundEvs = make(chan struct {
-						pn types.PartitionName
-						ev types.PersistedEvent
+						pn  types.PartitionName
+						pEv types.PersistedEvent
+						ev  types.Event
 					})
 
 					// fan-in channel to gather all errors from any event iterator
@@ -201,28 +203,40 @@ func Test_Depot(t *testing.T) {
 				// This goroutine passes the test by closing the other iterators
 				// when it has all the information it expected to see.
 				go func(ctx context.Context, received chan struct {
-					pn types.PartitionName
-					ev types.PersistedEvent
+					pn  types.PartitionName
+					pEv types.PersistedEvent
+					ev  types.Event
 				}) {
+					var seenEvNameTuples = []types.EventNameTuple{}
+
 					for recv := range received {
-						fmt.Printf("Found: %s\t%#v\n", recv.pn, recv.ev)
-						evFromManifest, err := evManifest.ForName(recv.ev.Name())
-						if err != nil {
-							t.Logf("⚠️ error getting event from manifest %s\n", err)
-						}
-						fmt.Printf("\n\nEvent ManifestForName: %#v\n", evFromManifest)
+						seenEvNameTuples = append(seenEvNameTuples, types.EventNameTuple{Name: recv.pEv.Name(), Event: recv.ev})
+						diff := cmp.Diff(evNameTuples, seenEvNameTuples)
+						fmt.Println(diff)
+						// diff != "" {
+						// 	t.Logf("event tuple comparison failed (-got +want)\n%s", diff)
+						// } else {
+						// 	t.Log("event comparison passed 🎉")
+						// }
+						fmt.Print(".")
 					}
 				}(ctx, foundEvs)
 
 				// Event handler makes a tuple of the data about the event, and sends
 				// it on the channel where the results are being collected
-				var eventHandler = func(ctx context.Context, pn types.PartitionName, ev types.PersistedEvent) {
+				var eventHandler = func(ctx context.Context, pn types.PartitionName, pEv types.PersistedEvent) {
+					ev, err := pEv.Event()
+					if err != nil {
+						t.Fatalf("it's broke %s\n", err)
+					}
 					foundEvs <- struct {
-						pn types.PartitionName
-						ev types.PersistedEvent
+						pn  types.PartitionName
+						pEv types.PersistedEvent
+						ev  types.Event
 					}{
-						pn: pn,
-						ev: ev,
+						pn:  pn,
+						pEv: pEv,
+						ev:  ev,
 					}
 				}
 

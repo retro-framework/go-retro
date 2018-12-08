@@ -1,7 +1,6 @@
 package object
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -43,7 +42,6 @@ func Test_DB(t *testing.T) {
 				test.H(t).IntEql(len, 0)
 			})
 			t.Run("retrieves an existing object if already in store", func(t *testing.T) {
-				fmt.Println("pakced stuff yo", packedObj.Hash().String())
 				po, err := db.RetrievePacked(packedObj.Hash().String())
 				test.H(t).IsNil(err)
 				test.H(t).StringEql(string(packedObj.Contents()), string(po.Contents()))

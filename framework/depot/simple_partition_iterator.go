@@ -46,10 +46,6 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		errOut = make(chan error, 1)
 	)
 
-	// panic("do we get here?")
-
-	fmt.Printf("in Partitions, eventManifest is %#v\n", s.eventManifest)
-
 	go func() {
 
 		defer close(out)

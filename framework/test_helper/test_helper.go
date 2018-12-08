@@ -2,19 +2,17 @@ package test_helper
 
 import (
 	"fmt"
+	"github.com/google/go-cmp/cmp" // "github.com/retro-framework/go-retro/framework/storage/memory"
+	"github.com/retro-framework/go-retro/framework/types"
 	"strings"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
-	// "github.com/retro-framework/go-retro/framework/storage/memory"
-	"github.com/retro-framework/go-retro/framework/types"
 )
 
 // func StateFixture(t *testing.T, state map[string][]types.Event) types.Depot {
 // 	t.Helper()
 // 	return memory.NewDepot(state)
 // }
-//
+
 // func EmptyStateFixture(t *testing.T) types.Depot {
 // 	t.Helper()
 // 	return memory.NewDepot(map[string][]types.Event{})

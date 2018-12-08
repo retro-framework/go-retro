@@ -2,7 +2,6 @@ package packing
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"hash"
 	"testing"
 	"time"
@@ -125,8 +124,6 @@ func Test_Pack(t *testing.T) {
 `
 			wantHash = `sha256:f51b6e929c8f79300603460b9d545c51993cfc5c7d2f05808357baec29f84a4d`
 		)
-
-		fmt.Println(string(res.Contents()))
 
 		test.H(t).StringEql(string(res.Contents()), wantContents)
 		test.H(t).StringEql(res.Hash().String(), wantHash)

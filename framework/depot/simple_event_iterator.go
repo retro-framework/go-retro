@@ -101,8 +101,6 @@ func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.Persiste
 							eventManifest: s.eventManifest,
 						}
 
-						fmt.Printf("eventManifest is %#v\n", s.eventManifest)
-
 						select {
 						case out <- pEv:
 						case <-ctx.Done():

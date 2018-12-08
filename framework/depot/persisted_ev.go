@@ -1,6 +1,7 @@
 package depot
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -37,9 +38,14 @@ func (pEv PersistedEv) CheckpointHash() types.Hash {
 }
 
 func (pEv PersistedEv) Event() (types.Event, error) {
-	evFromManifest, err := evManifest.ForName(recv.ev.Name())
+	var evFromManifest types.Event
+	evFromManifest, err := pEv.eventManifest.ForName(pEv.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can't retrieve event type from event manfest %#v", pEv.eventManifest))
-
 	}
+	err = json.Unmarshal(pEv.Bytes(), &evFromManifest)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("can't unmarshal json into restored event type %#v", pEv.eventManifest))
+	}
+	return evFromManifest, nil
 }
