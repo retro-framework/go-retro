@@ -1,8 +1,8 @@
-language: go
-go:
-  - 1.11.x
-  - master
+language: generic
 
-os:
-  - linux
-  - osx
+services:
+  - docker
+
+script:
+  - make test-units
+
