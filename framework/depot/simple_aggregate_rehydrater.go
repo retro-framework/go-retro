@@ -40,7 +40,6 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 	// Resolve the head ref for the given ctx
 	headRef, err := s.refdb.Retrieve(refFromCtx(ctx))
 	if err != nil {
-		return nil
 		return errors.Wrapf(err, "unknown ref, can't lookup partitions for %s", string(partitionName))
 	}
 

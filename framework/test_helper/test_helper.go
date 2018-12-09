@@ -2,21 +2,13 @@ package test_helper
 
 import (
 	"fmt"
-	"github.com/google/go-cmp/cmp" // "github.com/retro-framework/go-retro/framework/storage/memory"
-	"github.com/retro-framework/go-retro/framework/types"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/retro-framework/go-retro/framework/types"
+	"gopkg.in/yaml.v2"
 )
-
-// func StateFixture(t *testing.T, state map[string][]types.Event) types.Depot {
-// 	t.Helper()
-// 	return memory.NewDepot(state)
-// }
-
-// func EmptyStateFixture(t *testing.T) types.Depot {
-// 	t.Helper()
-// 	return memory.NewDepot(map[string][]types.Event{})
-// }
 
 func AggStateFixture(name string, evs ...types.Event) map[string][]types.Event {
 	// TODO ensure that name isn't empty
@@ -30,6 +22,14 @@ func H(t *testing.T) helper {
 
 type helper struct {
 	t *testing.T
+}
+
+func (h helper) MustSerilizeYAML(a interface{}) string {
+	d, err := yaml.Marshal(&a)
+	if err != nil {
+		h.t.Fatalf("error serializing: %s", err)
+	}
+	return string(d)
 }
 
 func (h helper) TypeEql(got, want interface{}) {

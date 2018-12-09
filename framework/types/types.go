@@ -25,6 +25,11 @@ type EventNameTuple struct {
 	Event Event
 }
 
+// Clock
+type Clock interface {
+	Now() time.Time
+}
+
 type PersistedEvent interface {
 	Time() time.Time
 	Name() string

@@ -104,3 +104,5 @@ google.golang.org/grpc/tap
 google.golang.org/grpc/transport
 google.golang.org/grpc/balancer/base
 google.golang.org/grpc/internal/grpcrand
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2

@@ -20,6 +20,8 @@ import (
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/test_helper"
+
 )
 
 type DummyEvSetAuthorName struct {
@@ -50,19 +52,22 @@ func Example() {
 	}
 }
 
+type Predictable5sJumpClock struct {
+	t time.Time
+	calls int
+}
+
+func (c *Predictable5sJumpClock) Now() time.Time {
+	var next = c.t.Add( time.Duration((5*c.calls)) * time.Second)
+	c.calls = c.calls + 1
+	return next
+}
+
 func Test_Depot(t *testing.T) {
 
 	var jp = packing.NewJSONPacker()
 
-	var expectedEvNames = []string{"set_author_name", "set_article_title","associate_article_author","set_article_title","set_article_body"}
-
-	// var evNameTuples = []types.EventNameTuple{
-	// 	{Name: "set_author_name", Event: DummyEvSetAuthorName{"Maxine Mustermann"}},
-	// 	{Name: "set_article_title", Event: DummyEvSetArticleTitle{"event graph for noobs"}},
-	// 	{Name: "associate_article_author", Event: DummyEvAssociateArticleAuthor{"author/maxine"}},
-	// 	{Name: "set_article_title", Event: DummyEvSetArticleTitle{"learning event graph"}},
-	// 	{Name: "set_article_body", Event: DummyEvSetArticleBody{"lorem ipsum ..."}},
-	// }
+	// var expectedEvNames = []string{"set_author_name", "set_article_title","associate_article_author","set_article_title","set_article_body"}
 
 	// Events
 	var (
@@ -80,25 +85,35 @@ func Test_Depot(t *testing.T) {
 		affixThree, _ = jp.PackAffix(packing.Affix{"article/first": []types.Hash{setArticleTitle2.Hash(), setArticleBody1.Hash()}})
 	)
 
+	var clock = Predictable5sJumpClock{}
+
 	// Checkpoints
 	var (
 		checkpointOne, _ = jp.PackCheckpoint(packing.Checkpoint{
 			AffixHash:   affixOne.Hash(),
 			CommandDesc: []byte(`{"create":"author"}`),
-			Fields:      map[string]string{"session": "hello world"},
+			Fields:      map[string]string{
+				"session": "hello world",	
+							"date": clock.Now().Format(time.RFC3339),
+			},
 		})
 
 		checkpointTwo, _ = jp.PackCheckpoint(packing.Checkpoint{
 			AffixHash:    affixTwo.Hash(),
 			CommandDesc:  []byte(`{"draft":"article"}`),
-			Fields:       map[string]string{"session": "hello world"},
+			Fields:       map[string]string{"session": "hello world",
+			"date": clock.Now().Format(time.RFC3339),
+		},
 			ParentHashes: []types.Hash{checkpointOne.Hash()},
 		})
 
 		checkpointThree, _ = jp.PackCheckpoint(packing.Checkpoint{
 			AffixHash:    affixThree.Hash(),
 			CommandDesc:  []byte(`{"update":"article"}`),
-			Fields:       map[string]string{"session": "hello world"},
+			Fields:       map[string]string{
+					"session": "hello world",
+					"date": clock.Now().Format(time.RFC3339),
+					},
 			ParentHashes: []types.Hash{checkpointTwo.Hash()},
 		})
 	)
@@ -163,8 +178,21 @@ func Test_Depot(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 
 			t.Run("iterates over correct events in correct order", func(t *testing.T) {
-
+				
 				var (
+
+					expectedResult = map[types.PartitionName][]types.EventNameTuple{
+						"author/maxine": []types.EventNameTuple{
+							{Name: "set_author_name", Event: DummyEvSetAuthorName{"Maxine Mustermann"}},
+						},
+						"articles/first": []types.EventNameTuple{
+							{Name: "set_article_title", Event: DummyEvSetArticleTitle{"event graph for noobs"}},
+							{Name: "associate_article_author", Event: DummyEvAssociateArticleAuthor{"author/maxine"}},
+							{Name: "set_article_title", Event: DummyEvSetArticleTitle{"learning event graph"}},
+							{Name: "set_article_body", Event: DummyEvSetArticleBody{"lorem ipsum ..."}},
+						},
+					}
+
 					errs = make(chan error)
 
 					expectedConditionSeen = false
@@ -176,9 +204,6 @@ func Test_Depot(t *testing.T) {
 						pEv types.PersistedEvent
 						ev  types.Event
 					})
-
-					// fan-in channel to gather all errors from any event iterator
-					// eventIterErrorFanIn = make(chan error)
 
 					// cancelFn will ensure we always clean up, this is what
 					// we always use to proportage the exit condition
@@ -204,8 +229,8 @@ func Test_Depot(t *testing.T) {
 					}
 				}(ctx)
 
-				// // This go routine handles the case that we found matcher errors
-				// // in either the partition iterator or the event iterator.
+				// This go routine handles the case that we found matcher errors
+				// in either the partition iterator or the event iterator.
 				go func(partitionErrs <-chan error) {
 					partitionErr := <-partitionErrs
 					// we should see a nil through this channel every time
@@ -228,11 +253,16 @@ func Test_Depot(t *testing.T) {
 
 					fmt.Println("entering goroutine alice")
 
-					var seenEvNames []string
+					var seenResults = make(map[types.PartitionName][]types.EventNameTuple)
 
 					for recv := range received {
-						seenEvNames = append(seenEvNames, recv.pEv.Name())
-						lastDiff = cmp.Diff(expectedEvNames, seenEvNames)
+						
+						if _, ok := seenResults[recv.pn]; !ok {
+							seenResults[recv.pn] = []types.EventNameTuple{}
+						}
+						seenResults[recv.pn] = append(seenResults[recv.pn], types.EventNameTuple{Name: recv.pEv.Name(), Event: recv.ev})
+
+						lastDiff = cmp.Diff(test_helper.H(t).MustSerilizeYAML(expectedResult), test_helper.H(t).MustSerilizeYAML(seenResults))
 						if lastDiff == "" {
 							errs <- nil // signal the end of the test
 						}
