@@ -56,7 +56,7 @@ func (pEv PersistedEv) Event() (types.Event, error) {
 	// value objects)
 	if reflect.TypeOf(evFromManifest).Kind() == reflect.Ptr {
 		return reflect.ValueOf(evFromManifest).Elem().Interface(), nil
-	} else {
-		return evFromManifest, errors.Wrap(err, fmt.Sprintf("expected to get a pointer back from eventManifest.ForName()"))
 	}
+
+	return evFromManifest, errors.Wrap(err, fmt.Sprintf("expected to get a pointer back from eventManifest.ForName()"))
 }
