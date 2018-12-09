@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/google/go-cmp/cmp"
-
+	
 	"github.com/retro-framework/go-retro/events"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -21,7 +21,6 @@ import (
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	"github.com/retro-framework/go-retro/framework/types"
 	"github.com/retro-framework/go-retro/framework/test_helper"
-
 )
 
 type DummyEvSetAuthorName struct {
@@ -37,7 +36,7 @@ type DummyEvSetArticleBody struct {
 }
 
 type DummyEvAssociateArticleAuthor struct {
-	AuthorURN string
+	AuthorURN string 
 }
 
 func Example() {
@@ -181,11 +180,13 @@ func Test_Depot(t *testing.T) {
 				
 				var (
 
+					h = test_helper.H(t)
+
 					expectedResult = map[types.PartitionName][]types.EventNameTuple{
 						"author/maxine": []types.EventNameTuple{
 							{Name: "set_author_name", Event: DummyEvSetAuthorName{"Maxine Mustermann"}},
 						},
-						"articles/first": []types.EventNameTuple{
+						"article/first": []types.EventNameTuple{
 							{Name: "set_article_title", Event: DummyEvSetArticleTitle{"event graph for noobs"}},
 							{Name: "associate_article_author", Event: DummyEvAssociateArticleAuthor{"author/maxine"}},
 							{Name: "set_article_title", Event: DummyEvSetArticleTitle{"learning event graph"}},
@@ -262,7 +263,7 @@ func Test_Depot(t *testing.T) {
 						}
 						seenResults[recv.pn] = append(seenResults[recv.pn], types.EventNameTuple{Name: recv.pEv.Name(), Event: recv.ev})
 
-						lastDiff = cmp.Diff(test_helper.H(t).MustSerilizeYAML(expectedResult), test_helper.H(t).MustSerilizeYAML(seenResults))
+						lastDiff = cmp.Diff(h.MustSerilizeYAML(expectedResult), h.MustSerilizeYAML(seenResults))
 						if lastDiff == "" {
 							errs <- nil // signal the end of the test
 						}
