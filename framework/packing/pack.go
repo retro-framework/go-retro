@@ -1,17 +1,17 @@
 package packing
 
 import (
-	"errors"
-
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
 const (
+	// HeaderContentSepRune is set to the null byte. This is used
+	// as a field separator in the binary packed representations
+	// of packed objects. The separator could be anything, the
+	// null byte is used as a historical nod to binary protocols
+	// and because it's virtually the only valid byte that can
+	// never be part of a meaningful input.
 	HeaderContentSepRune = "\u0000"
-)
-
-var (
-	ErrCheckpointWithoutAffix = errors.New("can not pack checkpoint without affix")
 )
 
 // Object is a storable object, they are
@@ -33,17 +33,6 @@ type Event interface{}
 // list may be empty. A failed command execution may yield
 // some events, but also an error in which case we would get
 // a partial affix, but checkpoint it with an error. The reader
-// may prefer to ignore these events, but they do form par
+// may prefer to ignore these events, but they do form part
 // of our conceptual model.
 type Affix map[types.PartitionName][]types.Hash
-
-// A checkpoint represents a DDD command object execution
-// and persistence of the resulting events. It stores
-// an error incase the command failed.
-type Checkpoint struct {
-	AffixHash    types.Hash        `json:"affixHash"`
-	ParentHashes []types.Hash      `json:"parentHashes"`
-	Fields       map[string]string `json:"fields"`
-	Summary      string            `json:"summary"`
-	CommandDesc  []byte            `json:"commandDesc"`
-}
