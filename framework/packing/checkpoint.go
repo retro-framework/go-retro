@@ -39,21 +39,22 @@ func (c Checkpoint) HasErrors() (bool, []error) {
 		if t, parserErr := time.Parse(time.RFC3339, v); parserErr != nil {
 			errs = append(errs, errors.Wrap(parserErr, "checkpoint date field must be parseable as a RFC3339 date"))
 		} else {
-			tzName, tzOffset := t.Zone()
-			if tzName != "UTC" {
-				errs = append(errs, errors.Wrap(parserErr, "checkpoint date field must in timezone UTC"))
-			}
-			if tzOffset > 0 {
-				errs = append(errs, errors.Wrap(parserErr, "checkpoint date field not have a non-zero TZ offset (must be UTC)"))
+			if parserErr == nil {
+				tzName, tzOffset := t.Zone()
+				if tzName != "UTC" {
+					errs = append(errs, fmt.Errorf("checkpoint date field must in timezone UTC"))
+				}
+				if tzOffset > 0 {
+					errs = append(errs, fmt.Errorf("checkpoint date field not have a non-zero TZ offset (must be UTC)"))
+				}
 			}
 		}
 	} else {
 		errs = append(errs, fmt.Errorf("checkpoint has no `date' field, cannot be saved"))
 	}
-
 	// TODO: Also ensure that Session is set..
 
 	// TODO: check if this checkpoint has an affix, and use ErrCheckpointWithoutAffix if not.
 
-	return false, errs
+	return len(errs) > 0, errs
 }
