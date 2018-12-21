@@ -44,7 +44,7 @@ type PartitionIterator interface {
 // has been shown to be very performant when talking to Redis for example
 // in "pages" of 1000.
 //
-// Beware that failing to read some itterator implementations to the end
+// Beware that failing to read some iterator implementations to the end
 // may hold locks on some underlaying resources.
 type EventIterator interface {
 	Pattern() string
