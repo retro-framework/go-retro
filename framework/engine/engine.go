@@ -7,10 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/retro-framework/go-retro/framework/packing"
-
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -63,6 +62,9 @@ type Engine struct {
 // aggregate.
 func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (string, error) {
 
+	var err error
+
+	// Tracing
 	spnApply, ctx := opentracing.StartSpanFromContext(ctx, "engine.Apply")
 	spnApply.SetTag("payload", string(cmd))
 	defer spnApply.Finish()
@@ -79,8 +81,6 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	if a.resolver == nil {
 		return "", Error{"resolver-missing", nil, "resolver not available, please check config."}
 	}
-
-	var err error
 
 	// Check we have a "session" aggreate in the manifest, else we will struggle
 	// from here on out.
@@ -155,28 +155,40 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 // facilitate correlating logs with failed session start commands.
 func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
+	// Tracing
 	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "engine.StartSession")
 	defer spnResolve.Finish()
 
+	// Generate a session id using the provided factory
 	sidStr, err := e.idFactory()
 	sid := types.SessionID(sidStr)
 	if err != nil {
 		return sid, Error{"generate-id-for-session", err, "id factory returned an error when genrating an id"}
 	}
 
+	// Tracing
 	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnResolve.Context()))
 	path := fmt.Sprintf("session/%s", sid)
 
+	// Guard against reuse of session ids, we could avoid this
+	// if we used a cryptographically secure prng in the id factory
+	// but users may provide a bad implementation (also, tests.)
 	if e.depot.Exists(types.PartitionName(path)) {
 		return sid, Error{"guard-unique-session-id", err, "session id was not unique in depot, can't start."}
 	}
 
+	// Our cancellation clause, claimTimeout is the wait time we're
+	// willing to inflict on our consumer/client waiting for other
+	// processes which may have a lock on the aggregate we want.
 	claimCtx, cancel := context.WithTimeout(ctx, e.claimTimeout)
 	defer cancel()
 
+	// Try and get an exclusive claim on the resource, it will
+	// honor the timeout we have already set.
 	e.depot.Claim(claimCtx, path)
 	defer e.depot.Release(path)
 
+	// Tracing
 	b, err := json.Marshal(struct {
 		Path    string `json:"path"`
 		CmdName string `json:"name"`
@@ -187,11 +199,14 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	spnUnmarshal.SetTag("payload", string(b))
 	spnUnmarshal.Finish()
 
+	// A command to start a session is mandatory, even if it's a virtual no-op
+	// this looks up the command handler.
 	sessionStart, err := e.resolver(ctx, e.depot, b)
 	if err != nil {
 		return sid, Error{"resolve-session-start-cmd", err, "can't resolve session start command"}
 	}
 
+	// Trigger the session handler, and see what events, if any are emitted.
 	sessionStartedEvents, err := sessionStart(ctx, nil, e.depot)
 	if err != nil {
 		return sid, Error{"execute-session-start-cmd", err, "error calling session start command"}
@@ -199,6 +214,7 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
 	return sid, e.persistEvs(path, sessionStartedEvents)
 
+	// Tracing
 	// spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
 	// // n, err := e.depot.AppendEvs(path, evs)
 	// // if n != len(evs) {
