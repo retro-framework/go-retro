@@ -1,11 +1,18 @@
 package packing
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/types"
+)
+
+var (
+	ErrCheckpointDateFieldEmptyString = errors.New("checkpoint cannot have an empty string for the value of the date field")
+	ErrCheckpointDateMustParseRFC3999 = errors.New("checkpoint date field must be parseable as a RFC3339 date")
+	ErrCheckpointTZMustBeUTC          = errors.New("checkpoint date field must in timezone UTC")
+	ErrCheckpointTZOffsetMustBeZero   = errors.New("checkpoint date field not have a non-zero TZ offset (must be UTC)")
+	ErrCheckpointDateFieldAbsent      = errors.New("checkpoint has no `date' field, cannot be saved")
 )
 
 // Checkpoint represents a DDD command object execution
@@ -34,23 +41,26 @@ func (c Checkpoint) HasErrors() (bool, []error) {
 	// error for timezones other than UTC prevents that)
 	if v, exists := c.Fields["date"]; exists {
 		if len(v) == 0 {
-			errs = append(errs, fmt.Errorf("checkpoint cannot have an empty string for the value of the date field"))
+			errs = append(errs, ErrCheckpointDateFieldEmptyString)
+			return len(errs) > 0, errs
 		}
 		if t, parserErr := time.Parse(time.RFC3339, v); parserErr != nil {
-			errs = append(errs, errors.Wrap(parserErr, "checkpoint date field must be parseable as a RFC3339 date"))
+			// TODO: Would be good to find a way to pass the error
+			// details back up to the caller other than a generic "parser
+			// error"
+			errs = append(errs, ErrCheckpointDateMustParseRFC3999)
 		} else {
 			if parserErr == nil {
 				tzName, tzOffset := t.Zone()
 				if tzName != "UTC" {
-					errs = append(errs, fmt.Errorf("checkpoint date field must in timezone UTC"))
-				}
-				if tzOffset > 0 {
-					errs = append(errs, fmt.Errorf("checkpoint date field not have a non-zero TZ offset (must be UTC)"))
+					errs = append(errs, ErrCheckpointTZMustBeUTC)
+				} else if tzOffset > 0 {
+					errs = append(errs, ErrCheckpointTZOffsetMustBeZero)
 				}
 			}
 		}
 	} else {
-		errs = append(errs, fmt.Errorf("checkpoint has no `date' field, cannot be saved"))
+		errs = append(errs, ErrCheckpointDateFieldAbsent)
 	}
 	// TODO: Also ensure that Session is set..
 

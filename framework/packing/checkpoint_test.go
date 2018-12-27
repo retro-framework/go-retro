@@ -24,8 +24,9 @@ func Test_Checkpoint_HasErrors(t *testing.T) {
 			t.Parallel()
 			var h = test_helper.H(t)
 			var hasErrs, errs = Checkpoint{}.HasErrors()
-			t.Logf(h.MustSerilizeYAML(hasErrs))
-			t.Logf("Errors: %s\n", errs)
+			h.BoolEql(hasErrs, true)
+			h.ErrEql(errs[0], ErrCheckpointDateFieldAbsent)
+			h.IntEql(len(errs), 1)
 		})
 
 		t.Run("empty string", func(t *testing.T) {
@@ -34,8 +35,9 @@ func Test_Checkpoint_HasErrors(t *testing.T) {
 			var hasErrs, errs = Checkpoint{
 				Fields: map[string]string{"date": ""},
 			}.HasErrors()
-			t.Logf(h.MustSerilizeYAML(hasErrs))
-			t.Logf("Errors: %s\n", errs)
+			h.BoolEql(hasErrs, true)
+			h.ErrEql(errs[0], ErrCheckpointDateFieldEmptyString)
+			h.IntEql(len(errs), 1)
 		})
 
 		t.Run("not rfc3339", func(t *testing.T) {
@@ -45,8 +47,8 @@ func Test_Checkpoint_HasErrors(t *testing.T) {
 				Fields: map[string]string{"date": fixedDate.Format(time.RFC822)},
 			}.HasErrors()
 			h.BoolEql(hasErrs, true)
-			t.Logf(h.MustSerilizeYAML(hasErrs))
-			t.Logf("Errors: %s\n", errs)
+			h.ErrEql(errs[0], ErrCheckpointDateMustParseRFC3999)
+			h.IntEql(len(errs), 1)
 		})
 
 		t.Run("rfc3339 but not UTC", func(t *testing.T) {
@@ -59,8 +61,9 @@ func Test_Checkpoint_HasErrors(t *testing.T) {
 			var hasErrs, errs = Checkpoint{
 				Fields: map[string]string{"date": fixedDate.In(beijing).Format(time.RFC3339)},
 			}.HasErrors()
-			t.Logf(h.MustSerilizeYAML(hasErrs))
-			t.Logf("Errors: %s\n", errs)
+			h.BoolEql(hasErrs, true)
+			h.ErrEql(errs[0], ErrCheckpointTZMustBeUTC)
+			h.IntEql(len(errs), 1)
 		})
 	})
 
