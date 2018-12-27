@@ -117,7 +117,7 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 		}
 	})
 
-	t.Run("resolves to an existing aggregate and retrieves it's history successfully", func(t *testing.T) {
+	t.Run("resolves to an existing aggregate and retrieves its history successfully", func(t *testing.T) {
 
 		t.Parallel()
 
