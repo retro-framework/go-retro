@@ -138,7 +138,18 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 
 	err = depot.Rehydrate(ctx, agg, types.PartitionName(cmdDesc.Path))
 	if err != nil {
-		return nil, Error{"agg-rehydrate", err}
+		// TODO: This exit condition is a nasty "magic string"
+		// artefact. It is designed ot match against a string
+		// in the "simple-aggregate-rehydrater.go" file where
+		// a "not found" error manifests as unknown ref. We don't
+		// necessarily expect to find something to rehydrate,
+		// this may be a SessionStart event, so we're happy to
+		// swallow an error about a non-exixtent partition and
+		// failure to rehydrate something we're in the process
+		// of creating. These errors need to be better typed.
+		if !strings.Contains(err.Error(), "unknown ref") {
+			return nil, Error{"agg-rehydrate", err}
+		}
 	}
 
 	cmd.SetState(agg)
