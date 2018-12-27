@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"io"
 )
 
 // Depot is a general storage interface for application related data. The
@@ -26,4 +27,8 @@ type Depot interface {
 
 	StorePacked(...HashedObject) error
 	MoveHeadPointer(old, new Hash) error
+}
+
+type DepotDebugger interface {
+	Dump(io.Writer) (int, error)
 }

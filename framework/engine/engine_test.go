@@ -7,11 +7,10 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/depot"
-
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
+	"github.com/retro-framework/go-retro/events"
+	"github.com/retro-framework/go-retro/framework/depot"
 	"github.com/retro-framework/go-retro/framework/resolver"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/types"
