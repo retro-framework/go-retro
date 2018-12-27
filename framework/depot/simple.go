@@ -3,12 +3,12 @@ package depot
 import (
 	"context"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
 	"github.com/golang-collections/collections/stack"
 	"github.com/pkg/errors"
-
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -87,6 +87,10 @@ type Simple struct {
 	refdb ref.DB
 
 	eventManifest types.EventManifest
+}
+
+func (s Simple) Dump(w io.Writer) (int, error) {
+	return 0, nil
 }
 
 // TODO: make this respect the actual value that might come in a context
