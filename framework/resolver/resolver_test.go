@@ -84,11 +84,10 @@ func (dcwa *dummyCmdWithArgs) SetArgs(args types.CommandArgs) error {
 
 func Test_Resolver_AggregateLookup(t *testing.T) {
 
-	t.Run("does not command to aggregate without ID", func(t *testing.T) {
-
-		t.Skip("foo")
+	t.Run("does not resolve command to aggregate without ID", func(t *testing.T) {
 
 		t.Parallel()
+
 		// Arrange
 		var (
 			emd = depot.EmptySimpleMemory()
