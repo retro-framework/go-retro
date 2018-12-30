@@ -35,6 +35,7 @@ type PersistedEvent interface {
 	Name() string
 	Bytes() []byte
 	CheckpointHash() Hash
+	PartitionName() PartitionName
 	Event() (Event, error)
 }
 

@@ -97,6 +97,7 @@ func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.Persiste
 							time:          h.time,
 							bytes:         evPayload,
 							name:          evName,
+							partitionName: types.PartitionName(s.pattern),
 							cpHash:        h.checkpointHash,
 							eventManifest: s.eventManifest,
 						}

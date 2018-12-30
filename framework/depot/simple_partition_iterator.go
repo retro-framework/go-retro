@@ -158,9 +158,22 @@ func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(checkpointObjHash 
 			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, s.pattern))
 		}
 		if matched {
+
+			// Ensure we can get the date field header and parse it, else raise an error.
+			dateStr, ok := checkpoint.Fields["date"]
+			if !ok {
+				// TODO: test this case
+				return fmt.Errorf("error retrieving date field from checkpoint fields (checkpoint hash %s)", checkpointObjHash.String())
+			}
+
+			t, err := time.Parse(time.RFC3339, dateStr)
+			if err != nil {
+				// TODO: test this case
+				return errors.Wrap(err, fmt.Sprintf("parsing date %q as rfc3339", dateStr))
+			}
+
 			st.Push(relevantCheckpoint{
-				// TODO: Something about times????
-				time:           time.Time{},
+				time:           t,
 				checkpointHash: packedCheckpoint.Hash(),
 				affix:          affix,
 			})
