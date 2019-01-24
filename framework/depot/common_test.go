@@ -297,7 +297,7 @@ func Test_Depot(t *testing.T) {
 				var partitionHandler = func(ctx context.Context, evIter types.EventIterator) {
 					events, _ := evIter.Events(ctx)
 					for event := range events {
-						go eventHandler(ctx, types.PartitionName(evIter.Pattern()), event)
+						eventHandler(ctx, types.PartitionName(evIter.Pattern()), event)
 					}
 				}
 
