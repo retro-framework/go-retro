@@ -64,8 +64,6 @@ func Test_Depot(t *testing.T) {
 
 	var jp = packing.NewJSONPacker()
 
-	// var expectedEvNames = []string{"set_author_name", "set_article_title","associate_article_author","set_article_title","set_article_body"}
-
 	// Events
 	var (
 		setAuthorName1, _          = jp.PackEvent("set_author_name", DummyEvSetAuthorName{"Maxine Mustermann"})
