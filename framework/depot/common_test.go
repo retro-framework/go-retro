@@ -1,18 +1,17 @@
 package depot
 
 import (
-	"github.com/pkg/errors"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"testing"
-	"time" 
 	"sync"
+	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
-	
+	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/events"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -20,7 +19,6 @@ import (
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	"github.com/retro-framework/go-retro/framework/types"
-	"github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 type DummyEvSetAuthorName struct {
@@ -36,7 +34,7 @@ type DummyEvSetArticleBody struct {
 }
 
 type DummyEvAssociateArticleAuthor struct {
-	AuthorURN string 
+	AuthorURN string
 }
 
 func Example() {
@@ -52,12 +50,12 @@ func Example() {
 }
 
 type Predictable5sJumpClock struct {
-	t time.Time
+	t     time.Time
 	calls int
 }
 
 func (c *Predictable5sJumpClock) Now() time.Time {
-	var next = c.t.Add( time.Duration((5*c.calls)) * time.Second)
+	var next = c.t.Add(time.Duration((5 * c.calls)) * time.Second)
 	c.calls = c.calls + 1
 	return next
 }
@@ -91,28 +89,29 @@ func Test_Depot(t *testing.T) {
 		checkpointOne, _ = jp.PackCheckpoint(packing.Checkpoint{
 			AffixHash:   affixOne.Hash(),
 			CommandDesc: []byte(`{"create":"author"}`),
-			Fields:      map[string]string{
-				"session": "hello world",	
-							"date": clock.Now().Format(time.RFC3339),
+			Fields: map[string]string{
+				"session": "hello world",
+				"date":    clock.Now().Format(time.RFC3339),
 			},
 		})
 
 		checkpointTwo, _ = jp.PackCheckpoint(packing.Checkpoint{
-			AffixHash:    affixTwo.Hash(),
-			CommandDesc:  []byte(`{"draft":"article"}`),
-			Fields:       map[string]string{"session": "hello world",
-			"date": clock.Now().Format(time.RFC3339),
-		},
+			AffixHash:   affixTwo.Hash(),
+			CommandDesc: []byte(`{"draft":"article"}`),
+			Fields: map[string]string{
+				"session": "hello world",
+				"date":    clock.Now().Format(time.RFC3339),
+			},
 			ParentHashes: []types.Hash{checkpointOne.Hash()},
 		})
 
 		checkpointThree, _ = jp.PackCheckpoint(packing.Checkpoint{
-			AffixHash:    affixThree.Hash(),
-			CommandDesc:  []byte(`{"update":"article"}`),
-			Fields:       map[string]string{
-					"session": "hello world",
-					"date": clock.Now().Format(time.RFC3339),
-					},
+			AffixHash:   affixThree.Hash(),
+			CommandDesc: []byte(`{"update":"article"}`),
+			Fields: map[string]string{
+				"session": "hello world",
+				"date":    clock.Now().Format(time.RFC3339),
+			},
 			ParentHashes: []types.Hash{checkpointTwo.Hash()},
 		})
 	)
@@ -177,11 +176,8 @@ func Test_Depot(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 
 			t.Run("iterates over correct events in correct order", func(t *testing.T) {
-				
+
 				var (
-
-					h = test_helper.H(t)
-
 					expectedResult = map[types.PartitionName][]types.EventNameTuple{
 						"author/maxine": []types.EventNameTuple{
 							{Name: "set_author_name", Event: DummyEvSetAuthorName{"Maxine Mustermann"}},
@@ -194,11 +190,12 @@ func Test_Depot(t *testing.T) {
 						},
 					}
 
-					errs = make(chan error)
+					errs = make(chan error, 1)
 
 					expectedConditionSeen = false
-					conditionMutex = &sync.RWMutex{}
-					lastDiff string
+					conditionMutex        = &sync.RWMutex{}
+					lastDiff              string
+					lastDiffLock          sync.RWMutex
 
 					foundEvs = make(chan struct {
 						pn  types.PartitionName
@@ -221,12 +218,13 @@ func Test_Depot(t *testing.T) {
 				// is reached. We can't FatalF in a go-routine, that kills
 				// onyl that goroutine. Send an error to the main goroutine.
 				go func(ctx context.Context) {
-					fmt.Println("entering goroutine david")
 					<-ctx.Done()
 					conditionMutex.Lock()
 					defer conditionMutex.Unlock()
 					if !expectedConditionSeen {
+						lastDiffLock.RLock()
 						errs <- fmt.Errorf("timeout reached, failing, difference: %s", lastDiff)
+						lastDiffLock.RUnlock()
 					}
 				}(ctx)
 
@@ -240,6 +238,7 @@ func Test_Depot(t *testing.T) {
 					if err != nil {
 						errs <- partitionErr
 					}
+
 				}(partitionErrors)
 
 				// This Go routine is waiting for tuples with a partition name
@@ -252,32 +251,36 @@ func Test_Depot(t *testing.T) {
 					ev  types.Event
 				}) {
 
-					fmt.Println("entering goroutine alice")
-
+					var lockResults sync.Mutex
 					var seenResults = make(map[types.PartitionName][]types.EventNameTuple)
 
 					for recv := range received {
-						
+
+						lockResults.Lock()
 						if _, ok := seenResults[recv.pn]; !ok {
 							seenResults[recv.pn] = []types.EventNameTuple{}
 						}
 						seenResults[recv.pn] = append(seenResults[recv.pn], types.EventNameTuple{Name: recv.pEv.Name(), Event: recv.ev})
+						lockResults.Unlock()
 
-						lastDiff = cmp.Diff(h.MustSerilizeYAML(expectedResult), h.MustSerilizeYAML(seenResults))
+						lastDiffLock.Lock()
+						lastDiff = cmp.Diff(expectedResult, seenResults)
+
 						if lastDiff == "" {
 							errs <- nil // signal the end of the test
+							lastDiffLock.Unlock()
+							return
 						}
+						lastDiffLock.Unlock()
+
 					}
-
-					fmt.Println("leaving goroutine alice")
-
 				}(ctx, foundEvs)
 
 				// Event handler makes a tuple of the data about the event, and sends
 				// it on the channel where the results are being collected
 				var eventHandler = func(ctx context.Context, pn types.PartitionName, pEv types.PersistedEvent) {
 					ev, err := pEv.Event()
-					if err != nil { 
+					if err != nil {
 						errs <- errors.Wrap(err, "error in event handler")
 					}
 					foundEvs <- struct {
@@ -292,12 +295,10 @@ func Test_Depot(t *testing.T) {
 				}
 
 				var partitionHandler = func(ctx context.Context, evIter types.EventIterator) {
-					fmt.Println("entering goroutine charlie")
 					events, _ := evIter.Events(ctx)
 					for event := range events {
 						go eventHandler(ctx, types.PartitionName(evIter.Pattern()), event)
 					}
-					fmt.Println("entering goroutine charlie")
 				}
 
 				for partition := range partitions {
