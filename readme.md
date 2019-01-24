@@ -114,6 +114,20 @@ there may be a race condition where you have a stale parent checkpoint
 and then fail to be able to commit, but Git solves this by implicitly
 making a branch, or having commits with two parents
 
+## Running Tests
+
+The easy part:
+
+    make test-units
+    make test-integration
+
+Testing just a single package:
+
+    make test-units PACKAGE=github.com/retro-framework/go-retro/framework/depot/...
+
+The working directory is mounted at `/go/src/github.com/...` inside the testing
+container hence the complete package URL must be used.
+
 ## Example Packed Checkpoint
 
     $ cat test.file
@@ -134,4 +148,3 @@ Hex dumping it shows the null byte (00) between the `checkpoint 120` and `affix`
     00000060  73 69 6f 6e 20 44 45 41  44 42 45 45 46 2d 53 45  |sion DEADBEEF-SE|
     00000070  53 53 49 4f 4e 49 44 0a  0a 7b 22 66 6f 6f 22 3a  |SSIONID..{"foo":|
     00000080
-
