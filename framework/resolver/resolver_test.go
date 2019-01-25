@@ -1,3 +1,5 @@
+// +build unit
+
 package resolver
 
 import (
@@ -84,9 +86,9 @@ func (dcwa *dummyCmdWithArgs) SetArgs(args types.CommandArgs) error {
 
 func Test_Resolver_AggregateLookup(t *testing.T) {
 
-	t.Run("does not resolve command to aggregate without ID", func(t *testing.T) {
+	t.Parallel()
 
-		t.Parallel()
+	t.Run("does not resolve command to aggregate without ID", func(t *testing.T) {
 
 		// Arrange
 		var (
@@ -117,8 +119,6 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 	})
 
 	t.Run("resolves to an existing aggregate and retrieves its history successfully", func(t *testing.T) {
-
-		t.Parallel()
 
 		// Arrange
 		var (
@@ -163,8 +163,6 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 	})
 
 	t.Run("returns empty aggregate in case of non-exixtent ID", func(t *testing.T) {
-
-		t.Parallel()
 
 		// Arrange
 		var (
@@ -215,8 +213,6 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 
 	t.Run("should raise an error if args are given and the command doesn't implement tyeps.CommandWithArgs", func(t *testing.T) {
 
-		t.Parallel()
-
 		// Arrange
 		var (
 			md = depot.NewSimpleStub(
@@ -253,8 +249,6 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 	})
 
 	t.Run("should parse cmd with args and set them on the object", func(t *testing.T) {
-
-		t.Parallel()
 
 		// Arrange
 		var (
