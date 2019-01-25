@@ -1,8 +1,7 @@
 github.com/Shopify/sarama v1.15.0 h1:v/Q3THMtunYfvKhbFfhegInfoW70HoNgsOdmuvFN5Qg=
 github.com/Shopify/sarama v1.15.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
-github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d h1:cyDdxKRgVJemf4cgRja0tHhbXF/yI+zjlcBBBAeykHI=
+github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d h1:b/FqDLjWXDQI6XBYvWDVgEKv3xOTs68qRkuqyU37lBc=
 github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
-github.com/apache/thrift v0.0.0-20181122133056-7af79c83591d h1:7Z3N92PcBUZxgtK7luRlRN4E97QpK+nmj28qgVWzhEc=
 github.com/buger/goterm v0.0.0-20180423150900-6d19e6a8df12 h1:aZVdiV35VTHoMJnL2GcJFxuedXBJUJx5YRw1sif1XN4=
 github.com/buger/goterm v0.0.0-20180423150900-6d19e6a8df12/go.mod h1:u9UyCz2eTrSGy6fbupqJ54eY5c4IC8gREQ1053dK12U=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
