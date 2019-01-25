@@ -1,4 +1,3 @@
-
 [![Build Status](https://travis-ci.org/retro-framework/go-retro.svg?branch=master)](https://travis-ci.org/retro-framework/go-retro) [![Godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/retro-framework/go-retro)
 
 # Retro Framework - Go-Retro
@@ -9,23 +8,41 @@
     > adjective
     > 1. looking back on or dealing with past events or situations.
     > "our survey was retrospective"
-    > synonyms:	backdated, retroactive, ex post facto, backward-looking
+    > synonyms: backdated, retroactive, ex post facto, backward-looking
 
 ## Usage
 
-    $ git clone https://github.com/retro-framework/go-retro.git 
+    $ git clone https://github.com/retro-framework/go-retro.git
     $ cd go-retro
-    $ go test ./framework/...
 
-**NOTE:** Some tests (integration, external server) are guarded by build tags, build with:
+## Running Tests
 
-    $ go test -tags 'redis integration' ./framework/...
-  
-## Tests
+The easy part:
 
-Testing is grouped into a few areas, aggregates, and whole application stack.
+    make test-units
+    make test-integration
 
-    $ go test .
+Testing just a single package:
+
+    make test-units PACKAGE=github.com/retro-framework/go-retro/framework/depot/...
+
+The working directory is mounted at `/go/src/github.com/...` inside the testing
+container hence the complete package URL must be used.
+
+To run the tests with a specific set of flags (see `GOTESTFLAGS?=...` in the
+`Makefile`) for the defeults
+
+**NOTE:** Some tests (integration, external server) are guarded by build tags,
+build with:
+
+    $make test-integration GOTESTTAGS=redis
+
+Extra flags can be provided to `go test` by setting `GOTESTFLAGS` for example:
+
+    make test-units GOTESTFLAGS="-count 1000"
+
+Of course, all combinations are also supported. These are exposed to GNU Make as
+environment variables, so they can also be baked into scripts or `export ...=...`ed in your shell.
 
 ## Notes:
 
@@ -113,20 +130,6 @@ Because commits are "branchable" and affixes are bound to partitions
 there may be a race condition where you have a stale parent checkpoint
 and then fail to be able to commit, but Git solves this by implicitly
 making a branch, or having commits with two parents
-
-## Running Tests
-
-The easy part:
-
-    make test-units
-    make test-integration
-
-Testing just a single package:
-
-    make test-units PACKAGE=github.com/retro-framework/go-retro/framework/depot/...
-
-The working directory is mounted at `/go/src/github.com/...` inside the testing
-container hence the complete package URL must be used.
 
 ## Example Packed Checkpoint
 
