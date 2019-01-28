@@ -45,6 +45,8 @@ func (pEv PersistedEv) CheckpointHash() types.Hash {
 }
 
 func (pEv PersistedEv) Event() (types.Event, error) {
+	// TODO: Don't reach into pEv.eventManifest without checking for
+	// nil pointer first.
 	evFromManifest, err := pEv.eventManifest.ForName(pEv.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("can't retrieve event type from event manfest %#v", pEv.eventManifest))

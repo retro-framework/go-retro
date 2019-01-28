@@ -139,10 +139,10 @@ func Test_Depot(t *testing.T) {
 		"fs":     &fs.RefStore{BasePath: tmpdir},
 	}
 	depots := map[string]types.Depot{
-		"memory": Simple{objdb: odbs["memory"], refdb: refdbs["memory"], eventManifest: evManifest},
-		// "fs":     Simple{objdb: odbs["fs"], refdb: refdbs["fs"]},
-		// "fs+memory": Simple{objdb: odbs["memory"], refdb: refdbs["fs"]},
-		// "memory+fs": Simple{objdb: odbs["fs"], refdb: refdbs["memory"]},
+		"memory":    Simple{objdb: odbs["memory"], refdb: refdbs["memory"], eventManifest: evManifest},
+		"fs":        Simple{objdb: odbs["fs"], refdb: refdbs["fs"], eventManifest: evManifest},
+		"fs+memory": Simple{objdb: odbs["memory"], refdb: refdbs["fs"], eventManifest: evManifest},
+		"memory+fs": Simple{objdb: odbs["fs"], refdb: refdbs["memory"], eventManifest: evManifest},
 	}
 
 	for _, odb := range odbs {
