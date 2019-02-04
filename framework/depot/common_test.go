@@ -4,11 +4,9 @@ package depot
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
@@ -190,43 +188,24 @@ func Test_Depot(t *testing.T) {
 						},
 					}
 
-					errs = make(chan error, 1)
-
-					expectedConditionSeen = false
-					conditionMutex        = &sync.RWMutex{}
-					lastDiff              string
-					lastDiffLock          sync.RWMutex
+					errs  = make(chan error, 1)
+					diffs = make(chan string, 1)
 
 					foundEvs = make(chan struct {
 						pn  types.PartitionName
 						pEv types.PersistedEvent
 						ev  types.Event
 					})
+				)
 
-					// cancelFn will ensure we always clean up, this is what
-					// we always use to proportage the exit condition
-					ctx, cancelFn = context.WithTimeout(context.Background(), 5*time.Second)
+				var ctx, cancelFn = context.WithTimeout(context.Background(), 1000*time.Millisecond)
+				defer cancelFn()
 
+				var (
 					// start conditions, we're globbing for any event on any partition
 					partitionInterator          = depot.Glob(ctx, "*")
 					partitions, partitionErrors = partitionInterator.Partitions(ctx)
 				)
-
-				defer cancelFn()
-
-				// This go routine aborts the test when the context timeout
-				// is reached. We can't FatalF in a go-routine, that kills
-				// onyl that goroutine. Send an error to the main goroutine.
-				go func(ctx context.Context) {
-					<-ctx.Done()
-					conditionMutex.Lock()
-					defer conditionMutex.Unlock()
-					if !expectedConditionSeen {
-						lastDiffLock.RLock()
-						errs <- fmt.Errorf("timeout reached, failing, difference: %s", lastDiff)
-						lastDiffLock.RUnlock()
-					}
-				}(ctx)
 
 				// This go routine handles the case that we found matcher errors
 				// in either the partition iterator or the event iterator.
@@ -250,29 +229,13 @@ func Test_Depot(t *testing.T) {
 					pEv types.PersistedEvent
 					ev  types.Event
 				}) {
-
-					var lockResults sync.Mutex
 					var seenResults = make(map[types.PartitionName][]types.EventNameTuple)
-
 					for recv := range received {
-
-						lockResults.Lock()
 						if _, ok := seenResults[recv.pn]; !ok {
 							seenResults[recv.pn] = []types.EventNameTuple{}
 						}
 						seenResults[recv.pn] = append(seenResults[recv.pn], types.EventNameTuple{Name: recv.pEv.Name(), Event: recv.ev})
-						lockResults.Unlock()
-
-						lastDiffLock.Lock()
-						lastDiff = cmp.Diff(expectedResult, seenResults)
-
-						if lastDiff == "" {
-							errs <- nil // signal the end of the test
-							lastDiffLock.Unlock()
-							return
-						}
-						lastDiffLock.Unlock()
-
+						diffs <- cmp.Diff(expectedResult, seenResults)
 					}
 				}(ctx, foundEvs)
 
@@ -305,15 +268,24 @@ func Test_Depot(t *testing.T) {
 					go partitionHandler(ctx, partition)
 				}
 
-				// wait for it to signal, anything other than nil
-				// indicates an error. whoever sends that error
-				// should send a useful debugging message.
-				err := <-errs
-				if err != nil {
-					t.Fatal(err)
+				var lastDiff string
+				for {
+					select {
+					case err := <-errs:
+						if err != nil {
+							t.Fatal(err)
+						}
+					case lastDiff = <-diffs:
+						if lastDiff == "" {
+							return
+						}
+					case <-ctx.Done():
+						t.Errorf("\nexpectedResults, seenResults differs: (-want +got)\n%s", lastDiff)
+						t.Fatal(ctx.Err())
+					}
 				}
-
 			})
+
 		})
 	}
 }
