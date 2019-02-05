@@ -27,6 +27,10 @@ type simplePartitionIterator struct {
 
 	pattern string
 	matcher PatternMatcher
+
+	subscribedOn <-chan types.RefMove
+
+	eventIterators map[string]types.EventIterator
 }
 
 func (s *simplePartitionIterator) Pattern() string {
@@ -41,15 +45,55 @@ func (s *simplePartitionIterator) Pattern() string {
 func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.EventIterator, <-chan error) {
 
 	var (
-		oStack cpAffixStack
 		out    = make(chan types.EventIterator)
+		stacks = make(chan cpAffixStack)
 		errOut = make(chan error, 1)
 	)
 
+	var emitPartitionIterator = func(ctx context.Context, out chan<- types.EventIterator, oStack cpAffixStack, kp string) {
+		// Check if we have a consumer for this
+		// already, doesn't check if that consumer
+		// is still behaving properly
+		// if _, ok := s.eventIterators[kp]; ok {
+		// 	return
+		// }
+		evIter := &simpleEventIterator{
+			objdb:         s.objdb,
+			matcher:       s.matcher,
+			eventManifest: s.eventManifest,
+			pattern:       kp,
+			tipHash:       s.tipHash,
+			stack:         oStack.s, // a *copy* of the stack, so we don't mutate it
+		}
+		select {
+		case out <- evIter:
+			s.eventIterators[kp] = evIter
+		case <-ctx.Done():
+			return
+		}
+	}
+
+	var collectRelevantCheckpoints = func(from, to types.Hash) error {
+		var st cpAffixStack
+		// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
+		// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
+		// breaks the loop and we come back here.
+		//
+		// TODO: make this respect "from" by never traversing too far backwards
+		var err = s.enqueueCheckpointIfRelevant(to, &st)
+		if err != nil {
+			return errors.Wrap(err, "error when stacking relevant partitions")
+		}
+		stacks <- st
+		return nil
+	}
+
 	go func() {
 
-		defer close(out)
-		defer close(errOut)
+		defer func() {
+			close(out)
+			close(errOut)
+		}()
 
 		// Resolve the head ref for the given ctx
 		checkpointHash, err := s.refdb.Retrieve(refFromCtx(ctx))
@@ -58,51 +102,32 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 			return
 		}
 
-		if s.tipHash == nil {
-			s.tipHash = checkpointHash
-		}
-
-		// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
-		// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
-		// breaks the loop and we come back here.
-		err = s.enqueueCheckpointIfRelevant(checkpointHash, &oStack)
-		if err != nil {
-			errOut <- errors.Wrap(err, "error when stacking relevant partitions")
-			return
-		}
-
-		// TODO: If we get here with no knownPartitions we never continue
-		// we should test for that.
-
-		// At this point the oStack should contain all Checkpoints that
-		// historically contained an Affix which contained a partition
-		// matching the pattern.
-		//
-		// We can use oStack.knownPartitions to emit the event emitters
-		// one, each for each partition. We give the SimpleEventIterator
-		// a copy of the oStack that we built, so it can pop them and match
-		// things against it's own pattern and sent them to the consumer.
-		for _, kp := range oStack.knownPartitions {
-
-			evIter := &simpleEventIterator{
-				objdb:         s.objdb,
-				matcher:       s.matcher,
-				eventManifest: s.eventManifest,
-				pattern:       string(kp),
-				tipHash:       s.tipHash,
-				stack:         oStack.s, // a copy of the stack, so we don't mutate it (?)
+		go func() {
+			err = collectRelevantCheckpoints(nil, checkpointHash)
+			if err != nil {
+				errOut <- errors.Wrap(err, "unknown reference, can't lookup partitions")
+				return
 			}
+		}()
+
+		for {
 			select {
-			case out <- evIter:
+			case newStack, ok := <-stacks:
+				if ok {
+					for _, kp := range newStack.knownPartitions {
+						emitPartitionIterator(ctx, out, newStack, string(kp))
+					}
+				}
+			case refMoved, ok := <-s.subscribedOn:
+				if ok {
+					go collectRelevantCheckpoints(refMoved.Old, refMoved.New)
+				}
 			case <-ctx.Done():
 				return
 			}
 		}
-	}()
 
-	// TODO: make something go looking for partitions on the stream
-	// maybe register a callback on the refdb to get changes in HEAD
-	// pointer?
+	}()
 
 	return out, errOut
 }

@@ -7,6 +7,12 @@ import (
 
 type NowFn func() time.Time
 
+type RefMove struct {
+	Old Hash
+	New Hash
+	FF  bool
+}
+
 type Hash interface {
 	String() string
 }

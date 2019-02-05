@@ -66,11 +66,16 @@ func Test_Depot(t *testing.T) {
 
 	// Events
 	var (
+		// common fixtures
 		setAuthorName1, _          = jp.PackEvent("set_author_name", DummyEvSetAuthorName{"Maxine Mustermann"})
 		setArticleTitle1, _        = jp.PackEvent("set_article_title", DummyEvSetArticleTitle{"event graph for noobs"})
 		associateArticleAuthor1, _ = jp.PackEvent("associate_article_author", DummyEvAssociateArticleAuthor{"author/maxine"})
 		setArticleTitle2, _        = jp.PackEvent("set_article_title", DummyEvSetArticleTitle{"learning event graph"})
 		setArticleBody1, _         = jp.PackEvent("set_article_body", DummyEvSetArticleBody{"lorem ipsum ..."})
+
+		// extended fixtures
+		setAuthorName2, _          = jp.PackEvent("set_author_name", DummyEvSetAuthorName{"Paul Peterson"})
+		associateArticleAuthor2, _ = jp.PackEvent("associate_article_author", DummyEvAssociateArticleAuthor{"author/paul"})
 	)
 
 	// Affixes
@@ -78,6 +83,12 @@ func Test_Depot(t *testing.T) {
 		affixOne, _   = jp.PackAffix(packing.Affix{"author/maxine": []types.Hash{setAuthorName1.Hash()}})
 		affixTwo, _   = jp.PackAffix(packing.Affix{"article/first": []types.Hash{setArticleTitle1.Hash(), associateArticleAuthor1.Hash()}})
 		affixThree, _ = jp.PackAffix(packing.Affix{"article/first": []types.Hash{setArticleTitle2.Hash(), setArticleBody1.Hash()}})
+
+		// extended
+		affixFour, _ = jp.PackAffix(packing.Affix{
+			"author/paul":    []types.Hash{setAuthorName2.Hash()},
+			"article/second": []types.Hash{associateArticleAuthor2.Hash()},
+		})
 	)
 
 	var clock = Predictable5sJumpClock{}
@@ -112,13 +123,24 @@ func Test_Depot(t *testing.T) {
 			},
 			ParentHashes: []types.Hash{checkpointTwo.Hash()},
 		})
+
+		// Extend
+		checkpointFour, _ = jp.PackCheckpoint(packing.Checkpoint{
+			AffixHash:   affixFour.Hash(),
+			CommandDesc: []byte(`{"update":"article"}`),
+			Fields: map[string]string{
+				"session": "hello world",
+				"date":    clock.Now().Format(time.RFC3339),
+			},
+			ParentHashes: []types.Hash{checkpointThree.Hash()},
+		})
 	)
 
-	tmpdir, err := ioutil.TempDir("", "depot_common_test")
+	baseTmpdir, err := ioutil.TempDir("", "depot_common_test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpdir)
+	defer os.RemoveAll(baseTmpdir)
 
 	// EventManifest is used to map event names back to prototypes
 	// of the original so that we can reconstruct them.
@@ -128,22 +150,36 @@ func Test_Depot(t *testing.T) {
 	evManifest.RegisterAs("set_article_body", &DummyEvSetArticleBody{})
 	evManifest.RegisterAs("associate_article_author", &DummyEvAssociateArticleAuthor{})
 
-	odbs := map[string]object.DB{
-		"memory": &memory.ObjectStore{},
-		"fs":     &fs.ObjectStore{BasePath: tmpdir},
+	odbs := map[string]func() object.DB{
+		"memory": func() object.DB {
+			return &memory.ObjectStore{}
+		},
+		"fs": func() object.DB {
+			// This dir is within baseTmpdir and will be removed
+			// when Test_Depot() ends
+			dir, err := ioutil.TempDir(baseTmpdir, "odb")
+			if err != nil {
+				t.Fatal(err)
+			}
+			return &fs.ObjectStore{BasePath: dir}
+		},
 	}
-	refdbs := map[string]ref.DB{
-		"memory": &memory.RefStore{},
-		"fs":     &fs.RefStore{BasePath: tmpdir},
-	}
-	depots := map[string]types.Depot{
-		"memory":    Simple{objdb: odbs["memory"], refdb: refdbs["memory"], eventManifest: evManifest},
-		"fs":        Simple{objdb: odbs["fs"], refdb: refdbs["fs"], eventManifest: evManifest},
-		"fs+memory": Simple{objdb: odbs["memory"], refdb: refdbs["fs"], eventManifest: evManifest},
-		"memory+fs": Simple{objdb: odbs["fs"], refdb: refdbs["memory"], eventManifest: evManifest},
+	refdbs := map[string]func() ref.DB{
+		"memory": func() ref.DB {
+			return &memory.RefStore{}
+		},
+		"fs": func() ref.DB {
+			// This dir is within baseTmpdir and will be removed
+			// when Test_Depot() ends
+			dir, err := ioutil.TempDir(baseTmpdir, "refdb")
+			if err != nil {
+				t.Fatal(err)
+			}
+			return &fs.RefStore{BasePath: dir}
+		},
 	}
 
-	for _, odb := range odbs {
+	var populateOdb = func(odb object.DB) object.DB {
 		odb.WritePacked(setAuthorName1)
 		odb.WritePacked(setArticleTitle1)
 		odb.WritePacked(associateArticleAuthor1)
@@ -157,13 +193,24 @@ func Test_Depot(t *testing.T) {
 		odb.WritePacked(checkpointOne)
 		odb.WritePacked(checkpointTwo)
 		odb.WritePacked(checkpointThree)
+		return odb
 	}
 
-	for _, refdb := range refdbs {
-		refdb.Write(DefaultBranchName, checkpointThree.Hash())
+	depotFns := map[string]func() types.Depot{
+		"memory": func() types.Depot {
+			var odb = populateOdb(odbs["memory"]())
+			return &Simple{
+				objdb:         odb,
+				refdb:         refdbs["memory"](),
+				eventManifest: evManifest,
+			}
+		},
+		// "fs":        &Simple{objdb: odbs["fs"], refdb: refdbs["fs"], eventManifest: evManifest},
+		// "fs+memory": &Simple{objdb: odbs["memory"], refdb: refdbs["fs"], eventManifest: evManifest},
+		// "memory+fs": &Simple{objdb: odbs["fs"], refdb: refdbs["memory"], eventManifest: evManifest},
 	}
 
-	for name, depot := range depots {
+	for name, depotFn := range depotFns {
 
 		t.Run(name, func(t *testing.T) {
 			t.Run("correctly checking for existence of aggregates", func(t *testing.T) {
@@ -174,6 +221,9 @@ func Test_Depot(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 
 			t.Run("iterates over correct events in correct order", func(t *testing.T) {
+
+				var depot = depotFn()
+				depot.MoveHeadPointer(nil, checkpointThree.Hash())
 
 				var (
 					expectedResult = map[types.PartitionName][]types.EventNameTuple{
@@ -189,7 +239,7 @@ func Test_Depot(t *testing.T) {
 					}
 
 					errs  = make(chan error, 1)
-					diffs = make(chan string, 1)
+					diffs = make(chan string)
 
 					foundEvs = make(chan struct {
 						pn  types.PartitionName
@@ -198,7 +248,7 @@ func Test_Depot(t *testing.T) {
 					})
 				)
 
-				var ctx, cancelFn = context.WithTimeout(context.Background(), 1000*time.Millisecond)
+				var ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
 				defer cancelFn()
 
 				var (
@@ -257,16 +307,16 @@ func Test_Depot(t *testing.T) {
 					}
 				}
 
-				var partitionHandler = func(ctx context.Context, evIter types.EventIterator) {
-					events, _ := evIter.Events(ctx)
-					for event := range events {
-						eventHandler(ctx, types.PartitionName(evIter.Pattern()), event)
+				go func() {
+					for partition := range partitions {
+						go func(ctx context.Context, evIter types.EventIterator) {
+							events, _ := evIter.Events(ctx)
+							for event := range events {
+								eventHandler(ctx, types.PartitionName(evIter.Pattern()), event)
+							}
+						}(ctx, partition)
 					}
-				}
-
-				for partition := range partitions {
-					go partitionHandler(ctx, partition)
-				}
+				}()
 
 				var lastDiff string
 				for {
@@ -286,6 +336,59 @@ func Test_Depot(t *testing.T) {
 				}
 			})
 
+			t.Run("propagates new partitions after a consumer has consumed all that existed at start time", func(t *testing.T) {
+
+				var depot = depotFn()
+				depot.MoveHeadPointer(nil, checkpointThree.Hash())
+
+				var ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancelFn()
+
+				var seenExpected int
+				var partitionInterator = depot.Glob(ctx, "*")
+				var partitions, partitionErrors = partitionInterator.Partitions(ctx)
+
+				// Test fixture has two existing partitions consume them both
+				_ = <-partitions
+				_ = <-partitions
+
+				//
+				// In a goroutine we will add a new partition and move the head pointer
+				// and the subscription mechanism should kick in, we could also do this
+				// on the main thread and do the test in a goroutine, it should make
+				// no difference
+				//
+				go func() {
+					depot.StorePacked(setAuthorName2)
+					depot.StorePacked(associateArticleAuthor2)
+					depot.StorePacked(affixFour)
+					depot.StorePacked(checkpointFour)
+					depot.MoveHeadPointer(checkpointThree.Hash(), checkpointFour.Hash())
+				}()
+
+				for {
+					select {
+					case <-ctx.Done():
+						t.Fatal(ctx.Err(), "waiting for expected condition")
+					case err, ok := <-partitionErrors:
+						if ok {
+							t.Fatal(err)
+						}
+					case newPartition, ok := <-partitions:
+						if !ok {
+							t.Fatalf("partition iterator unexpectedly closed its output chan")
+						}
+						if ok && (newPartition.Pattern() == "author/paul" || newPartition.Pattern() == "article/second") {
+							seenExpected += 1
+						} else {
+							t.Errorf("unexpected partition seen %s", newPartition.Pattern())
+						}
+						if seenExpected == 2 {
+							return // Quietly return as soon as we see two extra ones.
+						}
+					}
+				}
+			})
 		})
 	}
 }

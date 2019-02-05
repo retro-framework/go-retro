@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"testing"
 	"time"
 
@@ -67,12 +68,12 @@ func NewSimpleStub(t *testing.T,
 		t.Errorf("error writing packedCheckpoint to odb in NewSimpleStub")
 	}
 	refDB.Write(DefaultBranchName, packedCheckpoint.Hash())
-	return Simple{objdb: objDB, refdb: refDB}
+	return &Simple{objdb: objDB, refdb: refDB}
 }
 
 // EmptySimpleMemory returns an empty depot to keep the type system happy
 func EmptySimpleMemory() types.Depot {
-	return Simple{
+	return &Simple{
 		objdb: &memory.ObjectStore{},
 		refdb: &memory.RefStore{},
 	}
@@ -87,6 +88,8 @@ type Simple struct {
 	refdb ref.DB
 
 	eventManifest types.EventManifest
+
+	subscribers []chan<- types.RefMove
 }
 
 func (s Simple) Dump(w io.Writer) (int, error) {
@@ -131,13 +134,17 @@ func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionNam
 }
 
 // Glob makes the world go round
-func (s Simple) Glob(_ context.Context, partition string) types.PartitionIterator {
+func (s *Simple) Glob(_ context.Context, partition string) types.PartitionIterator {
+	var subscriberNotificationCh = make(chan types.RefMove)
+	s.subscribers = append(s.subscribers, subscriberNotificationCh)
 	return &simplePartitionIterator{
-		objdb:         s.objdb,
-		refdb:         s.refdb,
-		eventManifest: s.eventManifest,
-		pattern:       partition,
-		matcher:       GlobPatternMatcher{},
+		objdb:          s.objdb,
+		refdb:          s.refdb,
+		eventManifest:  s.eventManifest,
+		pattern:        partition,
+		matcher:        GlobPatternMatcher{},
+		subscribedOn:   subscriberNotificationCh,
+		eventIterators: make(map[string]types.EventIterator),
 	}
 }
 
@@ -160,7 +167,35 @@ func (s Simple) StorePacked(packed ...types.HashedObject) error {
 // to make this not totally unsafe
 func (s Simple) MoveHeadPointer(old, new types.Hash) error {
 	_, err := s.refdb.Write(DefaultBranchName, new)
+	if err == nil {
+		s.notifySubscribers(old, new)
+	}
 	return err
+}
+
+// notifySubscribers takes old,new so that we can notify subscribers whether
+// this is fast forward or not. That _should_ be as easy as fetching the
+// new from the store, and checking that it has the old one as its only
+// parent hash.
+//
+// Probably significant that this receives a _copy_ of subscribers, as the
+// receiver is not a pointer type.
+//
+// It also comes to my mind whether subscribers can be global, or whether
+// they need to be differentiated by which pattern they searched for
+// I suspect "global" (to the Depot instance) is ok for the time being.
+func (s Simple) notifySubscribers(old, new types.Hash) error {
+	for _, subscriber := range s.subscribers {
+		go func(subscriber chan<- types.RefMove) {
+			select {
+			case subscriber <- types.RefMove{Old: old, New: new}:
+				// TODO: something about metrics ?
+			case <-time.After(1 * time.Minute):
+				fmt.Fprintf(os.Stderr, "blocked for one minute waiting to notify subscriber, skipping.")
+			}
+		}(subscriber)
+	}
+	return nil
 }
 
 type relevantCheckpoint struct {
