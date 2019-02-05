@@ -80,7 +80,7 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		// breaks the loop and we come back here.
 		//
 		// TODO: make this respect "from" by never traversing too far backwards
-		var err = s.enqueueCheckpointIfRelevant(to, &st)
+		var err = s.enqueueCheckpointIfRelevant(from, to, &st)
 		if err != nil {
 			return errors.Wrap(err, "error when stacking relevant partitions")
 		}
@@ -136,15 +136,15 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(checkpointObjHash types.Hash, st *cpAffixStack) error {
+func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash types.Hash, st *cpAffixStack) error {
 
 	var jp *packing.JSONPacker
 
 	// Unpack a Checkpoint
-	packedCheckpoint, err := s.objdb.RetrievePacked(checkpointObjHash.String())
+	packedCheckpoint, err := s.objdb.RetrievePacked(toHash.String())
 	if err != nil {
 		// TODO: test this case
-		return errors.Wrap(err, fmt.Sprintf("can't read object %s", checkpointObjHash.String()))
+		return errors.Wrap(err, fmt.Sprintf("can't read object %s", toHash.String()))
 	}
 
 	if packedCheckpoint.Type() != packing.ObjectTypeCheckpoint {
@@ -155,7 +155,7 @@ func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(checkpointObjHash 
 	checkpoint, err := jp.UnpackCheckpoint(packedCheckpoint.Contents())
 	if err != nil {
 		// TODO: test this case
-		return errors.Wrap(err, fmt.Sprintf("can't read object %s", checkpointObjHash.String()))
+		return errors.Wrap(err, fmt.Sprintf("can't read object %s", toHash.String()))
 	}
 
 	// Unpack the Affix
@@ -188,7 +188,7 @@ func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(checkpointObjHash 
 			dateStr, ok := checkpoint.Fields["date"]
 			if !ok {
 				// TODO: test this case
-				return fmt.Errorf("error retrieving date field from checkpoint fields (checkpoint hash %s)", checkpointObjHash.String())
+				return fmt.Errorf("error retrieving date field from checkpoint fields (checkpoint hash %s)", toHash.String())
 			}
 
 			t, err := time.Parse(time.RFC3339, dateStr)
@@ -209,7 +209,14 @@ func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(checkpointObjHash 
 	// subject possibly to the order the hashes are written by the packer, which I believe to be alphabetic
 	// Either way we should peek into a structure and find out which checkpoint is younger and start there
 	for _, parentCheckpointHash := range checkpoint.ParentHashes {
-		err := s.enqueueCheckpointIfRelevant(parentCheckpointHash, st)
+		// early return, we've come as far back in the ancestry
+		// as we were asked.
+		if parentCheckpointHash != nil && fromHash != nil {
+			if parentCheckpointHash.String() == fromHash.String() {
+				return nil
+			}
+		}
+		err := s.enqueueCheckpointIfRelevant(fromHash, parentCheckpointHash, st)
 		if err != nil {
 			errors.Wrap(err, fmt.Sprintf("error looking up parent hash %s for checkpoint %s", parentCheckpointHash.String(), packedCheckpoint.Hash().String()))
 		}
