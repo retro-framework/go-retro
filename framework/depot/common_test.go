@@ -85,9 +85,13 @@ func Test_Depot(t *testing.T) {
 		affixThree, _ = jp.PackAffix(packing.Affix{"article/first": []types.Hash{setArticleTitle2.Hash(), setArticleBody1.Hash()}})
 
 		// extended
-		affixFour, _ = jp.PackAffix(packing.Affix{
+		affixFourA, _ = jp.PackAffix(packing.Affix{
 			"author/paul":    []types.Hash{setAuthorName2.Hash()},
 			"article/second": []types.Hash{associateArticleAuthor2.Hash()},
+		})
+
+		affixFourB, _ = jp.PackAffix(packing.Affix{
+			"article/first": []types.Hash{associateArticleAuthor2.Hash()},
 		})
 	)
 
@@ -125,8 +129,18 @@ func Test_Depot(t *testing.T) {
 		})
 
 		// Extend
-		checkpointFour, _ = jp.PackCheckpoint(packing.Checkpoint{
-			AffixHash:   affixFour.Hash(),
+		checkpointFourA, _ = jp.PackCheckpoint(packing.Checkpoint{
+			AffixHash:   affixFourA.Hash(),
+			CommandDesc: []byte(`{"update":"article"}`),
+			Fields: map[string]string{
+				"session": "hello world",
+				"date":    clock.Now().Format(time.RFC3339),
+			},
+			ParentHashes: []types.Hash{checkpointThree.Hash()},
+		})
+
+		checkpointFourB, _ = jp.PackCheckpoint(packing.Checkpoint{
+			AffixHash:   affixFourB.Hash(),
 			CommandDesc: []byte(`{"update":"article"}`),
 			Fields: map[string]string{
 				"session": "hello world",
@@ -331,7 +345,7 @@ func Test_Depot(t *testing.T) {
 						}
 					case <-ctx.Done():
 						t.Errorf("\nexpectedResults, seenResults differs: (-want +got)\n%s", lastDiff)
-						t.Fatal(ctx.Err())
+						t.Fatal("test failed", ctx.Err())
 					}
 				}
 			})
@@ -361,9 +375,9 @@ func Test_Depot(t *testing.T) {
 				go func() {
 					depot.StorePacked(setAuthorName2)
 					depot.StorePacked(associateArticleAuthor2)
-					depot.StorePacked(affixFour)
-					depot.StorePacked(checkpointFour)
-					depot.MoveHeadPointer(checkpointThree.Hash(), checkpointFour.Hash())
+					depot.StorePacked(affixFourA)
+					depot.StorePacked(checkpointFourA)
+					depot.MoveHeadPointer(checkpointThree.Hash(), checkpointFourA.Hash())
 				}()
 
 				for {
@@ -388,6 +402,90 @@ func Test_Depot(t *testing.T) {
 						}
 					}
 				}
+			})
+
+			t.Run("propagates new events after a consumer has reached the head pointer", func(t *testing.T) {
+				var depot = depotFn()
+				depot.MoveHeadPointer(nil, checkpointThree.Hash())
+
+				var ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancelFn()
+
+				var conditionMet = make(chan struct{})
+				var partitionInterator = depot.Glob(ctx, "*")
+				var partitions, partitionErrors = partitionInterator.Partitions(ctx)
+
+				var saveNewDataAndMoveHeadPointer = func() {
+					depot.StorePacked(associateArticleAuthor2)
+					depot.StorePacked(affixFourB)
+					depot.StorePacked(checkpointFourB)
+					depot.MoveHeadPointer(checkpointThree.Hash(), checkpointFourB.Hash())
+				}
+
+				var handleEvents = func(ctx context.Context, evi types.EventIterator) {
+					events, errors := evi.Events(ctx)
+					for {
+						select {
+
+						case e, ok := <-events:
+							if !ok {
+								t.Error("event iterator closed its output channel, should not happen")
+								return
+							}
+							// This code path consumes _all_ events noy only after the head
+							// pointer move. The guard in the for{ select {}} } loop below
+							// however ensures that the head pointer is not moved until we've
+							// consumed at least two partitions of events. This means that this
+							// test should testing the right thing, but it would benefit from
+							// a refactoring.
+							ev, _ := e.Event()
+							if setAuthorName, ok := ev.(DummyEvAssociateArticleAuthor); ok {
+								if setAuthorName.AuthorURN == "author/paul" {
+									// Exit condition ensures
+									// we don't hit the timeout
+									// and fail, we've seen the condition/
+									// we were expecting.
+									conditionMet <- struct{}{}
+									return
+								}
+							}
+						case err, ok := <-errors:
+							if !ok {
+								t.Error("event iterator closed channel, should not happen")
+								return
+							}
+							if err != nil {
+								t.Error("event emitter erred", err)
+							}
+						case <-ctx.Done():
+							return
+						}
+					}
+				}
+
+				var seenPartitions int
+				for {
+					select {
+					case p, ok := <-partitions:
+						if ok {
+							go handleEvents(ctx, p)
+							seenPartitions++
+							if seenPartitions == 2 {
+								saveNewDataAndMoveHeadPointer()
+							}
+						} else {
+							t.Error("partitions iterator closed channel, should not happen")
+						}
+					case pErr := <-partitionErrors:
+						t.Error("partiton iterator emitted error", pErr)
+					case <-conditionMet:
+						ctx = nil
+						return
+					case <-ctx.Done():
+						t.Fatal("test failed", ctx.Err())
+					}
+				}
+
 			})
 		})
 	}

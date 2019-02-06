@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang-collections/collections/stack"
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -26,7 +25,8 @@ type simpleEventIterator struct {
 
 	pattern string
 
-	stack   stack.Stack
+	stackCh chan cpAffixStack
+
 	matcher PatternMatcher
 }
 
@@ -47,23 +47,15 @@ func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.Persiste
 	var (
 		out    = make(chan types.PersistedEvent)
 		errOut = make(chan error, 1)
+		jp     *packing.JSONPacker
 	)
 
-	go func() {
-
-		defer close(out)
-		defer close(errOut)
-
-		var jp *packing.JSONPacker
-
+	var drainStack = func(ctx context.Context, out chan<- types.PersistedEvent, errOut chan<- error, stack cpAffixStack) {
 		for {
-
-			rC := s.stack.Pop()
-			if rC == nil {
+			var h = stack.Pop()
+			if h == nil {
 				break
 			}
-
-			h := rC.(relevantCheckpoint)
 			for partitionName, affixEvHashes := range h.affix {
 				match, err := s.matcher.DoesMatch(string(partitionName), s.pattern)
 				if err != nil {
@@ -101,14 +93,28 @@ func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.Persiste
 							cpHash:        h.checkpointHash,
 							eventManifest: s.eventManifest,
 						}
-
 						select {
 						case out <- pEv:
+							// TODO: metrics (rates?)
 						case <-ctx.Done():
 							return
 						}
 					}
 				}
+			}
+		}
+	}
+
+	go func() {
+		defer close(out)
+		defer close(errOut)
+		for {
+			select {
+			case stack := <-s.stackCh:
+				drainStack(ctx, out, errOut, stack)
+			case <-ctx.Done():
+				// fmt.Println("ei: ", ctx.Err())
+				return
 			}
 		}
 	}()

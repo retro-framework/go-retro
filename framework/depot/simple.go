@@ -144,7 +144,7 @@ func (s *Simple) Glob(_ context.Context, partition string) types.PartitionIterat
 		pattern:        partition,
 		matcher:        GlobPatternMatcher{},
 		subscribedOn:   subscriberNotificationCh,
-		eventIterators: make(map[string]types.EventIterator),
+		eventIterators: make(map[string]*simpleEventIterator),
 	}
 }
 

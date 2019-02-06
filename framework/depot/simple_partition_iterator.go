@@ -30,7 +30,7 @@ type simplePartitionIterator struct {
 
 	subscribedOn <-chan types.RefMove
 
-	eventIterators map[string]types.EventIterator
+	eventIterators map[string]*simpleEventIterator
 }
 
 func (s *simplePartitionIterator) Pattern() string {
@@ -54,19 +54,21 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		// Check if we have a consumer for this
 		// already, doesn't check if that consumer
 		// is still behaving properly
-		// if _, ok := s.eventIterators[kp]; ok {
-		// 	return
-		// }
+		if existingEvIter, ok := s.eventIterators[kp]; ok {
+			existingEvIter.stackCh <- oStack
+			return
+		}
 		evIter := &simpleEventIterator{
 			objdb:         s.objdb,
 			matcher:       s.matcher,
 			eventManifest: s.eventManifest,
 			pattern:       kp,
 			tipHash:       s.tipHash,
-			stack:         oStack.s, // a *copy* of the stack, so we don't mutate it
+			stackCh:       make(chan cpAffixStack, 1), // TODO: buffered or not ?
 		}
 		select {
 		case out <- evIter:
+			evIter.stackCh <- oStack
 			s.eventIterators[kp] = evIter
 		case <-ctx.Done():
 			return
@@ -78,8 +80,6 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 		// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
 		// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
 		// breaks the loop and we come back here.
-		//
-		// TODO: make this respect "from" by never traversing too far backwards
 		var err = s.enqueueCheckpointIfRelevant(from, to, &st)
 		if err != nil {
 			return errors.Wrap(err, "error when stacking relevant partitions")
