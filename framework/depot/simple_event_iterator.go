@@ -16,13 +16,6 @@ type simpleEventIterator struct {
 
 	eventManifest types.EventManifest
 
-	// tipHash is the known "tip" where we started,
-	// name is chosen to avoid conflating "head" and "ref"
-	// when starting a partition iterator which will start
-	// the event iterator, tipHash will be equal to the head
-	// ref, but symbolic refs are just for user friendliness
-	tipHash types.Hash
-
 	pattern string
 
 	stackCh chan cpAffixStack
@@ -32,10 +25,6 @@ type simpleEventIterator struct {
 
 func (s *simpleEventIterator) Pattern() string {
 	return s.pattern
-}
-
-func (s *simpleEventIterator) TipHash() types.Hash {
-	return s.tipHash
 }
 
 func (s *simpleEventIterator) Next() types.PersistedEvent {

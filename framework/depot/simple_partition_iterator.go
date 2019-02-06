@@ -18,13 +18,6 @@ type simplePartitionIterator struct {
 
 	eventManifest types.EventManifest
 
-	// tipHash is the known "tip" where we started,
-	// name is chosen to avoid conflating "head" and "ref"
-	// when starting a partition iterator which will start
-	// the event iterator, tipHash will be equal to the head
-	// ref, but symbolic refs are just for user friendliness
-	tipHash types.Hash
-
 	pattern string
 	matcher PatternMatcher
 
@@ -63,7 +56,6 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 			matcher:       s.matcher,
 			eventManifest: s.eventManifest,
 			pattern:       kp,
-			tipHash:       s.tipHash,
 			stackCh:       make(chan cpAffixStack, 1), // TODO: buffered or not ?
 		}
 		select {
