@@ -51,12 +51,18 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 			existingEvIter.stackCh <- oStack
 			return
 		}
+		//
+		// stackCh is buffered because without the ability to
+		// enqueue one stack before the partition consumer
+		// begins to process the stack we would block already
+		// before being able to return from this function.
+		//
 		evIter := &simpleEventIterator{
 			objdb:         s.objdb,
 			matcher:       s.matcher,
 			eventManifest: s.eventManifest,
 			pattern:       kp,
-			stackCh:       make(chan cpAffixStack, 1), // TODO: buffered or not ?
+			stackCh:       make(chan cpAffixStack, 1),
 		}
 		select {
 		case out <- evIter:
