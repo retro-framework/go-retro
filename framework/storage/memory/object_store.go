@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"sync"
 
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/types"
@@ -17,16 +18,22 @@ var (
 )
 
 type ObjectStore struct {
+	sync.RWMutex
 	o map[string][]byte
 }
 
 func (os *ObjectStore) ListObjects() {
+	os.RLock()
+	defer os.RUnlock()
 	for k, _ := range os.o {
 		fmt.Println(k)
 	}
 }
 
 func (os *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
+
+	os.Lock()
+	defer os.Unlock()
 
 	if os.o == nil {
 		os.o = make(map[string][]byte)
@@ -53,6 +60,9 @@ func (os *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
 // algo/etc to the right values., the new PackedObject could be kept and
 // maybe simply take an AlgoName in the second position?
 func (os *ObjectStore) RetrievePacked(s string) (types.HashedObject, error) {
+	os.RLock()
+	defer os.RUnlock()
+
 	if poB, ok := os.o[s]; ok {
 
 		b := bytes.NewReader(poB)
