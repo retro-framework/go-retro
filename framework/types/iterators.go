@@ -48,5 +48,6 @@ type PartitionIterator interface {
 // may hold locks on some underlaying resources.
 type EventIterator interface {
 	Pattern() string
+	Next(context.Context) (PersistedEvent, error)
 	Events(context.Context) (<-chan PersistedEvent, <-chan error)
 }

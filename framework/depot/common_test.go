@@ -502,9 +502,26 @@ func Test_Depot(t *testing.T) {
 						}
 						if err != nil {
 							t.Fatal(err)
+							return
 						}
 						if authorEvents != nil && authorEvents.Pattern() == "author/maxine" {
-							success <- true
+							for {
+								var ev, err = authorEvents.Next(ctx)
+								if err == Done {
+									continue
+								}
+								if err != nil {
+									t.Fatal(err)
+									return
+								}
+								// TODO: without the nil guard the line below sometimes
+								// sees a nil event, the two conditions above should
+								// have prevented that.
+								if ev != nil && ev.Name() == "set_author_name" {
+									success <- true
+								}
+							}
+
 						}
 					}
 				}()
