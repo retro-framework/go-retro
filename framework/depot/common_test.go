@@ -521,7 +521,6 @@ func Test_Depot(t *testing.T) {
 									success <- true
 								}
 							}
-
 						}
 					}
 				}()

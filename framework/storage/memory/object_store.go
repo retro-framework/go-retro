@@ -25,7 +25,7 @@ type ObjectStore struct {
 func (os *ObjectStore) ListObjects() {
 	os.RLock()
 	defer os.RUnlock()
-	for k, _ := range os.o {
+	for k := range os.o {
 		fmt.Println(k)
 	}
 }
@@ -73,6 +73,7 @@ func (os *ObjectStore) RetrievePacked(s string) (types.HashedObject, error) {
 		r.Close()
 
 		orig, _ := ioutil.ReadAll(r)
+		// TODO: Handle error case above
 
 		return packing.NewPackedObject(string(orig)), nil
 	}
