@@ -42,7 +42,6 @@ type PersistedEvent interface {
 	Bytes() []byte
 	CheckpointHash() Hash
 	PartitionName() PartitionName
-	Event() (Event, error)
 }
 
 // Logger is the generic logging interface. It explicitly avoids including

@@ -3,6 +3,7 @@
 package depot
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"log"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/events" // TODO: Fix this don't reach out of framework!
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -214,9 +214,8 @@ func Test_Depot(t *testing.T) {
 		"memory": func() types.Depot {
 			var odb = populateOdb(odbs["memory"]())
 			return &Simple{
-				objdb:         odb,
-				refdb:         refdbs["memory"](),
-				eventManifest: evManifest,
+				objdb: odb,
+				refdb: refdbs["memory"](),
 			}
 		},
 		// "fs":        &Simple{objdb: odbs["fs"], refdb: refdbs["fs"], eventManifest: evManifest},
@@ -240,15 +239,13 @@ func Test_Depot(t *testing.T) {
 				depot.MoveHeadPointer(nil, checkpointThree.Hash())
 
 				var (
-					expectedResult = map[types.PartitionName][]types.EventNameTuple{
-						"author/maxine": []types.EventNameTuple{
-							{Name: "set_author_name", Event: DummyEvSetAuthorName{"Maxine Mustermann"}},
-						},
-						"article/first": []types.EventNameTuple{
-							{Name: "set_article_title", Event: DummyEvSetArticleTitle{"event graph for noobs"}},
-							{Name: "associate_article_author", Event: DummyEvAssociateArticleAuthor{"author/maxine"}},
-							{Name: "set_article_title", Event: DummyEvSetArticleTitle{"learning event graph"}},
-							{Name: "set_article_body", Event: DummyEvSetArticleBody{"lorem ipsum ..."}},
+					expectedResult = map[types.PartitionName][]string{
+						"author/maxine": []string{"set_author_name"},
+						"article/first": []string{
+							"set_article_title",
+							"associate_article_author",
+							"set_article_title",
+							"set_article_body",
 						},
 					}
 
@@ -258,7 +255,6 @@ func Test_Depot(t *testing.T) {
 					foundEvs = make(chan struct {
 						pn  types.PartitionName
 						pEv types.PersistedEvent
-						ev  types.Event
 					})
 				)
 
@@ -291,14 +287,14 @@ func Test_Depot(t *testing.T) {
 				go func(ctx context.Context, received chan struct {
 					pn  types.PartitionName
 					pEv types.PersistedEvent
-					ev  types.Event
 				}) {
-					var seenResults = make(map[types.PartitionName][]types.EventNameTuple)
+					var seenResults = make(map[types.PartitionName][]string)
 					for recv := range received {
-						if _, ok := seenResults[recv.pn]; !ok {
-							seenResults[recv.pn] = []types.EventNameTuple{}
-						}
-						seenResults[recv.pn] = append(seenResults[recv.pn], types.EventNameTuple{Name: recv.pEv.Name(), Event: recv.ev})
+						// TODO: redundant, I think
+						// if _, ok := seenResults[recv.pn]; !ok {
+						// 	seenResults[recv.pn] = make([]string. 0)
+						// }
+						seenResults[recv.pn] = append(seenResults[recv.pn], recv.pEv.Name())
 						diffs <- cmp.Diff(expectedResult, seenResults)
 					}
 				}(ctx, foundEvs)
@@ -306,18 +302,12 @@ func Test_Depot(t *testing.T) {
 				// Event handler makes a tuple of the data about the event, and sends
 				// it on the channel where the results are being collected
 				var eventHandler = func(ctx context.Context, pn types.PartitionName, pEv types.PersistedEvent) {
-					ev, err := pEv.Event()
-					if err != nil {
-						errs <- errors.Wrap(err, "error in event handler")
-					}
 					foundEvs <- struct {
 						pn  types.PartitionName
 						pEv types.PersistedEvent
-						ev  types.Event
 					}{
 						pn:  pn,
 						pEv: pEv,
-						ev:  ev,
 					}
 				}
 
@@ -429,22 +419,16 @@ func Test_Depot(t *testing.T) {
 								events = nil
 								return
 							}
-							// This code path consumes _all_ events noy only after the head
+							// This code path consumes _all_ events not only after the head
 							// pointer move. The guard in the for{ select {}} } loop below
 							// however ensures that the head pointer is not moved until we've
 							// consumed at least two partitions of events. This means that this
 							// test should testing the right thing, but it would benefit from
 							// a refactoring.
-							ev, _ := e.Event()
-							if setAuthorName, ok := ev.(DummyEvAssociateArticleAuthor); ok {
-								if setAuthorName.AuthorURN == "author/paul" {
-									// Exit condition ensures
-									// we don't hit the timeout
-									// and fail, we've seen the condition/
-									// we were expecting.
-									success <- true
-									return
-								}
+							if e.Name() == "associate_article_author" &&
+								bytes.Compare(e.Bytes(), []byte(`{"AuthorURN":"author/maxine"}`)) == 0 {
+								success <- true
+								return
 							}
 						case err, ok := <-errors:
 							if !ok {

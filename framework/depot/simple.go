@@ -87,8 +87,6 @@ type Simple struct {
 	objdb object.DB
 	refdb ref.DB
 
-	eventManifest types.EventManifest
-
 	subscribers []chan<- types.RefMove
 }
 
@@ -140,7 +138,6 @@ func (s *Simple) Glob(_ context.Context, partition string) types.PartitionIterat
 	return &simplePartitionIterator{
 		objdb:          s.objdb,
 		refdb:          s.refdb,
-		eventManifest:  s.eventManifest,
 		pattern:        partition,
 		matcher:        GlobPatternMatcher{},
 		subscribedOn:   subscriberNotificationCh,

@@ -14,8 +14,6 @@ import (
 type simpleEventIterator struct {
 	objdb object.DB
 
-	eventManifest types.EventManifest
-
 	pattern string
 
 	stackCh chan cpAffixStack
@@ -101,7 +99,6 @@ func (s *simpleEventIterator) events(ctx context.Context, out chan types.Persist
 							name:          evName,
 							partitionName: types.PartitionName(s.pattern),
 							cpHash:        h.checkpointHash,
-							eventManifest: s.eventManifest,
 						}
 						select {
 						case out <- pEv:

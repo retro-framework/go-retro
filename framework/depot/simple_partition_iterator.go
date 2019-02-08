@@ -18,8 +18,6 @@ type simplePartitionIterator struct {
 	objdb object.DB
 	refdb ref.DB
 
-	eventManifest types.EventManifest
-
 	pattern string
 	matcher PatternMatcher
 
@@ -80,11 +78,10 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types
 		// before being able to return from this function.
 		//
 		evIter := &simpleEventIterator{
-			objdb:         s.objdb,
-			matcher:       s.matcher,
-			eventManifest: s.eventManifest,
-			pattern:       kp,
-			stackCh:       make(chan cpAffixStack, 1),
+			objdb:   s.objdb,
+			matcher: s.matcher,
+			pattern: kp,
+			stackCh: make(chan cpAffixStack, 1),
 		}
 		select {
 		case out <- evIter:
