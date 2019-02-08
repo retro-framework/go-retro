@@ -389,9 +389,6 @@ func Test_Depot(t *testing.T) {
 							t.Fatal(err)
 						}
 					case newPartition, ok := <-partitions:
-						if !ok {
-							t.Fatalf("partition iterator unexpectedly closed its output chan")
-						}
 						if ok && (newPartition.Pattern() == "author/paul" || newPartition.Pattern() == "article/second") {
 							seenExpected += 1
 						} else {
@@ -411,7 +408,7 @@ func Test_Depot(t *testing.T) {
 				var ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
 				defer cancelFn()
 
-				var conditionMet = make(chan struct{})
+				var success = make(chan bool)
 				var partitionInterator = depot.Glob(ctx, "*")
 				var partitions, partitionErrors = partitionInterator.Partitions(ctx)
 
@@ -429,7 +426,7 @@ func Test_Depot(t *testing.T) {
 
 						case e, ok := <-events:
 							if !ok {
-								t.Error("event iterator closed its output channel, should not happen")
+								events = nil
 								return
 							}
 							// This code path consumes _all_ events noy only after the head
@@ -445,13 +442,13 @@ func Test_Depot(t *testing.T) {
 									// we don't hit the timeout
 									// and fail, we've seen the condition/
 									// we were expecting.
-									conditionMet <- struct{}{}
+									success <- true
 									return
 								}
 							}
 						case err, ok := <-errors:
 							if !ok {
-								t.Error("event iterator closed channel, should not happen")
+								errors = nil
 								return
 							}
 							if err != nil {
@@ -473,13 +470,11 @@ func Test_Depot(t *testing.T) {
 							if seenPartitions == 2 {
 								saveNewDataAndMoveHeadPointer()
 							}
-						} else {
-							t.Error("partitions iterator closed channel, should not happen")
 						}
 					case pErr := <-partitionErrors:
 						t.Error("partiton iterator emitted error", pErr)
-					case <-conditionMet:
-						ctx = nil
+					case <-success:
+						ctx = nil // prevent reading from ctx
 						return
 					case <-ctx.Done():
 						t.Fatal("test failed", ctx.Err())
