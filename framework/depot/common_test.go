@@ -482,6 +482,40 @@ func Test_Depot(t *testing.T) {
 				}
 
 			})
+
+			t.Run("has a simple next API that does not rely on channels", func(t *testing.T) {
+
+				var success = make(chan bool)
+
+				var depot = depotFn()
+				depot.MoveHeadPointer(nil, checkpointThree.Hash())
+
+				var ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancelFn()
+
+				go func() {
+					var authors = depot.Glob(ctx, "author/*")
+					for {
+						authorEvents, err := authors.Next(ctx)
+						if err == Done {
+							continue
+						}
+						if err != nil {
+							t.Fatal(err)
+						}
+						if authorEvents != nil && authorEvents.Pattern() == "author/maxine" {
+							success <- true
+						}
+					}
+				}()
+
+				select {
+				case <-ctx.Done():
+					t.Fatal("test failed", ctx.Err())
+				case <-success:
+					return
+				}
+			})
 		})
 	}
 }

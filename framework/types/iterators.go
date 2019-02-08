@@ -30,8 +30,8 @@ type PartitionCursor interface {
 // approach ideal for a for p.Next() use-case.
 type PartitionIterator interface {
 	Pattern() string
+	Next(context.Context) (EventIterator, error)
 	Partitions(context.Context) (<-chan EventIterator, <-chan error)
-	// PartitionCursor(context.Context) PartitionCursor
 }
 
 // EventIterator is a simple Iterator interface which should mean that we

@@ -12,6 +12,8 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
+var Done = fmt.Errorf("iterator depleted: done")
+
 type simplePartitionIterator struct {
 	objdb object.DB
 	refdb ref.DB
@@ -24,24 +26,44 @@ type simplePartitionIterator struct {
 	subscribedOn <-chan types.RefMove
 
 	eventIterators map[string]*simpleEventIterator
+
+	out    chan types.EventIterator
+	outErr chan error
 }
 
 func (s *simplePartitionIterator) Pattern() string {
 	return s.pattern
 }
 
-// Partitions returns a channel which emits partition event iterators
-// which in turn emit events.
-//
-// TODO: decide how this should handle errors.
-// Reminder: errors are values
-func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.EventIterator, <-chan error) {
+func (s *simplePartitionIterator) Next(ctx context.Context) (types.EventIterator, error) {
 
+	if s.out == nil && s.outErr == nil {
+		s.out = make(chan types.EventIterator)
+		s.outErr = make(chan error, 1)
+		go s.partitions(ctx, s.out, s.outErr)
+	}
+
+	select {
+	case evIter := <-s.out:
+		return evIter, nil
+	case err := <-s.outErr:
+		return nil, err
+	case <-ctx.Done():
+		return nil, Done
+	}
+}
+
+func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.EventIterator, <-chan error) {
 	var (
 		out    = make(chan types.EventIterator)
-		stacks = make(chan cpAffixStack)
-		errOut = make(chan error, 1)
+		outErr = make(chan error, 1)
 	)
+	return s.partitions(ctx, out, outErr)
+}
+
+func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types.EventIterator, outErr chan error) (<-chan types.EventIterator, <-chan error) {
+
+	var stacks = make(chan cpAffixStack)
 
 	var emitPartitionIterator = func(ctx context.Context, out chan<- types.EventIterator, oStack cpAffixStack, kp string) {
 		// Check if we have a consumer for this
@@ -90,20 +112,20 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 
 		defer func() {
 			close(out)
-			close(errOut)
+			close(outErr)
 		}()
 
 		// Resolve the head ref for the given ctx
 		checkpointHash, err := s.refdb.Retrieve(refFromCtx(ctx))
 		if err != nil {
-			errOut <- errors.Wrap(err, "unknown reference, can't lookup partitions")
+			outErr <- errors.Wrap(err, "unknown reference, can't lookup partitions")
 			return
 		}
 
 		go func() {
 			err = collectRelevantCheckpoints(nil, checkpointHash)
 			if err != nil {
-				errOut <- errors.Wrap(err, "unknown reference, can't lookup partitions")
+				outErr <- errors.Wrap(err, "unknown reference, can't lookup partitions")
 				return
 			}
 		}()
@@ -127,7 +149,7 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 
 	}()
 
-	return out, errOut
+	return out, outErr
 }
 
 // enqueueCheckpointIfRelevant pushes checkpoint hashes and affix metadata onto a stack
