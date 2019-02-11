@@ -44,6 +44,10 @@ Extra flags can be provided to `go test` by setting `GOTESTFLAGS` for example:
 Of course, all combinations are also supported. These are exposed to GNU Make as
 environment variables, so they can also be baked into scripts or `export ...=...`ed in your shell.
 
+## Running Development Server
+
+    $ STORAGE_PATH=./depot_common_test519643404 ~/go/bin/gin run demo-server.go
+
 ## Notes:
 
     type CmdArgs struct {
