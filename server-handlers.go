@@ -13,7 +13,74 @@ import (
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/types"
 )
+
+type aggregateManifestServer struct {
+	m types.AggregateManifest
+}
+
+func (ms aggregateManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+	if lAggregate, ok := ms.m.(types.ListingAggregateManifest); ok {
+		var enc = json.NewEncoder(w)
+		enc.SetIndent("", "    ")
+		err := enc.Encode(lAggregate.List())
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+	} else {
+		http.Error(w, http.StatusText(501), 501)
+	}
+}
+
+type commandManifestServer struct {
+	m types.CommandManifest
+}
+
+func (ms commandManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+	if lCommand, ok := ms.m.(types.ListingCommandManifest); ok {
+		var enc = json.NewEncoder(w)
+		enc.SetIndent("", "    ")
+		err := enc.Encode(lCommand.List())
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+	} else {
+		http.Error(w, http.StatusText(501), 501)
+	}
+}
+
+type eventManifestServer struct {
+	m types.EventManifest
+}
+
+func (ms eventManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+	if lEvent, ok := ms.m.(types.ListingEventManifest); ok {
+		var enc = json.NewEncoder(w)
+		enc.SetIndent("", "    ")
+		err := enc.Encode(lEvent.List())
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+	} else {
+		http.Error(w, http.StatusText(501), 501)
+	}
+}
 
 type objectDBServer struct {
 	db object.DB

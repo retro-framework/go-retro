@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -22,7 +21,6 @@ import (
 	"github.com/retro-framework/go-retro/framework/engine"
 	"github.com/retro-framework/go-retro/framework/resolver"
 	"github.com/retro-framework/go-retro/framework/storage/fs"
-	"github.com/retro-framework/go-retro/framework/types"
 )
 
 import (
@@ -60,10 +58,10 @@ func main() {
 
 		objDBSrv = objectDBServer{odb}
 		refDBSrv = refDBServer{refdb}
-		emd      = depot.NewSimple(odb, refdb)
+		depot    = depot.NewSimple(odb, refdb)
 		idFn     = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
 		r        = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest)
-		e        = engine.New(emd, r.Resolve, idFn, aggregates.DefaultManifest, events.DefaultManifest)
+		e        = engine.New(depot, r.Resolve, idFn, aggregates.DefaultManifest, events.DefaultManifest)
 	)
 
 	mux := http.NewServeMux()
@@ -90,41 +88,9 @@ func main() {
 		fmt.Fprintf(w, string(resStr))
 	})
 
-	mux.HandleFunc("/list/aggregates", func(w http.ResponseWriter, req *http.Request) {
-		if lAggregate, ok := aggregates.DefaultManifest.(types.ListingAggregateManifest); ok {
-			var enc = json.NewEncoder(w)
-			enc.SetIndent("", "    ")
-			err := enc.Encode(lAggregate.List())
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-				return
-			}
-		}
-	})
-
-	mux.HandleFunc("/list/commands", func(w http.ResponseWriter, req *http.Request) {
-		if lCommands, ok := commands.DefaultManifest.(types.ListingCommandManifest); ok {
-			var enc = json.NewEncoder(w)
-			enc.SetIndent("", "    ")
-			err := enc.Encode(lCommands.List())
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-				return
-			}
-		}
-	})
-
-	mux.HandleFunc("/list/events", func(w http.ResponseWriter, req *http.Request) {
-		if lEvents, ok := events.DefaultManifest.(types.ListingEventManifest); ok {
-			var enc = json.NewEncoder(w)
-			enc.SetIndent("", "    ")
-			err := enc.Encode(lEvents.List())
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-				return
-			}
-		}
-	})
+	mux.Handle("/list/aggregates", handlers.CombinedLoggingHandler(os.Stdout, aggregateManifestServer{aggregates.DefaultManifest}))
+	mux.Handle("/list/commands", handlers.CombinedLoggingHandler(os.Stdout, commandManifestServer{commands.DefaultManifest}))
+	mux.Handle("/list/events", handlers.CombinedLoggingHandler(os.Stdout, eventManifestServer{events.DefaultManifest}))
 
 	mux.Handle("/obj/", handlers.CombinedLoggingHandler(os.Stdout, objDBSrv))
 	mux.Handle("/ref/", handlers.CombinedLoggingHandler(os.Stdout, refDBSrv))
