@@ -171,13 +171,6 @@ func Test_Engine_DepotClaims(t *testing.T) {
 
 func Test_Engine_Apply(t *testing.T) {
 
-	t.Run("channel", func(t *testing.T) {
-		// setting something on context to get the "thread", should default to "main"
-		// hint: git branching, should be an interface upgrade on the Depot like
-		// "BranchableDepot" or something, I think.
-		t.Skip("not implemented yet")
-	})
-
 	t.Run("routing", func(t *testing.T) {
 
 		t.Run("raises error and logs it on unroutable (unregistered) command", func(t *testing.T) {
