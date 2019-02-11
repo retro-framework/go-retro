@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/retro-framework/go-retro/framework/engine"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -188,4 +190,42 @@ func (srv refDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+type engineServer struct {
+	e engine.Engine
+}
+
+func (e engineServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+
+	if req.Method != http.MethodPost {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	if req.URL.Path != "/apply" {
+		http.NotFound(w, req)
+		return
+	}
+
+	sid, err := e.e.StartSession(req.Context())
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, "error reading request body", 500)
+		return
+	}
+
+	resStr, err := e.e.Apply(req.Context(), sid, body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	fmt.Fprintf(w, string(sid))
+	fmt.Fprintf(w, string(resStr))
 }

@@ -66,27 +66,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/" {
-			http.NotFound(w, req)
-			return
-		}
-
-		sid, err := e.StartSession(req.Context())
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		resStr, err := e.Apply(req.Context(), sid, []byte(`{"path":"foo bar", "name":"dummyCmd", "params": {...}}`))
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		fmt.Fprintf(w, string(sid))
-		fmt.Fprintf(w, string(resStr))
-	})
+	mux.Handle("/apply", handlers.CombinedLoggingHandler(os.Stdout, engineServer{e}))
 
 	mux.Handle("/list/aggregates", handlers.CombinedLoggingHandler(os.Stdout, aggregateManifestServer{aggregates.DefaultManifest}))
 	mux.Handle("/list/commands", handlers.CombinedLoggingHandler(os.Stdout, commandManifestServer{commands.DefaultManifest}))
