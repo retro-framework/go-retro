@@ -61,3 +61,12 @@ func (m *manifest) toType(t types.Aggregate) reflect.Type {
 	}
 	return v.Type()
 }
+
+// TODO: This is not tested
+func (m *manifest) List() map[string]string {
+	var r = make(map[string]string)
+	for k, v := range m.m {
+		r[k] = v.String()
+	}
+	return r
+}

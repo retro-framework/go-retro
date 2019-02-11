@@ -30,7 +30,11 @@ func (cmd *AllowCreationOfNewIdentities) SetState(agg types.Aggregate) error {
 // case of systems that use a SSO such as active directory or OAuth. An
 // application instance that has never had this called may default to
 // "false" subject to how it was initialized.
-func (cmd *AllowCreationOfNewIdentities) Apply(ctxt context.Context, sesh types.Aggregate, aggStore types.Depot) ([]types.Event, error) {
+func (cmd *AllowCreationOfNewIdentities) Apply(
+	ctxt context.Context,
+	sesh types.Aggregate,
+	aggStore types.Depot,
+) ([]types.Event, error) {
 	// TODO: fix this to be sane, again
 	// numIds, countable := repo.GetByDirname("identities").Len()
 	// if !countable

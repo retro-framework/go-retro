@@ -71,6 +71,10 @@ func NewSimpleStub(t *testing.T,
 	return &Simple{objdb: objDB, refdb: refDB}
 }
 
+func NewSimple(odb object.DB, refdb ref.DB) types.Depot {
+	return &Simple{objdb: odb, refdb: refdb}
+}
+
 // EmptySimpleMemory returns an empty depot to keep the type system happy
 func EmptySimpleMemory() types.Depot {
 	return &Simple{

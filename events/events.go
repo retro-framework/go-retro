@@ -74,3 +74,12 @@ func (m *manifest) toType(t types.Event) reflect.Type {
 	}
 	return v.Type()
 }
+
+// TODO: This is not tested
+func (m *manifest) List() map[string]interface{} {
+	var r = make(map[string]interface{})
+	for k := range m.m {
+		r[k], _ = m.ForName(k)
+	}
+	return r
+}

@@ -22,15 +22,6 @@ type manifest struct {
 	m map[reflect.Type][]types.Command
 }
 
-// https://golang.org/pkg/expvar/#Var
-// func (m *manifest) String() string {
-// 	b, err := json.Marshal()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return string(b)
-// }
-
 func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
 	if existingCmds, anyCmds := m.m[m.toType(agg)]; anyCmds {
 		for _, existingCmd := range existingCmds {
@@ -62,4 +53,25 @@ func (m *manifest) toType(t interface{}) reflect.Type {
 
 func (m *manifest) toTypeString(t reflect.Type) string {
 	return strings.Join([]string{t.PkgPath(), t.Name()}, ".")
+}
+
+// TODO: This is not tested and printing the * for pointers
+// without printing the package name is not super helpful
+func (m *manifest) List() map[string][]string {
+	var r = make(map[string][]string)
+	for k, v := range m.m {
+		if _, ok := r[k.String()]; !ok {
+			r[k.String()] = []string{}
+		}
+		for _, cmd := range v {
+			var cmdName string
+			if t := reflect.TypeOf(cmd); t.Kind() == reflect.Ptr {
+				cmdName = "*" + t.Elem().Name()
+			} else {
+				cmdName = t.Name()
+			}
+			r[k.String()] = append(r[k.String()], cmdName)
+		}
+	}
+	return r
 }

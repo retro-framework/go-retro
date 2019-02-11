@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -11,11 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/handlers"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
-	"github.com/retro-framework/go-retro/framework/storage/fs"
 )
 
 type objectDBServer struct {
@@ -50,7 +47,6 @@ func (srv objectDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		// jsonEnc.Encode(hashedObj.Type())
 		switch hashedObj.Type() {
 		case "checkpoint":
 			cp, _ := jp.UnpackCheckpoint(hashedObj.Contents())
@@ -124,37 +120,5 @@ func (srv refDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
-
-}
-
-func main() {
-
-	var (
-		storagePath string
-		listenPort  int
-	)
-	flag.StringVar(&storagePath, "path", "/tmp", "storage dir for the depot")
-	flag.IntVar(&listenPort, "port", 50000, "listen port for GRPC server")
-	flag.Parse()
-
-	log.Println("Using Storage Path:", storagePath)
-
-	var (
-		objDBSrv = objectDBServer{&fs.ObjectStore{BasePath: storagePath}}
-		refDBSrv = refDBServer{&fs.RefStore{BasePath: storagePath}}
-	)
-
-	mux := http.NewServeMux()
-	mux.Handle("/obj/", handlers.CombinedLoggingHandler(os.Stdout, objDBSrv))
-	mux.Handle("/ref/", handlers.CombinedLoggingHandler(os.Stdout, refDBSrv))
-
-	s := &http.Server{
-		Addr:           ":8080",
-		Handler:        mux,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
-	log.Fatal(s.ListenAndServe())
 
 }

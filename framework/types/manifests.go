@@ -5,11 +5,19 @@ type AggregateManifest interface {
 	ForPath(string) (Aggregate, error)
 }
 
+type ListingAggregateManifest interface {
+	List() map[string]string
+}
+
 type EventManifest interface {
 	Register(Event) error
 	RegisterAs(string, Event) error
 	KeyFor(Event) (string, error)
 	ForName(string) (Event, error)
+}
+
+type ListingEventManifest interface {
+	List() map[string]interface{}
 }
 
 type EventFactory interface {
@@ -30,4 +38,8 @@ type EventFactory interface {
 type CommandManifest interface {
 	Register(Aggregate, Command) error
 	ForAggregate(Aggregate) ([]Command, error)
+}
+
+type ListingCommandManifest interface {
+	List() map[string][]string
 }
