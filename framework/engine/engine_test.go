@@ -72,9 +72,6 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 }
 
 func (dc *dummyCmd) Apply(_ context.Context, session types.Aggregate, _ types.Depot) ([]types.Event, error) {
-	// if len(dc.s.seenEvents) != 2 {
-	// 	return nil, errors.New(fmt.Sprintf("can't apply DummyEvent to dummyAggregate unless it has seen precisely two events so far (has seen %d)", len(dc.s.seenEvents)))
-	// }
 	dc.wasApplied = true
 	return []types.Event{DummyEvent{}}, nil
 }
