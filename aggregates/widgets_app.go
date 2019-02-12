@@ -6,7 +6,9 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
+// WidgetsApp is a lorem ipsum
 type WidgetsApp struct {
+	NamedAggregate
 	AllowCreateIdentities                  bool
 	AllowCreateAuthorizations              bool
 	AllowBindingIdentitiesToAuthorizations bool

@@ -10,6 +10,24 @@ import (
 // THIS FILE SHOULD BE AUTO GENERATED FROM FILES IN THE AGGREGATES
 // DIRECTORY YOU MAY NOT EDIT IT BY HAND
 
+var ErrAggregateNotAnonymous = fmt.Errorf("aggregate: already has a name (is not anonymous)")
+
+type NamedAggregate struct {
+	pn types.PartitionName
+}
+
+func (na *NamedAggregate) Name() types.PartitionName {
+	return na.pn
+}
+
+func (na *NamedAggregate) SetName(pn types.PartitionName) error {
+	if len(na.pn) > 0 {
+		return ErrAggregateNotAnonymous
+	}
+	na.pn = pn
+	return nil
+}
+
 var DefaultManifest = NewManifest()
 
 func NewManifest() types.AggregateManifest {

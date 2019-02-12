@@ -1,11 +1,12 @@
 package aggregates
 
 import (
-	"github.com/retro-framework/go-retro/framework/types"
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 type Session struct {
+	NamedAggregate
 	IsAnonymous bool
 }
 
