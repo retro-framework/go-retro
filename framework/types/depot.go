@@ -22,10 +22,16 @@ type Depot interface {
 	// concerned with mostly "Command" execution.
 	Rehydrate(context.Context, Aggregate, PartitionName) error
 
-	// For enumerating or matching on
+	// For enumerating or matching on a single PartitionName
 	Glob(context.Context, string) PartitionIterator
 
+	// General variadaric function for storing any packed things
+	// simplifies the interface to the underlying store.
 	StorePacked(...HashedObject) error
+
+	// Head pointer operations are important for the engine
+	// to be able to do things without mangling the history
+	HeadPointer(context.Context) (Hash, error)
 	MoveHeadPointer(old, new Hash) error
 }
 

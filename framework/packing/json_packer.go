@@ -114,14 +114,12 @@ func (jp *JSONPacker) UnpackCheckpoint(b []byte) (Checkpoint, error) {
 		chunks  = bytes.SplitN(b, []byte(HeaderContentSepRune), 2)
 		payload = chunks[1]
 	)
-
 	scanner := bufio.NewScanner(bytes.NewReader(payload))
 	for scanner.Scan() {
 		if len(scanner.Text()) == 0 {
 			kvHeadersRead = true
 			continue
 		}
-
 		if !kvHeadersRead {
 			var (
 				cols = strings.SplitN(scanner.Text(), " ", 2)
@@ -134,16 +132,13 @@ func (jp *JSONPacker) UnpackCheckpoint(b []byte) (Checkpoint, error) {
 			default:
 				res.Fields[cols[0]] = cols[1]
 			}
-			// fmt.Println(cols)
 		} else {
 			res.CommandDesc = []byte(scanner.Text())
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
 		return res, err // TODO: Wrap properly
 	}
-
 	return res, nil
 }
 
@@ -168,6 +163,15 @@ func (jp *JSONPacker) PackAffix(affix Affix) (types.HashedObject, error) {
 	})
 
 	for i, partition := range partitions {
+		if len(partition) == 0 {
+			// TODO: test this case
+			return nil, fmt.Errorf("empty partition name (usually means bad test fixtures)")
+		}
+		// The following line can be misleading. Some affixes
+		// contain only one event and the index (i) will be 0.
+		// Because this is displayed right after the \u0000 character
+		// it can be easy to overlook the indexing character and mis-
+		// read \u00000.
 		prefix := fmt.Sprintf("%d %s", i, partition)
 		for _, h := range affix[partition] {
 			affB.WriteString(fmt.Sprintf("%s %s\n", prefix, h.String()))
@@ -203,8 +207,14 @@ func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (types.HashedObject, error) 
 		cpB.WriteString(fmt.Sprintf("parent %s\n", parentHash.String()))
 	}
 
-	for key, value := range cp.Fields {
-		cpB.WriteString(fmt.Sprintf("%s %s\n", key, value))
+	var fieldKeys []string
+	for key := range cp.Fields {
+		fieldKeys = append(fieldKeys, key)
+	}
+	sort.Strings(fieldKeys)
+
+	for _, k := range fieldKeys {
+		cpB.WriteString(fmt.Sprintf("%s %s\n", k, cp.Fields[k]))
 	}
 
 	cpB.WriteString(fmt.Sprintf("\n%s\n", cp.CommandDesc))

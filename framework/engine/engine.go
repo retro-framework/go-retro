@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"path/filepath"
 	"time"
 
@@ -84,6 +85,14 @@ func (e *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		return "", Error{"resolver-missing", nil, "resolver not available, please check config."}
 	}
 
+	headPtr, err := e.depot.HeadPointer(ctx)
+	if err != nil {
+		return "", Error{"get-head-pointer", nil, "could not get head pointer from depot"}
+	}
+	if headPtr != nil {
+		spnApply.SetTag("head pointer", headPtr.String())
+	}
+
 	// Check we have a "session" aggreate in the manifest, else we will struggle
 	// from here on out.
 	spnSeshAggLookup := opentracing.StartSpan("look up session aggregate", opentracing.ChildOf(spnApply.Context()))
@@ -145,12 +154,23 @@ func (e *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	// 	return "", Error{"peek-path", err, "could not peek into cmd desc to determine path"}
 	// }
 
-	if err := e.persistEvs(newEvs); err != nil {
+	// dumpCommandResult(os.Stdout, newEvs)
+
+	if err := e.persistEvs(ctx, sid, cmd, headPtr, newEvs); err != nil {
 		return "", err // TODO: wrap me
 	} else {
 		return "ok", nil
 	}
 
+}
+
+func dumpCommandResult(w io.Writer, cr types.CommandResult) {
+	fmt.Fprint(w, "Command Result Dump:\n")
+	var m = make(map[types.PartitionName][]types.Event)
+	for k, v := range cr {
+		m[k.Name()] = v
+	}
+	fmt.Fprintf(w, "%#v\n", m)
 }
 
 // StartSession will attempt to summon a Session aggregate into existence by
@@ -166,18 +186,18 @@ func (e *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
 	// Tracing
-	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "engine.StartSession")
-	defer spnResolve.Finish()
+	spnStartSession, ctx := opentracing.StartSpanFromContext(ctx, "engine.StartSession")
+	defer spnStartSession.Finish()
 
 	// Generate a session id using the provided factory
 	sidStr, err := e.idFactory()
-	sid := types.SessionID(sidStr)
 	if err != nil {
-		return sid, Error{"generate-id-for-session", err, "id factory returned an error when genrating an id"}
+		return "", Error{"generate-id-for-session", err, "id factory returned an error when genrating an id"}
 	}
+	var sid = types.SessionID(sidStr)
 
 	// Tracing
-	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnResolve.Context()))
+	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnStartSession.Context()))
 	path := fmt.Sprintf("session/%s", sid)
 
 	// Guard against reuse of session ids, we could avoid this
@@ -185,6 +205,14 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	// but users may provide a bad implementation (also, tests.)
 	if e.depot.Exists(types.PartitionName(path)) {
 		return sid, Error{"guard-unique-session-id", err, "session id was not unique in depot, can't start."}
+	}
+
+	headPtr, err := e.depot.HeadPointer(ctx)
+	if err != nil {
+		return "", Error{"get-head-pointer", nil, "could not get head pointer from depot"}
+	}
+	if headPtr != nil {
+		spnStartSession.SetTag("head pointer", headPtr.String())
 	}
 
 	// Our cancellation clause, claimTimeout is the wait time we're
@@ -222,7 +250,7 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 		return sid, Error{"execute-session-start-cmd", err, "error calling session start command"}
 	}
 
-	return sid, e.persistEvs(sessionStartedEvents)
+	return sid, e.persistEvs(ctx, sid, b, headPtr, sessionStartedEvents)
 
 	// Tracing
 	// spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
@@ -235,8 +263,11 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	// return sid, nil
 }
 
-// TODO: fix all the error messages (or Error types, etc, who knows.)
-func (e *Engine) persistEvs(cmdRes types.CommandResult) error {
+// TODO: Fix all the error messages (or Error types, etc, who knows.)
+//
+// TODO: extracting writing the checkpoint from here would be a good separation
+// of concerns.
+func (e *Engine) persistEvs(ctx context.Context, sid types.SessionID, cmdDesc []byte, head types.Hash, cmdRes types.CommandResult) error {
 
 	var (
 		jp          = packing.NewJSONPacker()
@@ -244,10 +275,48 @@ func (e *Engine) persistEvs(cmdRes types.CommandResult) error {
 		packedeObjs []types.HashedObject
 	)
 
+	currentHead, err := e.depot.HeadPointer(ctx)
+	if err != nil {
+		return err // TODO: Wrap me & test (?)
+	}
+
+	// parentHashes can be complicated to infer, so pull that logic out
+	// here to a variable and a set of conditional statements to make
+	// constructing the packing.Checkpoint easier below.
+	var parentHashes []types.Hash
+
+	// There are possible cases here, that currentHead and head are both, or indiviudally
+	// nil. This can only happen incase the ctx carries a branch name which has no history
+	// (refs) or the depot is just empty (actually that's basically the same case)
+	if head != nil && currentHead != nil {
+		// TODO handle this case gracefully. It ought to be possible to check if any of the objects
+		// we had in our cmdRes conflict with changes that landed between head and currentHead. This
+		// ventures into the territory of merge conflict resolution/etc. Safer might be to return
+		// a sentinel error which the Engine can use to retry the entire transaction on top of the
+		// new head.
+		//
+		// This case should be safe as the early returns incase either the left or right hand sides
+		// are nil will ensure we never memory fault here.
+		if currentHead.String() != head.String() {
+			return fmt.Errorf("concurrent write, head pointer moved since we claimed it")
+		}
+		parentHashes = append(parentHashes, head)
+	}
+
+	if head == nil && currentHead != nil {
+		// This case means head was nil when Apply was called, but by the time we got to
+		// here someo
+		return fmt.Errorf("concurrent write, branch created since operation started")
+	}
+
+	if head != nil && currentHead == nil {
+		// This means someone has deleted our branch since we started, and we're about
+		// to recreate it if we continue.
+		return fmt.Errorf("concurrent write, branch deleted since operation started")
+	}
+
 	for agg, evs := range cmdRes {
-
 		var aggPath types.PartitionName = agg.Name()
-
 		for _, ev := range evs {
 			name, err := e.evm.KeyFor(ev)
 			if err != nil {
@@ -268,14 +337,14 @@ func (e *Engine) persistEvs(cmdRes types.CommandResult) error {
 	}
 	packedeObjs = append(packedeObjs, packedAffix)
 
-	// TODO: packed checkpoint needs a parent, else we will make orphan stuff
 	checkpoint := packing.Checkpoint{
 		AffixHash:   packedAffix.Hash(),
-		CommandDesc: []byte(`{"stub":"article"}`),
+		CommandDesc: cmdDesc,
 		Fields: map[string]string{
-			"session": "hello world",
+			"session": string(sid),
 			"date":    e.clock.Now().Format(time.RFC1123),
 		},
+		ParentHashes: parentHashes,
 	}
 
 	packedCheckpoint, err := jp.PackCheckpoint(checkpoint)

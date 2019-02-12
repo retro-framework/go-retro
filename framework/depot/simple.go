@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	"github.com/retro-framework/go-retro/framework/types"
 )
@@ -83,22 +86,40 @@ func EmptySimpleMemory() types.Depot {
 	}
 }
 
-// DumpAll lists all refs and objects
-// in relative cleartext.
-func (d *Simple) DumpAll(w io.Writer) string {
-	if lodb, ok := d.objdb.(object.ListableSource); ok {
-		for _, h := range lodb.Ls() {
-			fmt.Fprintf(w, "odb:%s\n", h.String())
-			ho, err := d.objdb.RetrievePacked(h.String())
+// HeadPointer is a simple read-thru which gets
+// the value of the current jhead pointer from the refdb
+// it uses the context to try and get a branch name, and
+// in case of failure falls back to the default branch
+// name.
+func (s *Simple) HeadPointer(ctx context.Context) (types.Hash, error) {
+	ptr, err := s.refdb.Retrieve(refFromCtx(ctx))
+	if err == storage.ErrUnknownRef {
+		return nil, nil
+	}
+	return ptr, err
+}
+
+// DumpAll lists all refs and objects in relative cleartext.
+// useful for tests and not much else.
+func (s *Simple) DumpAll(w io.Writer) string {
+	if lodb, ok := s.objdb.(object.ListableSource); ok {
+		var hashStrings []string
+		for _, hash := range lodb.Ls() {
+			hashStrings = append(hashStrings, hash.String())
+		}
+		sort.Strings(hashStrings)
+		for _, hashStr := range hashStrings {
+			ho, err := s.objdb.RetrievePacked(hashStr)
 			if err != nil {
-				fmt.Fprintln(w, "error retrieving", h.String())
+				fmt.Fprintln(w, "error retrieving", hashStr)
 			}
-			fmt.Fprintf(w, "%s\n\n", string(ho.Contents()))
+			fmt.Fprintf(w, "%s:%s\n", ho.Type(), hashStr)
+			fmt.Fprintf(w, "%s\n\n", strings.Replace(string(ho.Contents()), "\u0000", "\\u0000", -1))
 		}
 	} else {
 		fmt.Print("couldn't upgrade store")
 	}
-	if lrefdb, ok := d.refdb.(ref.ListableStore); ok {
+	if lrefdb, ok := s.refdb.(ref.ListableStore); ok {
 		m, err := lrefdb.Ls()
 		if err != nil {
 			fmt.Fprintf(w, "err: %s", err)
@@ -121,10 +142,6 @@ type Simple struct {
 	refdb ref.DB
 
 	subscribers []chan<- types.RefMove
-}
-
-func (s Simple) Dump(w io.Writer) (int, error) {
-	return 0, nil
 }
 
 // TODO: make this respect the actual value that might come in a context

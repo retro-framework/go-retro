@@ -31,12 +31,14 @@ func New(aggm types.AggregateManifest, cmdm types.CommandManifest) types.Resolve
 }
 
 // Resolve uses the byte slice provided and unmarshals it with JSON
-// the provided byte slice must at least name name and path. The JSON
-// object may also contain an "args" key which will be used for a second
+// the provided byte slice must at least have keys "name" and "path".
+//
+// The JSON object may also contain an "args" key which will be used for a second
 // phase of unmarshalling after using the path and name to resolve the
-// aggregate and command respectively. To construct the command object
-// the registered type will be instantiated if the manifest contains a
-// type for the args.
+// aggregate and command respectively.
+//
+// To construct the command object the registered type will be instantiated
+// if the manifest contains a type for the args.
 func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (types.CommandFunc, error) {
 
 	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "resolver.Resolve")
@@ -101,6 +103,20 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 		return nil, err
 	}
 	spnAggLookup.Finish()
+
+	// Set the aggregate name (useful to ensure that things survive a roundtrip to Commands
+	// and back into the Engine)
+	agg.SetName(types.PartitionName(cmdDesc.Path))
+	if err != nil {
+		return nil, Error{"agg-assign-name", fmt.Errorf("could not set name on Aggregate: %s", err)}
+	}
+
+	// Read back the name, this came up in a testing condition. It's an inexpensive test and
+	// guards against weird errors where for some reason a types.Aggregate is implementing it's own
+	// Name() and SetName() methods rather than embedding aggregates.NamedAggregate.
+	if agg.Name() != types.PartitionName(cmdDesc.Path) {
+		return nil, Error{"agg-read-back-name", fmt.Errorf("name change on Aggregate didn't take (check for pointer receivers?)")}
+	}
 
 	// Look up the command before we invest effort to rehydrate something
 	// we might not be able to use

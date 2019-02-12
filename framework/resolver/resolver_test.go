@@ -21,6 +21,7 @@ type OtherEvent struct{}
 type ExtraEvent struct{}
 
 type dummyAggregate struct {
+	aggregates.NamedAggregate
 	seenEvents []types.Event
 }
 
@@ -29,17 +30,11 @@ func (da *dummyAggregate) ReactTo(ev types.Event) error {
 	return nil
 }
 
-// TODO: fix these two to be part of NamedAggregate optional upgrade
-func (_ *dummyAggregate) Name() types.PartitionName         { return types.PartitionName("") }
-func (_ *dummyAggregate) SetName(types.PartitionName) error { return nil }
-
-type dummySession struct{}
+type dummySession struct {
+	aggregates.NamedAggregate
+}
 
 func (_ *dummySession) ReactTo(types.Event) error { return nil }
-
-// TODO: fix these two to be part of NamedAggregate optional upgrade
-func (_ *dummySession) Name() types.PartitionName         { return types.PartitionName("") }
-func (_ *dummySession) SetName(types.PartitionName) error { return nil }
 
 type dummyCmd struct {
 	s          *dummyAggregate
