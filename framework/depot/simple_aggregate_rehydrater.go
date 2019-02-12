@@ -104,7 +104,7 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 	return nil
 }
 
-// / enqueueCheckpointIfRelevant pushes checkpoint hashes and affix metadata onto a stack
+// enqueueCheckpointIfRelevant pushes checkpoint hashes and affix metadata onto a stack
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.

@@ -24,12 +24,13 @@ type DummyStartSessionEvent struct {
 	Greeting string
 }
 
-type dummySession struct {
-}
+type dummySession struct{}
 
-func (_ *dummySession) ReactTo(types.Event) error {
-	return nil
-}
+func (_ *dummySession) ReactTo(types.Event) error { return nil }
+
+// TODO: fix these two to be part of NamedAggregate optional upgrade
+func (_ *dummySession) Name() types.PartitionName         { return types.PartitionName("") }
+func (_ *dummySession) SetName(types.PartitionName) error { return nil }
 
 type Start struct {
 	s *dummySession
@@ -44,8 +45,8 @@ func (fssc *Start) SetState(s types.Aggregate) error {
 	}
 }
 
-func (fssc *Start) Apply(context.Context, types.Aggregate, types.Depot) ([]types.Event, error) {
-	return []types.Event{DummyStartSessionEvent{"hello world"}}, nil
+func (fssc *Start) Apply(context.Context, types.Session, types.Depot) (types.CommandResult, error) {
+	return types.CommandResult{fssc.s: []types.Event{DummyStartSessionEvent{"hello world"}}}, nil
 }
 
 type dummyAggregate struct {
@@ -56,6 +57,10 @@ func (da *dummyAggregate) ReactTo(ev types.Event) error {
 	da.seenEvents = append(da.seenEvents, ev)
 	return nil
 }
+
+// TODO: fix these two to be part of NamedAggregate optional upgrade
+func (_ *dummyAggregate) Name() types.PartitionName         { return types.PartitionName("") }
+func (_ *dummyAggregate) SetName(types.PartitionName) error { return nil }
 
 type dummyCmd struct {
 	s          *dummyAggregate
@@ -71,9 +76,9 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(_ context.Context, session types.Aggregate, _ types.Depot) ([]types.Event, error) {
+func (dc *dummyCmd) Apply(_ context.Context, session types.Session, _ types.Depot) (types.CommandResult, error) {
 	dc.wasApplied = true
-	return []types.Event{DummyEvent{}}, nil
+	return types.CommandResult{dc.s: []types.Event{DummyEvent{}}}, nil
 }
 
 // Sessions are a special case of aggregate We always need one, even if anon to

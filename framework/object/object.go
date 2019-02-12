@@ -1,6 +1,8 @@
 package object
 
-import "github.com/retro-framework/go-retro/framework/types"
+import (
+	"github.com/retro-framework/go-retro/framework/types"
+)
 
 // Store takes a packed object and stores it, it may apply some
 // disk compression. A 0 byte return indicate that the object was

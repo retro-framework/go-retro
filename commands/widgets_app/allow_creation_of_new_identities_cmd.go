@@ -10,11 +10,16 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
+// AllowCreationOfNewIdentities is used to toggle the creation of new
+// identites on (effectively enabling signup) it may be redundant in the
+// case of systems that use a SSO such as active directory or OAuth. An
+// application instance that has never had this called may default to
+// "false" subject to how it was initialized.
 type AllowCreationOfNewIdentities struct {
 	widgetsApp *aggregates.WidgetsApp
 }
 
-// State returns a WidgetsApp from the Aggregate that everyone else
+// SetState returns a WidgetsApp from the Aggregate that everyone else
 // wants to deal with, every Aggregate type must implement this.
 func (cmd *AllowCreationOfNewIdentities) SetState(agg types.Aggregate) error {
 	if wa, ok := agg.(*aggregates.WidgetsApp); ok {
@@ -25,26 +30,33 @@ func (cmd *AllowCreationOfNewIdentities) SetState(agg types.Aggregate) error {
 	}
 }
 
-// AllowCreationOfNewIdentities is used to toggle the creation of new
-// identites on (effectively enabling signup) it may be redundant in the
-// case of systems that use a SSO such as active directory or OAuth. An
-// application instance that has never had this called may default to
-// "false" subject to how it was initialized.
-func (cmd *AllowCreationOfNewIdentities) Apply(
-	ctxt context.Context,
-	sesh types.Aggregate,
-	aggStore types.Depot,
-) ([]types.Event, error) {
-	// TODO: fix this to be sane, again
-	// numIds, countable := repo.GetByDirname("identities").Len()
-	// if !countable
+// Apply will check if there are any pre-existing identities in the depot and if
+// there have not yet been any created, it will permit the creation of a new one.
+//
+// This allows configuration of the app early in its lifecycle.
+func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, session types.Session, depot types.Depot) (types.CommandResult, error) {
+
+	identities := depot.Glob(ctx, "identities/*")
+	_ = identities
+	// if !identities.HasAny() { // TODO: not implemented
 	// 	return nil, errors.New("can't change application settings anonymously once identities exist")
 	// }
+
+	// if we are already allowing creation of identities
+	// this command is a harmless noop
 	if cmd.widgetsApp.AllowCreateIdentities == true {
 		return nil, nil
 	}
 
-	return []types.Event{events.AllowCreateIdentities{}}, nil
+	// otherwise we allow creation of identities now, and emit
+	// an event which attests to that fact in the future.
+	// The aggregates.WidgetsApp must consider events.AllowCreationOfIdentities
+	// in its ApplyTo() function.
+	return types.CommandResult{
+		cmd.widgetsApp: []types.Event{
+			events.AllowCreateIdentities{},
+		},
+	}, nil
 }
 
 func init() {

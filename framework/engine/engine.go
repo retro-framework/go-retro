@@ -60,7 +60,7 @@ type Engine struct {
 // There is presently no way (should there be?) to construct a command "by
 // hand" it must be serializable to account for the repo rehydrating the
 // aggregate.
-func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (string, error) {
+func (e *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (string, error) {
 
 	var err error
 
@@ -72,13 +72,13 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	// Check we have a repository, aggm and etc, use them to give us
 	// back a rehydrated instance of the aggregate, and then we'll
 	// call the function on it.
-	if a.aggm == nil {
+	if e.aggm == nil {
 		return "", Error{"agg-manifest-missing", nil, "aggregate manifest not available, please check config."}
 	}
-	if a.depot == nil {
+	if e.depot == nil {
 		return "", Error{"depot-missing", nil, "depot not available, please check config."}
 	}
-	if a.resolver == nil {
+	if e.resolver == nil {
 		return "", Error{"resolver-missing", nil, "resolver not available, please check config."}
 	}
 
@@ -86,7 +86,7 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	// from here on out.
 	spnSeshAggLookup := opentracing.StartSpan("look up session aggregate", opentracing.ChildOf(spnApply.Context()))
 	defer spnSeshAggLookup.Finish()
-	seshAgg, err := a.aggm.ForPath("session")
+	seshAgg, err := e.aggm.ForPath("session")
 	if err != nil {
 		err = Error{"agg-lookup", err, "coult not look up session aggregate in manifest"}
 		spnSeshAggLookup.LogKV("event", "error", "error.object", err)
@@ -104,7 +104,10 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		sessionPath := filepath.Join("session", string(sid))
 		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
 		defer spnRehydrateSesh.Finish()
-		err := a.depot.Rehydrate(ctx, seshAgg, types.PartitionName(sessionPath))
+		if err := seshAgg.SetName(types.PartitionName("hello world")); err != nil {
+			fmt.Println("got an error setting the partition name!", err)
+		}
+		err := e.depot.Rehydrate(ctx, seshAgg, types.PartitionName(sessionPath))
 		if err != nil {
 			err := Error{"session-lookup", err, "could not look up session"}
 			spnRehydrateSesh.LogKV("event", "error", "error.object", err)
@@ -114,28 +117,33 @@ func (a *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	}
 
 	spnResolveCmd := opentracing.StartSpan("resolve command", opentracing.ChildOf(spnApply.Context()))
-	commandFn, err := a.resolver(ctx, a.depot, cmd)
+	commandFn, err := e.resolver(ctx, e.depot, cmd)
 	if err != nil {
 		return "", errors.Errorf("Couldn't resolve %s", cmd)
 	}
 	spnResolveCmd.Finish()
 
 	spnApplyCmd := opentracing.StartSpan("apply command", opentracing.ChildOf(spnApply.Context()))
-	newEvs, err := commandFn(ctx, seshAgg, a.depot)
+	newEvs, err := commandFn(ctx, seshAgg, e.depot)
 	if err != nil {
 		return "", errors.Wrap(err, "error applying command")
 	}
 	spnApplyCmd.Finish()
 
-	var peek = struct {
-		Path string `json:"path"`
-	}{}
-	err = json.Unmarshal(cmd, &peek)
-	if err != nil {
-		return "", Error{"peek-path", err, "could not peek into cmd desc to determine path"}
-	}
+	// TODO: I think this code path is redundant, it is written to "peek" into
+	// the command desc and extract the "path" and use that to persist the new EVs
+	// but I think its redundant with the way that CommandResult is going now and
+	// having aggregates know their own name (not exposed in default interface)
+	//
+	// var peek = struct {
+	// 	Path string `json:"path"`
+	// }{}
+	// err = json.Unmarshal(cmd, &peek)
+	// if err != nil {
+	// 	return "", Error{"peek-path", err, "could not peek into cmd desc to determine path"}
+	// }
 
-	if err := a.persistEvs(peek.Path, newEvs); err != nil {
+	if err := e.persistEvs(newEvs); err != nil {
 		return "", err // TODO: wrap me
 	} else {
 		return "ok", nil
@@ -212,7 +220,7 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 		return sid, Error{"execute-session-start-cmd", err, "error calling session start command"}
 	}
 
-	return sid, e.persistEvs(path, sessionStartedEvents)
+	return sid, e.persistEvs(sessionStartedEvents)
 
 	// Tracing
 	// spnAppendEvs, ctx := opentracing.StartSpanFromContext(ctx, "store generated events in depot")
@@ -226,7 +234,7 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 }
 
 // TODO: fix all the error messages (or Error types, etc, who knows.)
-func (e *Engine) persistEvs(path string, evs []types.Event) error {
+func (e *Engine) persistEvs(cmdRes types.CommandResult) error {
 
 	var (
 		jp          = packing.NewJSONPacker()
@@ -234,21 +242,22 @@ func (e *Engine) persistEvs(path string, evs []types.Event) error {
 		packedeObjs []types.HashedObject
 	)
 
-	for _, ev := range evs {
+	for agg, evs := range cmdRes {
 
-		name, err := e.evm.KeyFor(ev)
-		if err != nil {
-			return Error{"persist-events-from-session-start", err, "error looking up event"}
+		var aggPath types.PartitionName = agg.Name()
+
+		for _, ev := range evs {
+			name, err := e.evm.KeyFor(ev)
+			if err != nil {
+				return Error{"persist-events-from-session-start", err, "error looking up event"}
+			}
+			packedEv, err := jp.PackEvent(name, ev)
+			if err != nil {
+				return Error{"persist-events-from-session-start", err, "error packing event"}
+			}
+			packedeObjs = append(packedeObjs, packedEv)
+			affix[aggPath] = append(affix[aggPath], packedEv.Hash())
 		}
-
-		packedEv, err := jp.PackEvent(name, ev)
-		if err != nil {
-			return Error{"persist-events-from-session-start", err, "error packing event"}
-		}
-
-		packedeObjs = append(packedeObjs, packedEv)
-		affix[types.PartitionName(path)] = append(affix[types.PartitionName(path)], packedEv.Hash())
-
 	}
 
 	packedAffix, err := jp.PackAffix(affix)
@@ -261,7 +270,10 @@ func (e *Engine) persistEvs(path string, evs []types.Event) error {
 	checkpoint := packing.Checkpoint{
 		AffixHash:   packedAffix.Hash(),
 		CommandDesc: []byte(`{"stub":"article"}`),
-		Fields:      map[string]string{"session": "hello world"},
+		Fields: map[string]string{
+			"session": "hello world",
+			"date":    e.clock.Now().Format(time.RFC1123),
+		},
 	}
 
 	packedCheckpoint, err := jp.PackCheckpoint(checkpoint)

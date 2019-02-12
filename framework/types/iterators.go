@@ -14,17 +14,6 @@ type EventCursor interface {
 	Close()
 }
 
-// PartitionCursor is a convenience for iterating over
-// events within a partition without concerning
-// the caller with channel semantics
-type PartitionCursor interface {
-	Value() EventCursor
-
-	Next() bool
-	Err() error
-	Close()
-}
-
 // PartitionIterator iterates over matched Partitions in a consistent way
 // it provides both a nested channel mechanism (Partitions) or a cursor
 // approach ideal for a for p.Next() use-case.

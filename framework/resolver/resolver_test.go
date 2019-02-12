@@ -29,11 +29,17 @@ func (da *dummyAggregate) ReactTo(ev types.Event) error {
 	return nil
 }
 
+// TODO: fix these two to be part of NamedAggregate optional upgrade
+func (_ *dummyAggregate) Name() types.PartitionName         { return types.PartitionName("") }
+func (_ *dummyAggregate) SetName(types.PartitionName) error { return nil }
+
 type dummySession struct{}
 
-func (_ *dummySession) ReactTo(types.Event) error {
-	return nil
-}
+func (_ *dummySession) ReactTo(types.Event) error { return nil }
+
+// TODO: fix these two to be part of NamedAggregate optional upgrade
+func (_ *dummySession) Name() types.PartitionName         { return types.PartitionName("") }
+func (_ *dummySession) SetName(types.PartitionName) error { return nil }
 
 type dummyCmd struct {
 	s          *dummyAggregate
@@ -49,12 +55,12 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(context.Context, types.Aggregate, types.Depot) ([]types.Event, error) {
+func (dc *dummyCmd) Apply(context.Context, types.Session, types.Depot) (types.CommandResult, error) {
 	if len(dc.s.seenEvents) != 2 {
 		return nil, errors.New(fmt.Sprintf("can't apply ExtraEvent to dummyAggregate unless it has seen precisely two events so far (has seen %d)", len(dc.s.seenEvents)))
 	}
 	dc.wasApplied = true
-	return []types.Event{ExtraEvent{}}, nil
+	return types.CommandResult{dc.s: []types.Event{ExtraEvent{}}}, nil
 }
 
 type dummyCmdWithArgs struct {
@@ -237,7 +243,10 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
 
 		var (
-			r = resolver{aggm: aggm, cmdm: cmdm}
+			r = resolver{
+				aggm: aggm,
+				cmdm: cmdm,
+			}
 		)
 
 		// Act
