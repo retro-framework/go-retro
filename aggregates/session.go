@@ -18,5 +18,5 @@ func (sesh *Session) ReactTo(ev types.Event) error {
 }
 
 func init() {
-	Register("session", &Session{true})
+	Register("session", &Session{IsAnonymous: true})
 }
