@@ -83,6 +83,35 @@ func EmptySimpleMemory() types.Depot {
 	}
 }
 
+// DumpAll lists all refs and objects
+// in relative cleartext.
+func (d *Simple) DumpAll(w io.Writer) string {
+	if lodb, ok := d.objdb.(object.ListableSource); ok {
+		for _, h := range lodb.Ls() {
+			fmt.Fprintf(w, "odb:%s\n", h.String())
+			ho, err := d.objdb.RetrievePacked(h.String())
+			if err != nil {
+				fmt.Fprintln(w, "error retrieving", h.String())
+			}
+			fmt.Fprintf(w, "%s\n\n", string(ho.Contents()))
+		}
+	} else {
+		fmt.Print("couldn't upgrade store")
+	}
+	if lrefdb, ok := d.refdb.(ref.ListableStore); ok {
+		m, err := lrefdb.Ls()
+		if err != nil {
+			fmt.Fprintf(w, "err: %s", err)
+		}
+		for k, v := range m {
+			fmt.Fprintf(w, "%s -> %s\n", k, v)
+		}
+	} else {
+		fmt.Print("couldn't upgrade store")
+	}
+	return ""
+}
+
 // Simple is the simplest possible Depot implementation
 // it requires only a object and ref database implementation
 // and an event manifest to map the events from the object

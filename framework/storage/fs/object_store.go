@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -37,10 +38,10 @@ func (s *ObjectStore) mkdirAll(path string) error {
 	return os.MkdirAll(path, 0766)
 }
 
-func (s *ObjectStore) ListObjects() {
+func (s *ObjectStore) ListObjects(w io.Writer) {
 	files, _ := filepath.Glob(filepath.Join(s.BasePath, "**/*"))
-	for file := range files {
-		fmt.Println(file)
+	for _, file := range files {
+		fmt.Fprintf(w, "%s\n", file)
 	}
 }
 

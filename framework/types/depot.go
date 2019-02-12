@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"io"
 )
 
 // Depot is a general storage interface for application related data. The
@@ -26,4 +27,12 @@ type Depot interface {
 
 	StorePacked(...HashedObject) error
 	MoveHeadPointer(old, new Hash) error
+}
+
+// DumpableDepot is an optional interface which implements
+// a single method which dumps the contents as preformatted
+// text to facilitate easy debugging. It is mostly used in
+// integration tests.
+type DumpableDepot interface {
+	DumpAll(w io.Writer) string
 }

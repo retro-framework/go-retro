@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/zlib"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"sync"
 
@@ -22,12 +21,15 @@ type ObjectStore struct {
 	o map[string][]byte
 }
 
-func (os *ObjectStore) ListObjects() {
+func (os *ObjectStore) Ls() []types.Hash {
 	os.RLock()
 	defer os.RUnlock()
+
+	var r []types.Hash
 	for k := range os.o {
-		fmt.Println(k)
+		r = append(r, packing.HashStrToHash(k))
 	}
+	return r
 }
 
 func (os *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
