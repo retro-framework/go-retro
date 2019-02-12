@@ -22,14 +22,6 @@ type simpleAggregateRehydrater struct {
 	matcher PatternMatcher
 }
 
-// refs/heads/master => sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
-
-// Given users/dario
-// 1. someone else figured its "users/" ==> &User{} == dario
-// 2. go to depo
-// 3. get all events for "users/dario"
-// 4. loop over them and apply them to &dario
-
 func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
 
 	var (
@@ -50,6 +42,12 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 	if err != nil {
 		return errors.Wrap(err, "error when stacking relevant partitions")
 	}
+
+	// TODO: this needs to be refactored out. Depot.Rehydrate cannot work as it can't check the
+	// types of the events because it has no access to a manifest.
+	// if s.eventManifest == nil {
+	// 	return fmt.Errorf("cannot rehydrate aggreage without an eventManifest")
+	// }
 
 	for {
 		rC := oStack.s.Pop()
@@ -79,23 +77,28 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 						return errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeEvent, packedEv.Type()))
 					}
 
-					evName, evPayload, err := jp.UnpackEvent(packedEv.Contents())
+					_, _, err = jp.UnpackEvent(packedEv.Contents())
 					if err != nil {
 						// TODO: test me
 						fmt.Println("return 3")
 						return errors.Wrap(err, fmt.Sprintf("can't unpack event %s", packedEv.Contents()))
 					}
 
-					_ = evName
-					_ = evPayload
+					//
+					// TODO: Implement this properly
+					//
+					// ev, err := s.eventManifest.ForName(evName)
+					// if err != nil {
+					// 	return errors.Wrap(err, fmt.Sprintf("can't get event with name %s from manifest", evName))
+					// }
+
+					// err = json.Unmarshal(evPayload, &ev)
+					// if err != nil {
+					// 	return errors.Wrap(err, fmt.Sprintf("can't get unmarshal %s into event registered with name %s: %s", evPayload, evName, err))
+					// }
+
 					var ev types.Event
 					err = dst.ReactTo(ev)
-
-					// fmt.Println(evName, evPayload, h.checkpointHash.String())
-
-					// fmt.Printf("%q before unmarshal %#v\n", evPayload, ev)
-					// json.Unmarshal(evPayload, &ev)
-					// fmt.Printf("%q after unmarshal %#v\n", evPayload, ev)
 				}
 			}
 		}
