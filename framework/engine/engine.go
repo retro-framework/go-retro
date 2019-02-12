@@ -23,11 +23,12 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
-func New(d types.Depot, r types.ResolveFunc, i types.IDFactory, a types.AggregateManifest, e types.EventManifest) Engine {
+func New(d types.Depot, r types.ResolveFunc, i types.IDFactory, c types.Clock, a types.AggregateManifest, e types.EventManifest) Engine {
 	return Engine{
 		depot:        d,
 		resolver:     r,
 		idFactory:    i,
+		clock:        c,
 		aggm:         a,
 		evm:          e,
 		claimTimeout: 5 * time.Second,
@@ -39,6 +40,7 @@ type Engine struct {
 
 	resolver  types.ResolveFunc
 	idFactory types.IDFactory
+	clock     types.Clock
 
 	// TODO: this is a big hammer for finding out which aggregate is registered at "session"
 	aggm types.AggregateManifest

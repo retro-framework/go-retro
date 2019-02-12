@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
@@ -17,6 +19,17 @@ import (
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/types"
 )
+
+type Predictable5sJumpClock struct {
+	t     time.Time
+	calls int
+}
+
+func (c *Predictable5sJumpClock) Now() time.Time {
+	var next = c.t.Add(time.Duration((5 * c.calls)) * time.Second)
+	c.calls = c.calls + 1
+	return next
+}
 
 type DummyEvent struct{}
 
@@ -96,6 +109,7 @@ func Test_Engine_StartSession(t *testing.T) {
 			depot         = depot.EmptySimpleMemory()
 			eventManifest = events.NewManifest()
 			idFn          = func() (string, error) { return "123-stub-id", nil }
+			clock         = &Predictable5sJumpClock{}
 
 			resolveFn = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
 				fssc := Start{}
@@ -105,7 +119,7 @@ func Test_Engine_StartSession(t *testing.T) {
 		)
 		eventManifest.Register(&DummyEvent{})
 		eventManifest.Register(&DummyStartSessionEvent{})
-		var e = New(depot, resolveFn, idFn, aggregates.NewManifest(), eventManifest)
+		var e = New(depot, resolveFn, idFn, clock, aggregates.NewManifest(), eventManifest)
 
 		// Act
 		sid, err := e.StartSession(context.Background())
@@ -125,6 +139,7 @@ func Test_Engine_StartSession(t *testing.T) {
 			depot         = depot.EmptySimpleMemory()
 			eventManifest = events.NewManifest()
 			idFn          = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
+			clock         = &Predictable5sJumpClock{}
 			resolveFn     = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
 				fssc := Start{}
 				fssc.SetState(&dummySession{})
@@ -133,7 +148,7 @@ func Test_Engine_StartSession(t *testing.T) {
 		)
 		eventManifest.Register(&DummyStartSessionEvent{})
 
-		var e = New(depot, resolveFn, idFn, aggregates.NewManifest(), eventManifest)
+		var e = New(depot, resolveFn, idFn, clock, aggregates.NewManifest(), eventManifest)
 
 		// Act
 		sid, err := e.StartSession(context.Background())
@@ -151,11 +166,12 @@ func Test_Engine_StartSession(t *testing.T) {
 			resolverErr = fmt.Errorf("error from resolveFn")
 			depot       = depot.EmptySimpleMemory()
 			idFn        = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
+			clock       = &Predictable5sJumpClock{}
 			resolveFn   = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
 				return nil, resolverErr
 			}
 		)
-		var e = New(depot, resolveFn, idFn, aggregates.NewManifest(), events.NewManifest())
+		var e = New(depot, resolveFn, idFn, clock, aggregates.NewManifest(), events.NewManifest())
 
 		// Act
 		_, err := e.StartSession(context.Background())
@@ -197,7 +213,8 @@ func Test_Engine_Apply(t *testing.T) {
 				idFn  = func() (string, error) {
 					return fmt.Sprintf("%x", rand.Uint64()), nil
 				}
-				err error
+				clock = &Predictable5sJumpClock{}
+				err   error
 			)
 
 			// NOTE: no calls to register anything on the manifests except
@@ -212,6 +229,7 @@ func Test_Engine_Apply(t *testing.T) {
 					depot,
 					r.Resolve,
 					idFn,
+					clock,
 					manifests.aggregate,
 					manifests.event,
 				)
@@ -239,6 +257,7 @@ func Test_Engine_Apply(t *testing.T) {
 				idFn = func() (string, error) {
 					return fmt.Sprintf("%x", rand.Uint64()), nil
 				}
+				clock = &Predictable5sJumpClock{}
 
 				aggm = aggregates.NewManifest()
 				cmdm = commands.NewManifest()
@@ -258,7 +277,7 @@ func Test_Engine_Apply(t *testing.T) {
 
 			var (
 				r   = resolver.New(aggm, cmdm)
-				e   = New(depot, r.Resolve, idFn, aggm, evm)
+				e   = New(depot, r.Resolve, idFn, clock, aggm, evm)
 				ctx = context.Background()
 			)
 

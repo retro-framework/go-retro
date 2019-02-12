@@ -28,6 +28,10 @@ import (
 	_ "github.com/retro-framework/go-retro/commands/widgets_app"
 )
 
+type clock struct{}
+
+func (c clock) Now() time.Time { return time.Now() }
+
 func main() {
 
 	var storagePath string
@@ -61,7 +65,7 @@ func main() {
 		depot    = depot.NewSimple(odb, refdb)
 		idFn     = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
 		r        = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest)
-		e        = engine.New(depot, r.Resolve, idFn, aggregates.DefaultManifest, events.DefaultManifest)
+		e        = engine.New(depot, r.Resolve, idFn, clock{}, aggregates.DefaultManifest, events.DefaultManifest)
 	)
 
 	mux := http.NewServeMux()
