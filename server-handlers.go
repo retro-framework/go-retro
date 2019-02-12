@@ -117,13 +117,13 @@ func (srv objectDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		switch hashedObj.Type() {
-		case "checkpoint":
+		case packing.ObjectTypeChekpoint:
 			cp, _ := jp.UnpackCheckpoint(hashedObj.Contents())
 			jsonEnc.Encode(cp)
-		case "affix":
+		case packing.ObjectTypeAffix:
 			af, _ := jp.UnpackAffix(hashedObj.Contents())
 			jsonEnc.Encode(af)
-		case "event":
+		case packing.ObjectTypeEvent:
 			var evPlaceholder map[string]interface{}
 			evName, evEncodedString, _ := jp.UnpackEvent(hashedObj.Contents())
 			err := json.Unmarshal(evEncodedString, &evPlaceholder)
