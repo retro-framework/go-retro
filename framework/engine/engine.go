@@ -343,9 +343,15 @@ func (e *Engine) persistEvs(ctx context.Context, sid types.SessionID, cmdDesc []
 		CommandDesc: cmdDesc,
 		Fields: map[string]string{
 			"session": string(sid),
-			"date":    e.clock.Now().Format(time.RFC1123),
+			"date":    e.clock.Now().Format(time.RFC3339),
 		},
 		ParentHashes: parentHashes,
+	}
+
+	if _, err := checkpoint.HasErrors(); len(err) > 0 {
+		// TODO: HasErrors can return a bunch of errors
+		// we should do something smarter here.
+		return Error{"persist-evs", err[0], "error with the checkpoint validations"}
 	}
 
 	packedCheckpoint, err := jp.PackCheckpoint(checkpoint)

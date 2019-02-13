@@ -30,11 +30,14 @@ import (
 
 type clock struct{}
 
-func (c clock) Now() time.Time { return time.Now() }
+func (c clock) Now() time.Time { return time.Now().UTC() }
 
 func main() {
 
-	var storagePath string
+	var (
+		storagePath string
+		listenAddr  = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	)
 
 	flag.StringVar(&storagePath, "storage_path", "/tmp", "storage dir for the depot")
 	flag.Parse()
@@ -49,7 +52,7 @@ func main() {
 	defer collector.Close()
 
 	tracer, err := zipkin.NewTracer(
-		zipkin.NewRecorder(collector, true, "0.0.0.0:8080", "example"),
+		zipkin.NewRecorder(collector, true, listenAddr, "go-retro-demo-server"),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -63,14 +66,21 @@ func main() {
 		objDBSrv = objectDBServer{odb}
 		refDBSrv = refDBServer{refdb}
 		depot    = depot.NewSimple(odb, refdb)
-		idFn     = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
-		r        = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest)
-		e        = engine.New(depot, r.Resolve, idFn, clock{}, aggregates.DefaultManifest, events.DefaultManifest)
+		idFn     = func() (string, error) {
+			b := make([]byte, 64)
+			_, err := rand.Read(b)
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("%x", b), nil
+		}
+		r = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest)
+		e = engine.New(depot, r.Resolve, idFn, clock{}, aggregates.DefaultManifest, events.DefaultManifest)
 	)
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/apply", handlers.CombinedLoggingHandler(os.Stdout, engineServer{e}))
+	mux.Handle("/", handlers.CombinedLoggingHandler(os.Stdout, engineServer{e}))
 
 	mux.Handle("/list/aggregates", handlers.CombinedLoggingHandler(os.Stdout, aggregateManifestServer{aggregates.DefaultManifest}))
 	mux.Handle("/list/commands", handlers.CombinedLoggingHandler(os.Stdout, commandManifestServer{commands.DefaultManifest}))
@@ -80,7 +90,7 @@ func main() {
 	mux.Handle("/ref/", handlers.CombinedLoggingHandler(os.Stdout, refDBSrv))
 
 	s := &http.Server{
-		Addr:           fmt.Sprintf(":%s", os.Getenv("PORT")),
+		Addr:           listenAddr,
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
