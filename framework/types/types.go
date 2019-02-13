@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"io"
 	"time"
 )
 
@@ -145,7 +146,7 @@ type SessionID string
 // current session, and a Depot which it may use to look up any other
 // Aggregates that it needs to apply business logic.
 type Command interface {
-	Apply(context.Context, Session, Depot) (CommandResult, error)
+	Apply(context.Context, io.Writer, Session, Depot) (CommandResult, error)
 	SetState(Aggregate) error
 }
 
@@ -166,7 +167,7 @@ type CommandArgs map[string]interface{}
 // CommandFunc is the main heavy-lifting of a Command. The CommandFunc
 // is easier to use in tests where there may be no need for heavy
 // boilerplate code.
-type CommandFunc func(context.Context, Session, Depot) (CommandResult, error)
+type CommandFunc func(context.Context, io.Writer, Session, Depot) (CommandResult, error)
 
 // CommandResult is a type alias for map[string][]Event
 // to make the function signatures expressive. The resulting

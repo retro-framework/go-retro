@@ -117,7 +117,7 @@ func (srv objectDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		switch hashedObj.Type() {
-		case packing.ObjectTypeChekpoint:
+		case packing.ObjectTypeCheckpoint:
 			cp, _ := jp.UnpackCheckpoint(hashedObj.Contents())
 			jsonEnc.Encode(cp)
 		case packing.ObjectTypeAffix:

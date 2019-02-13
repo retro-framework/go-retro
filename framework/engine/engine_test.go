@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"testing"
 	"time"
@@ -57,7 +58,7 @@ func (fssc *Start) SetState(s types.Aggregate) error {
 	}
 }
 
-func (fssc *Start) Apply(context.Context, types.Session, types.Depot) (types.CommandResult, error) {
+func (fssc *Start) Apply(context.Context, io.Writer, types.Session, types.Depot) (types.CommandResult, error) {
 	return types.CommandResult{fssc.s: []types.Event{DummyStartSessionEvent{"hello world"}}}, nil
 }
 
@@ -85,7 +86,7 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(_ context.Context, session types.Session, _ types.Depot) (types.CommandResult, error) {
+func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ types.Session, _ types.Depot) (types.CommandResult, error) {
 	dc.wasApplied = true
 	return types.CommandResult{dc.s: []types.Event{DummyEvent{}}}, nil
 }
@@ -253,7 +254,8 @@ func Test_Engine_Apply(t *testing.T) {
 			sid, err := e.StartSession(ctx)
 			test.H(t).IsNil(err)
 
-			resStr, err := e.Apply(ctx, sid, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+			var b bytes.Buffer
+			resStr, err := e.Apply(ctx, &b, sid, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
 
 			// Assert
 			test.H(t).NotNil(err)
@@ -298,7 +300,8 @@ func Test_Engine_Apply(t *testing.T) {
 			sid, err := e.StartSession(ctx)
 			test.H(t).IsNil(err)
 
-			resStr, err := e.Apply(ctx, sid, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+			var b bytes.Buffer
+			resStr, err := e.Apply(ctx, &b, sid, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
 			test.H(t).IsNil(err)
 
 			// Assert
@@ -359,7 +362,8 @@ func Test_Engine_Apply(t *testing.T) {
 			sid, err := e.StartSession(ctx)
 			test.H(t).IsNil(err)
 
-			resStr, err := e.Apply(ctx, sid, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+			var b bytes.Buffer
+			resStr, err := e.Apply(ctx, &b, sid, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
 			test.H(t).IsNil(err)
 
 			if resStr != "ok" {

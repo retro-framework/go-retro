@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"io"
 
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
@@ -40,7 +41,7 @@ func (cmd *Start) SetState(agg types.Aggregate) error {
 // Apply for sessions is effectively a noop in the default implementation
 // it need only make a record in the data store that a session has been
 // created and that we can look it up in the future.
-func (cmd *Start) Apply(ctxt context.Context, _ types.Session, aggStore types.Depot) (types.CommandResult, error) {
+func (cmd *Start) Apply(ctxt context.Context, _ io.Writer, _ types.Session, aggStore types.Depot) (types.CommandResult, error) {
 	return types.CommandResult{
 		cmd.session: []types.Event{
 			events.StartSession{},

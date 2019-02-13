@@ -69,21 +69,36 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q contains too many slashes (may not nest)", cmdDesc.Path)}
 	}
 
+	// Examine the path now to find look for a viable,
+	// targetable aggregate. Assume that "_" (Aggregate
+	// root) is targeted for a start, and work to correct
+	// that assumption over the next two dozen lines.
+	var (
+		aggType              = "_"
+		aggID                string
+		targetsRootAggregate bool
+	)
+	fmt.Println(string(b), cmdDescParts, len(cmdDescParts))
 	if len(cmdDescParts) < 2 {
-		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not split into exactly two parts", cmdDesc.Path)}
+		if cmdDescParts[0] != "_" {
+			return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not split into exactly two parts", cmdDesc.Path)}
+		}
+		targetsRootAggregate = true
+		spnUnmarshal.SetTag("agg.isRoot", true)
 	}
 
-	aggType, aggID := cmdDescParts[0], cmdDescParts[1]
-	spnUnmarshal.SetTag("agg.type", aggType)
-	spnUnmarshal.SetTag("agg.id", aggID)
-
-	if len(aggType) == 0 && len(aggID) == 0 { // neither aggName or ID given … maybe we route to `_` if defined?
-		// TODO: Check if there's a "_" aggregate defined (may likely not be the case in many tests)
-		return nil, Error{"parse-agg-path", fmt.Errorf("can't split %q into name and id, both parts empty (empty string?)", cmdDesc.Path)}
-	} else if len(aggType) > 0 && len(aggID) == 0 { // path given, no ID
-		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not include an id", cmdDesc.Path)}
-	} else if len(aggType) == 0 && len(aggID) > 0 { // no `/` in path
-		// TODO: Check for this case in the test
+	if !targetsRootAggregate {
+		aggType, aggID = cmdDescParts[0], cmdDescParts[1]
+		spnUnmarshal.SetTag("agg.type", aggType)
+		spnUnmarshal.SetTag("agg.id", aggID)
+		if len(aggType) == 0 && len(aggID) == 0 { // neither aggName or ID given … maybe we route to `_` if defined?
+			// TODO: Check if there's a "_" aggregate defined (may likely not be the case in many tests)
+			return nil, Error{"parse-agg-path", fmt.Errorf("can't split %q into name and id, both parts empty (empty string?)", cmdDesc.Path)}
+		} else if len(aggType) > 0 && len(aggID) == 0 { // path given, no ID
+			return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not include an id", cmdDesc.Path)}
+		} else if len(aggType) == 0 && len(aggID) > 0 { // no `/` in path
+			// TODO: Check for this case in the test
+		}
 	}
 
 	// Check if the given path corresponds to a known aggregate,

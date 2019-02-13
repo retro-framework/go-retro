@@ -3,6 +3,7 @@ package widgets_app
 import (
 	"context"
 	"errors"
+	"io"
 
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
@@ -34,7 +35,7 @@ func (cmd *AllowCreationOfNewIdentities) SetState(agg types.Aggregate) error {
 // there have not yet been any created, it will permit the creation of a new one.
 //
 // This allows configuration of the app early in its lifecycle.
-func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, session types.Session, depot types.Depot) (types.CommandResult, error) {
+func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, w io.Writer, session types.Session, depot types.Depot) (types.CommandResult, error) {
 
 	identities := depot.Glob(ctx, "identities/*")
 	_ = identities

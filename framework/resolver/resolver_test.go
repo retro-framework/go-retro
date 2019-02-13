@@ -3,9 +3,11 @@
 package resolver
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/retro-framework/go-retro/aggregates"
@@ -50,7 +52,7 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(context.Context, types.Session, types.Depot) (types.CommandResult, error) {
+func (dc *dummyCmd) Apply(context.Context, io.Writer, types.Session, types.Depot) (types.CommandResult, error) {
 	if len(dc.s.seenEvents) != 2 {
 		return nil, errors.New(fmt.Sprintf("can't apply ExtraEvent to dummyAggregate unless it has seen precisely two events so far (has seen %d)", len(dc.s.seenEvents)))
 	}
@@ -156,7 +158,8 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 		test.H(t).IsNil(err)
 
 		// Act
-		newEvs, err := res(context.Background(), &dummySession{}, md)
+		var b bytes.Buffer
+		newEvs, err := res(context.Background(), &b, &dummySession{}, md)
 
 		// Assert
 		test.H(t).IsNil(err)
@@ -201,7 +204,8 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 		test.H(t).IsNil(err)
 
 		// Act
-		newEvs, err := res(context.Background(), &dummySession{}, md)
+		var b bytes.Buffer
+		newEvs, err := res(context.Background(), &b, &dummySession{}, md)
 
 		// Assert
 		test.H(t).NotNil(err) // dummyCmd throws error in case the aggregate has not !!= 2 events in the history

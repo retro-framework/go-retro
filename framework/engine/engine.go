@@ -63,7 +63,7 @@ type Engine struct {
 // There is presently no way (should there be?) to construct a command "by
 // hand" it must be serializable to account for the repo rehydrating the
 // aggregate.
-func (e *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (string, error) {
+func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cmd []byte) (string, error) {
 
 	var err error
 
@@ -115,6 +115,7 @@ func (e *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 		sessionPath := filepath.Join("session", string(sid))
 		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
 		defer spnRehydrateSesh.Finish()
+		// TODO: do something about having meaningful session names
 		if err := seshAgg.SetName(types.PartitionName("hello world")); err != nil {
 			fmt.Println("got an error setting the partition name!", err)
 		}
@@ -130,12 +131,12 @@ func (e *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	spnResolveCmd := opentracing.StartSpan("resolve command", opentracing.ChildOf(spnApply.Context()))
 	commandFn, err := e.resolver(ctx, e.depot, cmd)
 	if err != nil {
-		return "", errors.Errorf("Couldn't resolve %s", cmd)
+		return "", errors.Errorf("Couldn't resolve %s (%s)", cmd, err)
 	}
 	spnResolveCmd.Finish()
 
 	spnApplyCmd := opentracing.StartSpan("apply command", opentracing.ChildOf(spnApply.Context()))
-	newEvs, err := commandFn(ctx, seshAgg, e.depot)
+	newEvs, err := commandFn(ctx, w, seshAgg, e.depot)
 	if err != nil {
 		return "", errors.Wrap(err, "error applying command")
 	}
@@ -159,7 +160,7 @@ func (e *Engine) Apply(ctx context.Context, sid types.SessionID, cmd []byte) (st
 	if err := e.persistEvs(ctx, sid, cmd, headPtr, newEvs); err != nil {
 		return "", err // TODO: wrap me
 	} else {
-		return "ok", nil
+		return "", nil
 	}
 
 }
@@ -204,7 +205,7 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	// if we used a cryptographically secure prng in the id factory
 	// but users may provide a bad implementation (also, tests.)
 	if e.depot.Exists(types.PartitionName(path)) {
-		return sid, Error{"guard-unique-session-id", err, "session id was not unique in depot, can't start."}
+		return sid, Error{Op: "guard-unique-session-id", Msg: fmt.Sprintf("session id %q was not unique in depot, can't start.", path)}
 	}
 
 	headPtr, err := e.depot.HeadPointer(ctx)
