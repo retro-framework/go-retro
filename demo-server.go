@@ -67,7 +67,7 @@ func main() {
 		refDBSrv = refDBServer{refdb}
 		depot    = depot.NewSimple(odb, refdb)
 		idFn     = func() (string, error) {
-			b := make([]byte, 64)
+			b := make([]byte, 12)
 			_, err := rand.Read(b)
 			if err != nil {
 				return "", err

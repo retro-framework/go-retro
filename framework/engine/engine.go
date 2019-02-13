@@ -115,8 +115,7 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 		sessionPath := filepath.Join("session", string(sid))
 		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
 		defer spnRehydrateSesh.Finish()
-		// TODO: do something about having meaningful session names
-		if err := seshAgg.SetName(types.PartitionName("hello world")); err != nil {
+		if err := seshAgg.SetName(types.PartitionName(sid)); err != nil {
 			fmt.Println("got an error setting the partition name!", err)
 		}
 		err := e.depot.Rehydrate(ctx, seshAgg, types.PartitionName(sessionPath))
