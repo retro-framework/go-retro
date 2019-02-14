@@ -1,6 +1,9 @@
 package aggregates
 
 import (
+	"math/rand"
+	"time"
+
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/events"
 	"github.com/retro-framework/go-retro/framework/types"
@@ -15,6 +18,7 @@ type WidgetsApp struct {
 }
 
 func (wa *WidgetsApp) ReactTo(ev types.Event) error {
+	time.Sleep(time.Duration(rand.Int31n(100)) * time.Millisecond)
 	switch ev.(type) {
 	case *events.AllowCreateIdentities:
 		wa.AllowCreateIdentities = true
