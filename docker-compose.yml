@@ -1,0 +1,48 @@
+version: '2'
+
+services:
+  zipkin-storage:
+    logging:
+      driver: none
+    image: openzipkin/zipkin-mysql
+    container_name: mysql
+  zipkin:
+    logging:
+      driver: none
+    image: openzipkin/zipkin
+    container_name: zipkin
+    environment:
+      - STORAGE_TYPE=mysql
+      - MYSQL_HOST=mysql
+    ports:
+      # Port used for the Zipkin UI and HTTP Api
+      - 9411:9411
+    depends_on:
+      - zipkin-storage
+  influxdb:
+    logging:
+      driver: none
+    image: influxdb:latest
+    container_name: influxdb
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+      - "8090:8090"
+    environment:
+      - INFLUXDB_DATA_ENGINE=tsm1
+      - INFLUXDB_REPORTING_DISABLED=false
+    volumes:
+      - .test-data/influxdb:/var/lib/influxdb
+  grafana:
+    logging:
+      driver: none
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "5000:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,briangann-gauge-panel,natel-plotly-panel,grafana-simple-json-datasource
+    links:
+      - influxdb
+    volumes:
+      - .test-data/grafana:/var/lib/grafana
