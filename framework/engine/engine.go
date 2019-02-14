@@ -88,7 +88,7 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 
 	headPtr, err := e.depot.HeadPointer(ctx)
 	if err != nil {
-		return "", Error{"get-head-pointer", nil, "could not get head pointer from depot"}
+		return "", Error{"get-head-pointer", err, "could not get head pointer from depot"}
 	}
 	if headPtr != nil {
 		spnApply.SetTag("head pointer", headPtr.String())
@@ -195,20 +195,20 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	}
 	var sid = types.SessionID(sidStr)
 
-	// Tracing
-	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnStartSession.Context()))
-	path := fmt.Sprintf("session/%s", sid)
-
 	// Guard against reuse of session ids, we could avoid this
 	// if we used a cryptographically secure prng in the id factory
 	// but users may provide a bad implementation (also, tests.)
-	if e.depot.Exists(types.PartitionName(path)) {
+	var path = fmt.Sprintf("session/%s", sid)
+	if e.depot.Exists(ctx, types.PartitionName(path)) {
 		return sid, Error{Op: "guard-unique-session-id", Msg: fmt.Sprintf("session id %q was not unique in depot, can't start.", path)}
 	}
 
+	// Tracing
+	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnStartSession.Context()))
+
 	headPtr, err := e.depot.HeadPointer(ctx)
 	if err != nil {
-		return "", Error{"get-head-pointer", nil, "could not get head pointer from depot"}
+		return "", Error{"get-head-pointer", err, "could not get head pointer from depot"}
 	}
 	if headPtr != nil {
 		spnStartSession.SetTag("head pointer", headPtr.String())
@@ -244,7 +244,8 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	}
 
 	// Trigger the session handler, and see what events, if any are emitted.
-	sessionStartedEvents, err := sessionStart(ctx, nil, e.depot)
+	var buf bytes.Buffer
+	sessionStartedEvents, err := sessionStart(ctx, &buf, nil, e.depot)
 	if err != nil {
 		return sid, Error{"execute-session-start-cmd", err, "error calling session start command"}
 	}

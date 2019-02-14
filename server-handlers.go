@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/retro-framework/go-retro/framework/engine"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -104,8 +103,6 @@ func (srv objectDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			parts = append(parts, part)
 		}
 	}
-
-	time.Sleep(time.Duration(rand.Intn(750)) * time.Millisecond)
 
 	switch len(parts) {
 	case 2:
@@ -208,7 +205,12 @@ func (e engineServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sid, err := e.e.StartSession(req.Context())
+	var ctx = req.Context()
+
+	spnApply, ctx := opentracing.StartSpanFromContext(ctx, "/apply")
+	defer spnApply.Finish()
+
+	sid, err := e.e.StartSession(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -219,13 +221,12 @@ func (e engineServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "error reading request body", 500)
 		return
 	}
+	spnApply.SetTag("payload", string(body))
 
-	resStr, err := e.e.Apply(req.Context(), sid, body)
+	_, err = e.e.Apply(ctx, w, sid, body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
-	fmt.Fprintf(w, string(sid))
-	fmt.Fprintf(w, string(resStr))
 }

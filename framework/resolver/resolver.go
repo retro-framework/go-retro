@@ -162,11 +162,14 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 		}
 	}
 	sp.Finish()
+	spnAggCmdLookup.Finish()
 
 	if cmd == nil {
 		return nil, Error{"agg-cmd-lookup", fmt.Errorf("no command registered with name %s for aggregate %v", cmdDesc.Name, reflect.TypeOf(agg).Elem().Name())}
 	}
 
+	spnRehydrate := opentracing.StartSpan("rehydrate target aggregate", opentracing.ChildOf(spnResolve.Context()))
+	defer spnRehydrate.Finish()
 	err = depot.Rehydrate(ctx, agg, types.PartitionName(cmdDesc.Path))
 	if err != nil {
 		// TODO: This exit condition is a nasty "magic string"
