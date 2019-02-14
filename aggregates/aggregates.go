@@ -13,18 +13,18 @@ import (
 var ErrAggregateNotAnonymous = fmt.Errorf("aggregate: already has a name (is not anonymous)")
 
 type NamedAggregate struct {
-	pn types.PartitionName
+	PN types.PartitionName `json:"name"`
 }
 
 func (na *NamedAggregate) Name() types.PartitionName {
-	return na.pn
+	return na.PN
 }
 
 func (na *NamedAggregate) SetName(pn types.PartitionName) error {
-	if len(na.pn) > 0 {
+	if len(na.PN) > 0 {
 		return ErrAggregateNotAnonymous
 	}
-	na.pn = pn
+	na.PN = pn
 	return nil
 }
 
