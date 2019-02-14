@@ -25,8 +25,8 @@ import (
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/types"
 
+	_ "github.com/retro-framework/go-retro/commands/identity"
 	_ "github.com/retro-framework/go-retro/commands/session"
-
 	_ "github.com/retro-framework/go-retro/commands/widgets_app"
 )
 
