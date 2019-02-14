@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -135,6 +136,12 @@ func (s simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionNam
 			if err != nil {
 				return fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, partitionName)
 			}
+			// the affix contains events for other aggregates
+			// but no biggie
+			// TODO: remove this guard and test this case(!)
+			if partitionName != dst.Name() {
+				continue
+			}
 			if match {
 
 				for _, evHash := range affixEvHashes {
@@ -171,21 +178,19 @@ func (s simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionNam
 						log.String("event.payload", string(evPayload)),
 					)
 
-					//
-					// TODO: Implement this properly
-					//
-					// ev, err := s.eventManifest.ForName(evName)
-					// if err != nil {
-					// 	return errors.Wrap(err, fmt.Sprintf("can't get event with name %s from manifest", evName))
-					// }
+					ev, err := s.eventManifest.ForName(evName)
+					if err != nil {
+						return errors.Wrap(err, fmt.Sprintf("can't get event with name %s from manifest", evName))
+					}
 
-					// err = json.Unmarshal(evPayload, &ev)
-					// if err != nil {
-					// 	return errors.Wrap(err, fmt.Sprintf("can't get unmarshal %s into event registered with name %s: %s", evPayload, evName, err))
-					// }
+					err = json.Unmarshal(evPayload, &ev)
+					if err != nil {
+						return errors.Wrap(err, fmt.Sprintf("can't get unmarshal %s into event registered with name %s: %s", evPayload, evName, err))
+					}
 
-					var ev types.Event
-					err = dst.ReactTo(ev)
+					if err = dst.ReactTo(ev); err != nil {
+						return errors.Wrap(err, fmt.Sprintf("error applying %q", evName))
+					}
 
 					spanApplyEv.Finish()
 				}
