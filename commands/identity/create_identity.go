@@ -46,6 +46,11 @@ func (cmd *CreateIdentity) SetArgs(a types.CommandArgs) error {
 
 func (cmd *CreateIdentity) Apply(ctxt context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
 
+	var s = session.(*aggregates.Session)
+	if s.HasIdentity {
+		return nil, fmt.Errorf("!! you already have an identity !!")
+	}
+
 	var ownEvents = []types.Event{
 		events.SetDisplayName{Name: cmd.args.Name},
 	}
@@ -62,7 +67,7 @@ func (cmd *CreateIdentity) Apply(ctxt context.Context, w io.Writer, session type
 
 	return types.CommandResult{
 		session: []types.Event{
-			events.AssociateIdentity{Identity: cmd.identity.Name()},
+			&events.AssociateIdentity{Identity: cmd.identity.Name()},
 		},
 		cmd.identity: ownEvents,
 	}, nil
