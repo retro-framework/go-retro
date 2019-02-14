@@ -218,16 +218,18 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 		return sid, Error{Op: "guard-unique-session-id", Msg: fmt.Sprintf("session id %q was not unique in depot, can't start.", path)}
 	}
 
-	// Tracing
-	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnStartSession.Context()))
-
 	headPtr, err := e.depot.HeadPointer(ctx)
 	if err != nil {
-		return "", Error{"get-head-pointer", err, "could not get head pointer from depot"}
+		err = Error{"get-head-pointer", err, "could not get head pointer from depot"}
+		spnStartSession.SetTag("error", err)
+		return "", err
 	}
 	if headPtr != nil {
 		spnStartSession.SetTag("head pointer", headPtr.String())
 	}
+
+	// Tracing
+	spnUnmarshal := opentracing.StartSpan("marshal start session command from anon struct", opentracing.ChildOf(spnStartSession.Context()))
 
 	// Our cancellation clause, claimTimeout is the wait time we're
 	// willing to inflict on our consumer/client waiting for other

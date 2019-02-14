@@ -271,6 +271,10 @@ func Test_Engine_Apply(t *testing.T) {
 		}
 	})
 
+	t.Run("with a non-existent sesionID", func(t *testing.T) {
+		t.Skip("not implemented yet")
+	})
+
 	t.Run("routing", func(t *testing.T) {
 
 		t.Run("raises error and logs it on unroutable (unregistered) command", func(t *testing.T) {

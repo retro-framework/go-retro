@@ -83,13 +83,13 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 			return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not split into exactly two parts", cmdDesc.Path)}
 		}
 		targetsRootAggregate = true
-		spnUnmarshal.SetTag("agg.isRoot", true)
+		spnResolve.SetTag("agg.isRoot", true)
 	}
 
 	if !targetsRootAggregate {
 		aggType, aggID = cmdDescParts[0], cmdDescParts[1]
-		spnUnmarshal.SetTag("agg.type", aggType)
-		spnUnmarshal.SetTag("agg.id", aggID)
+		spnResolve.SetTag("agg.type", aggType)
+		spnResolve.SetTag("agg.id", aggID)
 		if len(aggType) == 0 && len(aggID) == 0 {
 			return nil, Error{"parse-agg-path", fmt.Errorf("can't split %q into name and id, both parts empty (empty string?)", cmdDesc.Path)}
 		} else if len(aggType) > 0 && len(aggID) == 0 { // path given, no ID
@@ -119,6 +119,9 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 
 	// Set the aggregate name (useful to ensure that things survive a roundtrip to Commands
 	// and back into the Engine)
+	//
+	// TODO: this needs to be the NAME not the path, for sessions
+	// it is the name only not the whole path... must be precise
 	agg.SetName(types.PartitionName(cmdDesc.Path))
 	if err != nil {
 		return nil, Error{"agg-assign-name", fmt.Errorf("could not set name on Aggregate: %s", err)}
