@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -16,7 +17,7 @@ type simpleEventIterator struct {
 
 	pattern string
 
-	stackCh chan cpAffixStack
+	stackCh chan storage.AffixStack
 
 	matcher types.PatternMatcher
 
@@ -58,13 +59,13 @@ func (s *simpleEventIterator) events(ctx context.Context, out chan types.Persist
 
 	var jp *packing.JSONPacker
 
-	var drainStack = func(ctx context.Context, out chan<- types.PersistedEvent, outErr chan<- error, stack cpAffixStack) {
+	var drainStack = func(ctx context.Context, out chan<- types.PersistedEvent, outErr chan<- error, stack storage.AffixStack) {
 		for {
 			var h = stack.Pop()
 			if h == nil {
 				break
 			}
-			for partitionName, affixEvHashes := range h.affix {
+			for partitionName, affixEvHashes := range h.Affix {
 				match, err := s.matcher.DoesMatch(string(partitionName), s.pattern)
 				if err != nil {
 					outErr <- fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, s.pattern)
@@ -94,11 +95,11 @@ func (s *simpleEventIterator) events(ctx context.Context, out chan types.Persist
 						}
 
 						pEv := PersistedEv{
-							time:          h.time,
+							time:          h.Time,
 							bytes:         evPayload,
 							name:          evName,
 							partitionName: types.PartitionName(s.pattern),
-							cpHash:        h.checkpointHash,
+							cpHash:        h.CheckpointHash,
 						}
 						select {
 						case out <- pEv:

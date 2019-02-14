@@ -9,6 +9,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -61,9 +62,9 @@ func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.
 
 func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types.EventIterator, outErr chan error) (<-chan types.EventIterator, <-chan error) {
 
-	var stacks = make(chan cpAffixStack)
+	var stacks = make(chan storage.AffixStack)
 
-	var emitPartitionIterator = func(ctx context.Context, out chan<- types.EventIterator, oStack cpAffixStack, kp string) {
+	var emitPartitionIterator = func(ctx context.Context, out chan<- types.EventIterator, oStack storage.AffixStack, kp string) {
 		// Check if we have a consumer for this
 		// already, doesn't check if that consumer
 		// is still behaving properly
@@ -81,7 +82,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types
 			objdb:   s.objdb,
 			matcher: s.matcher,
 			pattern: kp,
-			stackCh: make(chan cpAffixStack, 1),
+			stackCh: make(chan storage.AffixStack, 1),
 		}
 		select {
 		case out <- evIter:
@@ -93,7 +94,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types
 	}
 
 	var collectRelevantCheckpoints = func(from, to types.Hash) error {
-		var st cpAffixStack
+		var st storage.AffixStack
 		// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
 		// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
 		// breaks the loop and we come back here.
@@ -131,7 +132,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types
 			select {
 			case newStack, ok := <-stacks:
 				if ok {
-					for _, kp := range newStack.knownPartitions {
+					for _, kp := range newStack.KnownPartitions {
 						emitPartitionIterator(ctx, out, newStack, string(kp))
 					}
 				}
@@ -153,7 +154,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash types.Hash, st *cpAffixStack) error {
+func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash types.Hash, st *storage.AffixStack) error {
 
 	var jp *packing.JSONPacker
 
@@ -214,10 +215,10 @@ func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash t
 				return errors.Wrap(err, fmt.Sprintf("parsing date %q as rfc3339", dateStr))
 			}
 
-			st.Push(relevantCheckpoint{
-				time:           t,
-				checkpointHash: packedCheckpoint.Hash(),
-				affix:          affix,
+			st.Push(storage.RelevantCheckpoint{
+				Time:           t,
+				CheckpointHash: packedCheckpoint.Hash(),
+				Affix:          affix,
 			})
 		}
 	}

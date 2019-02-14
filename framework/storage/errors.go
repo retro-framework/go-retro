@@ -1,6 +1,8 @@
 package storage
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrUnknownRef         = errors.New("storage: ref unknown")

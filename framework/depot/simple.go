@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-collections/collections/stack"
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/matcher"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -185,7 +185,7 @@ func (s *Simple) Watch(_ context.Context, partition string) types.PartitionItera
 		objdb:          s.objdb,
 		refdb:          s.refdb,
 		pattern:        partition,
-		matcher:        GlobPatternMatcher{},
+		matcher:        matcher.Glob{},
 		subscribedOn:   subscriberNotificationCh,
 		eventIterators: make(map[string]*simpleEventIterator),
 	}
@@ -239,46 +239,4 @@ func (s Simple) notifySubscribers(old, new types.Hash) error {
 		}(subscriber)
 	}
 	return nil
-}
-
-type relevantCheckpoint struct {
-	time           time.Time
-	checkpointHash types.Hash
-	affix          packing.Affix
-}
-
-func (rc relevantCheckpoint) String() string {
-	return fmt.Sprintf("Relevant Checkpoint: %s", rc.checkpointHash.String())
-}
-
-type cpAffixStack struct {
-	s stack.Stack
-
-	knownPartitions []types.PartitionName
-}
-
-// Push pushes a relavantCheckpoint onto a stack as we walk
-// the object graph. It also maintains a youngest-to-oldest
-func (os *cpAffixStack) Push(rc relevantCheckpoint) {
-	os.s.Push(rc)
-	for partitionName := range rc.affix {
-		var partitionNameKnown bool
-		for _, kp := range os.knownPartitions {
-			if partitionName == kp {
-				partitionNameKnown = true
-			}
-		}
-		if !partitionNameKnown {
-			os.knownPartitions = append(os.knownPartitions, partitionName)
-		}
-	}
-}
-
-func (os *cpAffixStack) Pop() *relevantCheckpoint {
-	v := os.s.Pop()
-	if v == nil {
-		return nil
-	}
-	rcp := v.(relevantCheckpoint)
-	return &rcp
 }
