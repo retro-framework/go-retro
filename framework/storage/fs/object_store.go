@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -36,13 +35,6 @@ type ObjectStore struct {
 
 func (s *ObjectStore) mkdirAll(path string) error {
 	return os.MkdirAll(path, 0766)
-}
-
-func (s *ObjectStore) ListObjects(w io.Writer) {
-	files, _ := filepath.Glob(filepath.Join(s.BasePath, "**/*"))
-	for _, file := range files {
-		fmt.Fprintf(w, "%s\n", file)
-	}
 }
 
 func (s *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
