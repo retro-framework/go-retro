@@ -12,10 +12,10 @@ require (
 	github.com/eapache/go-xerial-snappy v0.0.0-20160609142408-bb955e01b934 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/go-logfmt/logfmt v0.3.0 // indirect
-	github.com/go-redis/redis v6.8.3+incompatible
+	github.com/go-redis/redis v6.8.3+incompatible // indirect
 	github.com/gogo/protobuf v0.0.0-20171007142547-342cbe0a0415 // indirect
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
-	github.com/golang/protobuf v1.1.0
+	github.com/golang/protobuf v1.1.0 // indirect
 	github.com/golang/snappy v0.0.0-20170215233205-553a64147049 // indirect
 	github.com/google/go-cmp v0.2.0
 	github.com/gorilla/handlers v1.4.0
@@ -37,11 +37,11 @@ require (
 	github.com/stretchr/testify v1.2.2 // indirect
 	github.com/uudashr/gopkgs v1.3.2 // indirect
 	github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
-	golang.org/x/net v0.0.0-20171123081856-c7086645de24
+	golang.org/x/net v0.0.0-20171123081856-c7086645de24 // indirect
 	golang.org/x/sys v0.0.0-20180427151831-cbbc999da32d // indirect
 	golang.org/x/text v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20181101192439-c830210a61df // indirect
-	google.golang.org/grpc v1.13.0
+	google.golang.org/grpc v1.13.0 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 )
