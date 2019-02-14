@@ -128,14 +128,11 @@ func Test_Engine_StartSession(t *testing.T) {
 		// Assert
 		test.H(t).IsNil(err)
 
-		fmt.Println("looking for partition", fmt.Sprintf("session/%s", sid))
-
 		if dd, ok := depot.(types.DumpableDepot); !ok {
 			t.Fatal("could not upgrade depot to diff it")
 		} else {
 			var b bytes.Buffer
 			dd.DumpAll(&b)
-			fmt.Print(b.String())
 		}
 
 		test.H(t).BoolEql(true, depot.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))

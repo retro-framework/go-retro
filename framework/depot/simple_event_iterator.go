@@ -120,7 +120,6 @@ func (s *simpleEventIterator) events(ctx context.Context, out chan types.Persist
 			case stack := <-s.stackCh:
 				drainStack(ctx, out, outErr, stack)
 			case <-ctx.Done():
-				// fmt.Println("ei: ", ctx.Err())
 				return
 			}
 		}

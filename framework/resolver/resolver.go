@@ -78,7 +78,6 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 		aggID                string
 		targetsRootAggregate bool
 	)
-	fmt.Println(string(b), cmdDescParts, len(cmdDescParts))
 	if len(cmdDescParts) < 2 {
 		if cmdDescParts[0] != "_" {
 			return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not split into exactly two parts", cmdDesc.Path)}

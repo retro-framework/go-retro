@@ -89,21 +89,17 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 					packedEv, err := s.objdb.RetrievePacked(evHash.String())
 					if err != nil {
 						// TODO: test me
-						fmt.Println("return 1")
 						return errors.Wrap(err, "error retrieving packed object from odb from evHash")
 					}
 
 					if packedEv.Type() != packing.ObjectTypeEvent {
 						// TODO: test me
-						fmt.Println("return 2")
-						fmt.Printf("object was not a %s but a %s\n", packing.ObjectTypeEvent, packedEv.Type())
 						return errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeEvent, packedEv.Type()))
 					}
 
 					evName, evPayload, err := jp.UnpackEvent(packedEv.Contents())
 					if err != nil {
 						// TODO: test me
-						fmt.Println("return 3")
 						return errors.Wrap(err, fmt.Sprintf("can't unpack event %s", packedEv.Contents()))
 					}
 

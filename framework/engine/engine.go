@@ -117,7 +117,8 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
 		defer spnRehydrateSesh.Finish()
 		if err := seshAgg.SetName(types.PartitionName(sid)); err != nil {
-			fmt.Println("got an error setting the partition name!", err)
+			err := Error{"session-lookup", err, "aggregate name did not persist"}
+			return "", err
 		}
 		err := e.depot.Rehydrate(ctx, seshAgg, types.PartitionName(sessionPath))
 		if err != nil {

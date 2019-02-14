@@ -116,8 +116,6 @@ func (s *Simple) DumpAll(w io.Writer) string {
 			fmt.Fprintf(w, "%s:%s\n", ho.Type(), hashStr)
 			fmt.Fprintf(w, "%s\n\n", strings.Replace(string(ho.Contents()), "\u0000", "\\u0000", -1))
 		}
-	} else {
-		fmt.Print("couldn't upgrade store")
 	}
 	if lrefdb, ok := s.refdb.(ref.ListableStore); ok {
 		m, err := lrefdb.Ls()
@@ -127,8 +125,6 @@ func (s *Simple) DumpAll(w io.Writer) string {
 		for k, v := range m {
 			fmt.Fprintf(w, "%s -> %s\n", k, v)
 		}
-	} else {
-		fmt.Print("couldn't upgrade store")
 	}
 	return ""
 }
