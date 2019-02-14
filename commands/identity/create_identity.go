@@ -44,12 +44,16 @@ func (cmd *CreateIdentity) SetArgs(a types.CommandArgs) error {
 	return nil
 }
 
-func (cmd *CreateIdentity) Apply(ctxt context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
+func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
 
-	var s = session.(*aggregates.Session)
-	if s.HasIdentity {
-		return nil, fmt.Errorf("!! you already have an identity !!")
+	if repo.Exists(ctx, cmd.identity.Name()) {
+		return nil, fmt.Errorf("identity already exists with name %q", cmd.identity.Name())
 	}
+
+	// var s = session.(*aggregates.Session)
+	// if s.HasIdentity && s.IdentityName == cmd.identity.Name() {
+	// 	return nil, fmt.Errorf("session %s is already associated with an identity named %s (%t)", s.Name(), cmd.identity.Name(), exists)
+	// }
 
 	var ownEvents = []types.Event{
 		events.SetDisplayName{Name: cmd.args.Name},
