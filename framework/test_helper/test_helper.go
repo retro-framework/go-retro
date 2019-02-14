@@ -10,11 +10,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func AggStateFixture(name string, evs ...types.Event) map[string][]types.Event {
-	// TODO ensure that name isn't empty
-	return map[string][]types.Event{name: evs}
-}
-
 func H(t *testing.T) helper {
 	t.Helper()
 	return helper{t}
@@ -96,4 +91,18 @@ func (h helper) BoolEql(got, want bool) {
 	if got != want {
 		h.t.Fatalf("boolean equality assertion failed, got %t wanted %t", got, want)
 	}
+}
+
+func (h helper) Rehydrate(fixture types.EventFixture, agg types.Aggregate) error {
+	for a, evs := range fixture {
+		if agg == a {
+			fmt.Printf("Found the aggregate I was looking for %p (%#v)\n", agg, a)
+			for _, ev := range evs {
+				if err := agg.ReactTo(ev); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

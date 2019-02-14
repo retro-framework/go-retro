@@ -18,7 +18,7 @@ type WidgetsApp struct {
 }
 
 func (wa *WidgetsApp) ReactTo(ev types.Event) error {
-	time.Sleep(time.Duration(rand.Int31n(100)) * time.Millisecond)
+	time.Sleep(time.Duration(rand.Int31n(1)) * time.Millisecond)
 	switch ev.(type) {
 	case *events.AllowCreateIdentities:
 		wa.AllowCreateIdentities = true

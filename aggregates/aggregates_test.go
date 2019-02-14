@@ -7,9 +7,10 @@ import (
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
-type dummyAggregate struct{}
+type dummyAggregate struct{ NamedAggregate }
 
-func (_ dummyAggregate) ReactTo(types.Event) error { return nil }
+// ReactTo is required to fulfil the types.Aggregate interface
+func (dummyAggregate) ReactTo(types.Event) error { return nil }
 
 func Test_Aggregates_Register_TwiceSameEvRaisesError(t *testing.T) {
 	assertNotNil := test.H(t).NotNil

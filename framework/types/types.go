@@ -175,6 +175,10 @@ type CommandFunc func(context.Context, io.Writer, Session, Depot) (CommandResult
 // map should ideally contain
 type CommandResult map[Aggregate][]Event
 
+// EventFixture is a type alias for testing, it aliases CommandResult
+// as the mapping of Aggregate to []Event is useful for testing
+type EventFixture CommandResult
+
 // Resolver takes a []byte and returns a callable command function
 // the resolver is used bt the Engine to take serialized client
 // input and map it to a registered command by name. The command

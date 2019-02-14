@@ -1,42 +1,56 @@
 package aggregates
 
 import (
-	"context"
 	"testing"
 
 	"github.com/retro-framework/go-retro/events"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
+	"github.com/retro-framework/go-retro/framework/types"
 )
 
 func Test_WidgetsApp_State_AllowCreationOfIdentities(t *testing.T) {
 	// Arrange
-	assertBoolEql := test.H(t).BoolEql
-	assertErrEql := test.H(t).ErrEql
-	mr := test.StateFixture(t, test.AggStateFixture("_", &events.AllowCreateIdentities{}))
+	var (
+		assertBoolEql = test.H(t).BoolEql
+		assertErrEql  = test.H(t).ErrEql
+
+		app     = &WidgetsApp{}
+		fixture = types.EventFixture{
+			app: []types.Event{
+				&events.AllowCreateIdentities{},
+			},
+		}
+	)
 
 	// Act
-	app := WidgetsApp{}
 	assertBoolEql(app.AllowCreateIdentities, false)
 
 	// Assert
-	err := mr.Rehydrate(context.Background(), &app, "_")
+	err := test.H(t).Rehydrate(fixture, app)
 	assertErrEql(err, nil)
 	assertBoolEql(app.AllowCreateIdentities, true)
 }
 
 func Test_WidgetsApp_State_DisableCreationOfIdentities(t *testing.T) {
 	// Arrange
-	assertBoolEql := test.H(t).BoolEql
-	assertErrEql := test.H(t).ErrEql
-	mr := test.StateFixture(t, test.AggStateFixture("_", &events.AllowCreateIdentities{},
-		&events.DisableCreateIdentities{}))
+	var (
+		assertBoolEql = test.H(t).BoolEql
+		assertErrEql  = test.H(t).ErrEql
+
+		app     = &WidgetsApp{}
+		fixture = types.EventFixture{
+			app: []types.Event{
+				&events.AllowCreateIdentities{},
+				&events.DisableCreateIdentities{},
+			},
+		}
+	)
 
 	// Act
-	app := WidgetsApp{}
 	assertBoolEql(app.AllowCreateIdentities, false)
 
 	// Assert
-	err := mr.Rehydrate(context.Background(), &app, "_")
+	err := test.H(t).Rehydrate(fixture, app)
 	assertErrEql(err, nil)
 	assertBoolEql(app.AllowCreateIdentities, false)
 }
