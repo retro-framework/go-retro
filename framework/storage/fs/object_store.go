@@ -115,10 +115,7 @@ func (s *ObjectStore) RetrievePacked(str string) (types.HashedObject, error) {
 		return nil, ErrUnsupportedHash
 	}
 
-	h := packing.Hash{
-		AlgoName: packing.HashAlgoNameSHA256,
-		Bytes:    dst,
-	}
+	h := packing.NewHash(packing.HashAlgoNameSHA256, dst)
 
 	objPath := filepath.Join(s.BasePath, fmt.Sprintf("%x/%x/%x", h.String()[0:1], h.String()[1:2], h.String()[2:]))
 

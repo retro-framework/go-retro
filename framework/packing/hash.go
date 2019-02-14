@@ -14,7 +14,7 @@ import (
 // and a HashAlgoName alias.
 type Hash struct {
 	AlgoName HashAlgoName
-	Bytes    []byte
+	B        []byte
 }
 
 func (h Hash) MarshalJSON() ([]byte, error) {
@@ -22,22 +22,20 @@ func (h Hash) MarshalJSON() ([]byte, error) {
 }
 
 func (h Hash) String() string {
-	return fmt.Sprintf("%s:%x", h.AlgoName, h.Bytes)
+	return fmt.Sprintf("%s:%x", h.AlgoName, h.B)
 }
 
 func (h Hash) ShortStr() string {
-	return fmt.Sprintf("%s:%x", h.AlgoName, h.Bytes[0:8])
+	return fmt.Sprintf("%s:%x", h.AlgoName, h.B[0:8])
 }
 
-// ToPathName yields a pathname such as
-// "f63b/82de/c4c45a502655369ca20af061d08c4459b108f87a108aa1d1dd4c02a0"
-// which is intended to avoid having filesystem directories containing
-// millions of entries. Git uses a similar scheme using the first bytes
-// for a two-level hierarchy. Because Retro prefers SHA256 which has a
-// bigger space (longer hashes) a two-level hierarchy seemed prudent.
-// func (h Hash) ToPathName() string {
-// 	return fmt.Sprintf("%x/%x/%x", h.Bytes[0:2], h.Bytes[2:4], h.Bytes[4:])
-// }
+func (h Hash) Bytes() []byte {
+	return h.B
+}
+
+func NewHash(n HashAlgoName, b []byte) Hash {
+	return Hash{n, b}
+}
 
 func HashStrToHash(str string) types.Hash {
 	parts := strings.Split(str, ":")
@@ -46,13 +44,13 @@ func HashStrToHash(str string) types.Hash {
 		// TODO: do this better, not many call sites, maybe :MUST: is wise?
 		log.Fatal(err)
 	}
-	return Hash{AlgoName: HashAlgoNameSHA256, Bytes: decoded}
+	return NewHash(HashAlgoNameSHA256, decoded)
 }
 
 // TODO: make this respect algoname in the given string
 func hashStr(str string) types.Hash {
 	var s = sha256.Sum256([]byte(str))
-	return Hash{AlgoName: HashAlgoNameSHA256, Bytes: s[:]}
+	return NewHash(HashAlgoNameSHA256, s[:])
 }
 
 func HashStr(str string) types.Hash {

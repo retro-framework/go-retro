@@ -183,12 +183,7 @@ func (s *RefStore) Retrieve(name string) (types.Hash, error) {
 		return nil, ErrUnableToDecodeHashForRetrieve
 	}
 
-	return &packing.Hash{
-		// TODO: Actually parse AlgoName properly
-		AlgoName: packing.HashAlgoNameSHA256,
-		Bytes:    dst,
-	}, nil
-
+	return packing.NewHash(packing.HashAlgoNameSHA256, dst), nil
 }
 
 func (s *RefStore) RetrieveSymbolic(name string) (string, error) {

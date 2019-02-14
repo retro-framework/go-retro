@@ -25,6 +25,7 @@ type RefMove struct {
 // is lingua franca.
 type Hash interface {
 	String() string
+	Bytes() []byte
 }
 
 // Aggregate interface is simple, it need only ReactTo

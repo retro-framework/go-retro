@@ -22,10 +22,7 @@ func Test_PackedObject(t *testing.T) {
 				hashFn: func() hash.Hash { return sha256.New() },
 				nowFn:  func() time.Time { return time.Time{} },
 			}
-			hash = Hash{
-				AlgoName: HashAlgoNameSHA256,
-				Bytes:    sha256.New().Sum([]byte("foo")),
-			}
+			hash           = NewHash(HashAlgoNameSHA256, sha256.New().Sum([]byte("foo")))
 			packedAffix, _ = jp.PackAffix(Affix{"baz/123": []types.Hash{hash}, "bar/123": []types.Hash{hash}})
 		)
 
