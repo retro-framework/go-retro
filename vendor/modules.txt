@@ -12,7 +12,7 @@ github.com/eapache/go-xerial-snappy
 github.com/eapache/queue
 # github.com/go-logfmt/logfmt v0.3.0
 github.com/go-logfmt/logfmt
-# github.com/gogo/protobuf v1.1.1
+# github.com/gogo/protobuf v1.2.0
 github.com/gogo/protobuf/proto
 # github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 github.com/golang-collections/collections/stack

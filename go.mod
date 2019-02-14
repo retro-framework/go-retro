@@ -12,6 +12,7 @@ require (
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/go-logfmt/logfmt v0.3.0 // indirect
 	github.com/go-redis/redis v6.8.3+incompatible // indirect
+	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/google/go-cmp v0.2.0
 	github.com/gorilla/handlers v1.4.0
