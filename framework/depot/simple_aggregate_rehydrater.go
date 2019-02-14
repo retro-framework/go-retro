@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -24,6 +26,10 @@ type simpleAggregateRehydrater struct {
 
 func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
 
+	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "simpleAggregateRehydrater.Rehydrate")
+	spnRehydrate.SetTag("partitionName", string(partitionName))
+	defer spnRehydrate.Finish()
+
 	var (
 		oStack cpAffixStack
 		jp     *packing.JSONPacker
@@ -35,6 +41,8 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 		return errors.Wrapf(err, "unknown ref, can't lookup partitions for %s", string(partitionName))
 	}
 
+	spanGatherCheckpoints := opentracing.StartSpan("gathering relevant checkpoints", opentracing.ChildOf(spnRehydrate.Context()))
+	defer spanGatherCheckpoints.Finish()
 	// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
 	// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
 	// breaks the loop and we come back here.
@@ -42,6 +50,8 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 	if err != nil {
 		return errors.Wrap(err, "error when stacking relevant partitions")
 	}
+	spnRehydrate.LogFields(log.Int("found.checkpoints", oStack.s.Len()))
+	spanGatherCheckpoints.Finish()
 
 	// TODO: this needs to be refactored out. Depot.Rehydrate cannot work as it can't check the
 	// types of the events because it has no access to a manifest.
@@ -49,6 +59,8 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 	// 	return fmt.Errorf("cannot rehydrate aggreage without an eventManifest")
 	// }
 
+	spanDrainCheckpoints := opentracing.StartSpan("draining relavant checkpoints", opentracing.ChildOf(spnRehydrate.Context()))
+	defer spanDrainCheckpoints.Finish()
 	for {
 		rC := oStack.s.Pop()
 		if rC == nil {
@@ -61,7 +73,18 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 				return fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, s.pattern)
 			}
 			if match {
+
 				for _, evHash := range affixEvHashes {
+
+					spanApplyEv := opentracing.StartSpan(
+						fmt.Sprintf("apply event %s", evHash.String()),
+						opentracing.ChildOf(spanDrainCheckpoints.Context()),
+					)
+					defer spanApplyEv.Finish()
+
+					spanApplyEv.LogFields(
+						log.String("event.hash", evHash.String()),
+					)
 
 					packedEv, err := s.objdb.RetrievePacked(evHash.String())
 					if err != nil {
@@ -77,12 +100,17 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 						return errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeEvent, packedEv.Type()))
 					}
 
-					_, _, err = jp.UnpackEvent(packedEv.Contents())
+					evName, evPayload, err := jp.UnpackEvent(packedEv.Contents())
 					if err != nil {
 						// TODO: test me
 						fmt.Println("return 3")
 						return errors.Wrap(err, fmt.Sprintf("can't unpack event %s", packedEv.Contents()))
 					}
+
+					spanApplyEv.LogFields(
+						log.String("event.name", evName),
+						log.String("event.payload", string(evPayload)),
+					)
 
 					//
 					// TODO: Implement this properly
@@ -99,10 +127,13 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 
 					var ev types.Event
 					err = dst.ReactTo(ev)
+
+					spanApplyEv.Finish()
 				}
 			}
 		}
 	}
+	spanDrainCheckpoints.Finish()
 
 	return nil
 }
