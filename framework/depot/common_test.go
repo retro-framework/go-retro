@@ -263,7 +263,7 @@ func Test_Depot(t *testing.T) {
 
 				var (
 					// start conditions, we're globbing for any event on any partition
-					partitionInterator          = depot.Glob(ctx, "*")
+					partitionInterator          = depot.Watch(ctx, "*")
 					partitions, partitionErrors = partitionInterator.Partitions(ctx)
 				)
 
@@ -349,7 +349,7 @@ func Test_Depot(t *testing.T) {
 				defer cancelFn()
 
 				var seenExpected int
-				var partitionInterator = depot.Glob(ctx, "*")
+				var partitionInterator = depot.Watch(ctx, "*")
 				var partitions, partitionErrors = partitionInterator.Partitions(ctx)
 
 				// Test fixture has two existing partitions consume them both
@@ -399,7 +399,7 @@ func Test_Depot(t *testing.T) {
 				defer cancelFn()
 
 				var success = make(chan bool)
-				var partitionInterator = depot.Glob(ctx, "*")
+				var partitionInterator = depot.Watch(ctx, "*")
 				var partitions, partitionErrors = partitionInterator.Partitions(ctx)
 
 				var saveNewDataAndMoveHeadPointer = func() {
@@ -478,7 +478,7 @@ func Test_Depot(t *testing.T) {
 				defer cancelFn()
 
 				go func() {
-					var authors = depot.Glob(ctx, "author/*")
+					var authors = depot.Watch(ctx, "author/*")
 					for {
 						authorEvents, err := authors.Next(ctx)
 						if err == Done {

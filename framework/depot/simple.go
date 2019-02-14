@@ -177,8 +177,8 @@ func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionNam
 	}.Rehydrate(ctx, dst, partitionName)
 }
 
-// Glob makes the world go round
-func (s *Simple) Glob(_ context.Context, partition string) types.PartitionIterator {
+// Watch makes the world go round
+func (s *Simple) Watch(_ context.Context, partition string) types.PartitionIterator {
 	var subscriberNotificationCh = make(chan types.RefMove)
 	s.subscribers = append(s.subscribers, subscriberNotificationCh)
 	return &simplePartitionIterator{

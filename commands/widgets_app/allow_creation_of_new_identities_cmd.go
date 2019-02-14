@@ -37,7 +37,7 @@ func (cmd *AllowCreationOfNewIdentities) SetState(agg types.Aggregate) error {
 // This allows configuration of the app early in its lifecycle.
 func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, w io.Writer, session types.Session, depot types.Depot) (types.CommandResult, error) {
 
-	identities := depot.Glob(ctx, "identities/*")
+	identities := depot.Watch(ctx, "identities/*")
 	_ = identities
 	// if !identities.HasAny() { // TODO: not implemented
 	// 	return nil, errors.New("can't change application settings anonymously once identities exist")

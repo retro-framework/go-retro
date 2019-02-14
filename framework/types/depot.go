@@ -23,7 +23,7 @@ type Depot interface {
 	Rehydrate(context.Context, Aggregate, PartitionName) error
 
 	// For enumerating or matching on a single PartitionName
-	Glob(context.Context, string) PartitionIterator
+	Watch(context.Context, string) PartitionIterator
 
 	// General variadaric function for storing any packed things
 	// simplifies the interface to the underlying store.

@@ -103,7 +103,7 @@ func main() {
 		var (
 			influxDBName        = "retrov1"
 			ctx                 = context.Background()
-			everything          = d.Glob(ctx, "*")
+			everything          = d.Watch(ctx, "*")
 			influxHTTPClient, _ = client.NewHTTPClient(client.HTTPConfig{
 				Addr: "http://localhost:8086",
 			})
