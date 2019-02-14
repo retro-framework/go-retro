@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -19,7 +20,6 @@ var (
 	ErrUnableToCreateRefFile      = errors.New("unable to create ref file")
 	ErrUnableToCreateRefDir       = errors.New("unable to create ref dir")
 
-	ErrNoSuchRef           = errors.New("no such ref in database")
 	ErrUnableToReadRefFile = errors.New("unable to read ref file")
 	ErrBadHashForRetrieve  = errors.New("no valid hash in ref ")
 )
@@ -164,7 +164,7 @@ func (s *RefStore) Retrieve(name string) (types.Hash, error) {
 	var refPath = filepath.Join(s.BasePath, name)
 
 	if _, err := os.Stat(refPath); os.IsNotExist(err) {
-		return nil, ErrNoSuchRef
+		return nil, storage.ErrUnknownRef
 	}
 
 	hashData, err := ioutil.ReadFile(refPath)
@@ -191,7 +191,7 @@ func (s *RefStore) RetrieveSymbolic(name string) (string, error) {
 	var symRefPath = filepath.Join(s.BasePath, name)
 
 	if _, err := os.Stat(symRefPath); os.IsNotExist(err) {
-		return "", ErrNoSuchRef
+		return "", storage.ErrUnknownRef
 	}
 
 	hashData, err := ioutil.ReadFile(symRefPath)

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/retro-framework/go-retro/framework/engine"
@@ -210,10 +211,26 @@ func (e engineServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	spnApply, ctx := opentracing.StartSpanFromContext(ctx, "/apply")
 	defer spnApply.Finish()
 
-	sid, err := e.e.StartSession(ctx)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+	// Check if we have a session cookie, if not we'll get one and
+	// set it into the response
+	var (
+		err error
+		sid types.SessionID
+	)
+	if sessionCookie, _ := req.Cookie("retroSessionID"); sessionCookie == nil {
+		sid, err = e.e.StartSession(ctx)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		cookie := http.Cookie{
+			Name:    "retroSessionID",
+			Value:   string(sid),
+			Expires: time.Now().Add(6 * time.Hour),
+		}
+		http.SetCookie(w, &cookie)
+	} else {
+		sid = types.SessionID(sessionCookie.Value)
 	}
 
 	body, err := ioutil.ReadAll(req.Body)

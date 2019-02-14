@@ -95,7 +95,9 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 	}
 
 	if err != nil {
-		return "", Error{"get-head-pointer", err, "could not get head pointer from depot"}
+		err = Error{"get-head-pointer", err, "could not get head pointer from depot"}
+		spnApply.SetTag("error", err.Error())
+		return "", err
 	}
 
 	if headPtr != nil {
