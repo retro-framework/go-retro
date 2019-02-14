@@ -16,7 +16,7 @@ type Depot interface {
 	Claim(context.Context, string) bool
 	Release(string)
 
-	Exists(PartitionName) bool
+	Exists(context.Context, PartitionName) bool
 
 	// Retrieve a specific aggregate by applying events to it
 	// concerned with mostly "Command" execution.

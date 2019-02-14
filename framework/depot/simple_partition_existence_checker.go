@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -28,21 +29,22 @@ type simplePartitionExistenceChecker struct {
 // 4. loop over them and apply them to &dario
 
 func (s simplePartitionExistenceChecker) Exists(ctx context.Context, partitionName types.PartitionName) (bool, error) {
-
-	// Resolve the head ref for the given ctx
+	spnExists, ctx := opentracing.StartSpanFromContext(ctx, "simplePartitionExistenceChecker.Exists")
+	spnExists.SetTag("partitionName", string(partitionName))
+	defer spnExists.Finish()
 	headRef, err := s.refdb.Retrieve(refFromCtx(ctx))
 	if err != nil {
+		spnExists.SetTag("error", err)
 		return false, err
 	}
-
-	return s.returnTruOnMatching(headRef)
+	return s.returnTruOnMatching(ctx, headRef)
 }
 
 // / enqueueCheckpointIfRelevant pushes checkpoint hashes and affix metadata onto a stack
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s simplePartitionExistenceChecker) returnTruOnMatching(checkpointObjHash types.Hash) (bool, error) {
+func (s simplePartitionExistenceChecker) returnTruOnMatching(ctx context.Context, checkpointObjHash types.Hash) (bool, error) {
 
 	var jp *packing.JSONPacker
 
@@ -101,7 +103,7 @@ func (s simplePartitionExistenceChecker) returnTruOnMatching(checkpointObjHash t
 	// subject possibly to the order the hashes are written by the packer, which I believe to be alphabetic
 	// Either way we should peek into a structure and find out which checkpoint is younger and start there
 	for _, parentCheckpointHash := range checkpoint.ParentHashes {
-		return s.returnTruOnMatching(parentCheckpointHash)
+		return s.returnTruOnMatching(ctx, parentCheckpointHash)
 	}
 
 	return false, nil

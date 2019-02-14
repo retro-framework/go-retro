@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -158,10 +159,8 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 
 	if err := e.persistEvs(ctx, sid, cmd, headPtr, newEvs); err != nil {
 		return "", err // TODO: wrap me
-	} else {
-		return "", nil
 	}
-
+	return "ok", nil
 }
 
 func dumpCommandResult(w io.Writer, cr types.CommandResult) {

@@ -102,6 +102,7 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Arrange
 		var (
+			ctx           = context.Background()
 			depot         = depot.EmptySimpleMemory()
 			eventManifest = events.NewManifest()
 			idFn          = func() (string, error) { return "123-stub-id", nil }
@@ -137,8 +138,8 @@ func Test_Engine_StartSession(t *testing.T) {
 			fmt.Print(b.String())
 		}
 
-		test.H(t).BoolEql(true, depot.Exists(types.PartitionName(fmt.Sprintf("session/%s", sid))))
-		_, err = e.StartSession(context.Background())
+		test.H(t).BoolEql(true, depot.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))
+		_, err = e.StartSession(ctx)
 		test.H(t).NotNil(err)
 	})
 
@@ -146,6 +147,7 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Arrange
 		var (
+			ctx           = context.Background()
 			depot         = depot.EmptySimpleMemory()
 			eventManifest = events.NewManifest()
 			idFn          = func() (string, error) { return "123-stub-id", nil }
@@ -169,7 +171,7 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Assert
 		test.H(t).IsNil(err)
-		test.H(t).BoolEql(true, depot.Exists(types.PartitionName(fmt.Sprintf("session/%s", sid))))
+		test.H(t).BoolEql(true, depot.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))
 	})
 
 	t.Run("forwards errors from the resolvefn to the caller", func(t *testing.T) {
@@ -267,9 +269,9 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Arrange
 			var (
+				ctx   = context.Background()
 				depot = depot.EmptySimpleMemory()
-
-				idFn = func() (string, error) {
+				idFn  = func() (string, error) {
 					return fmt.Sprintf("%x", rand.Uint64()), nil
 				}
 				clock = &Predictable5sJumpClock{}
@@ -291,9 +293,8 @@ func Test_Engine_Apply(t *testing.T) {
 			evm.Register(&DummyStartSessionEvent{})
 
 			var (
-				r   = resolver.New(aggm, cmdm)
-				e   = New(depot, r.Resolve, idFn, clock, aggm, evm)
-				ctx = context.Background()
+				r = resolver.New(aggm, cmdm)
+				e = New(depot, r.Resolve, idFn, clock, aggm, evm)
 			)
 
 			// Act
@@ -306,7 +307,7 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Assert
 			test.H(t).StringEql("ok", resStr)
-			test.H(t).BoolEql(true, depot.Exists(types.PartitionName("agg/123")))
+			test.H(t).BoolEql(true, depot.Exists(ctx, types.PartitionName("agg/123")))
 		})
 
 		t.Run("raises error if session is not findable", func(t *testing.T) {
@@ -411,7 +412,6 @@ refs/heads/master -> sha256:babdee29734925d4ffba9fbfccf02b54e86abdb1cdca2cd6ee19
 				var s = b.String()
 				var diff = cmp.Diff(s, expected)
 				if diff != "" {
-					fmt.Print(s)
 					t.Fatal(diff)
 				}
 			}

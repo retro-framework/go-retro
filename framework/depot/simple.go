@@ -159,13 +159,13 @@ func (s Simple) Release(partition string) {
 	return
 }
 
-func (s Simple) Exists(partitionName types.PartitionName) bool {
+func (s Simple) Exists(ctx context.Context, partitionName types.PartitionName) bool {
 	found, _ := simplePartitionExistenceChecker{
 		objdb:   s.objdb,
 		refdb:   s.refdb,
 		pattern: partitionName,
 		matcher: GlobPatternMatcher{},
-	}.Exists(context.TODO(), partitionName)
+	}.Exists(ctx, partitionName)
 	return found
 }
 
