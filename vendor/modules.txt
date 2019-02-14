@@ -2,7 +2,7 @@
 github.com/Shopify/sarama
 # github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d
 github.com/apache/thrift/lib/go/thrift
-# github.com/davecgh/go-spew v1.1.0
+# github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/eapache/go-resiliency v1.0.0
 github.com/eapache/go-resiliency/breaker
@@ -12,11 +12,11 @@ github.com/eapache/go-xerial-snappy
 github.com/eapache/queue
 # github.com/go-logfmt/logfmt v0.3.0
 github.com/go-logfmt/logfmt
-# github.com/gogo/protobuf v0.0.0-20171007142547-342cbe0a0415
+# github.com/gogo/protobuf v1.1.1
 github.com/gogo/protobuf/proto
 # github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 github.com/golang-collections/collections/stack
-# github.com/golang/snappy v0.0.0-20170215233205-553a64147049
+# github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 github.com/golang/snappy
 # github.com/google/go-cmp v0.2.0
 github.com/google/go-cmp/cmp
@@ -25,6 +25,13 @@ github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
 # github.com/gorilla/handlers v1.4.0
 github.com/gorilla/handlers
+# github.com/influxdata/influxdb v1.7.4
+github.com/influxdata/influxdb/client/v2
+github.com/influxdata/influxdb/models
+github.com/influxdata/influxdb/pkg/escape
+# github.com/influxdata/platform v0.0.0-20190117200541-d500d3cf5589
+github.com/influxdata/platform/models
+github.com/influxdata/platform/pkg/escape
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 github.com/kr/logfmt
 # github.com/namsral/flag v1.7.4-pre
@@ -42,17 +49,16 @@ github.com/openzipkin/zipkin-go-opentracing/thrift/gen-go/scribe
 github.com/openzipkin/zipkin-go-opentracing/thrift/gen-go/zipkincore
 github.com/openzipkin/zipkin-go-opentracing/types
 github.com/openzipkin/zipkin-go-opentracing/wire
-# github.com/pierrec/lz4 v0.0.0-20171218195038-2fcda4cb7018
+# github.com/pierrec/lz4 v2.0.5+incompatible
 github.com/pierrec/lz4
-# github.com/pierrec/xxHash v0.1.1
-github.com/pierrec/xxHash/xxHash32
+github.com/pierrec/lz4/internal/xxh32
 # github.com/pkg/errors v0.8.0
 github.com/pkg/errors
 # github.com/rcrowley/go-metrics v0.0.0-20180125231941-8732c616f529
 github.com/rcrowley/go-metrics
 # github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
 github.com/zyedidia/glob
-# golang.org/x/net v0.0.0-20171123081856-c7086645de24
+# golang.org/x/net v0.0.0-20181023162649-9b4f9f5ad519
 golang.org/x/net/context
 # gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2
