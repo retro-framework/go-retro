@@ -17,7 +17,7 @@ type simplePartitionExistenceChecker struct {
 	objdb   object.DB
 	refdb   ref.DB
 	pattern types.PartitionName
-	matcher PatternMatcher
+	matcher types.PatternMatcher
 }
 
 // refs/heads/master => sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824

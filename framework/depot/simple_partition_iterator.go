@@ -19,7 +19,7 @@ type simplePartitionIterator struct {
 	refdb ref.DB
 
 	pattern string
-	matcher PatternMatcher
+	matcher types.PatternMatcher
 
 	subscribedOn <-chan types.RefMove
 

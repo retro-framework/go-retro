@@ -18,7 +18,7 @@ type simpleEventIterator struct {
 
 	stackCh chan cpAffixStack
 
-	matcher PatternMatcher
+	matcher types.PatternMatcher
 
 	out    chan types.PersistedEvent
 	outErr chan error
