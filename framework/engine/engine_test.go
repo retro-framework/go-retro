@@ -17,7 +17,9 @@ import (
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/events"
 	"github.com/retro-framework/go-retro/framework/depot"
+	"github.com/retro-framework/go-retro/framework/repository"
 	"github.com/retro-framework/go-retro/framework/resolver"
+	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/types"
 )
@@ -58,7 +60,7 @@ func (fssc *Start) SetState(s types.Aggregate) error {
 	}
 }
 
-func (fssc *Start) Apply(context.Context, io.Writer, types.Session, types.Depot) (types.CommandResult, error) {
+func (fssc *Start) Apply(context.Context, io.Writer, types.Session, types.Repository) (types.CommandResult, error) {
 	return types.CommandResult{fssc.s: []types.Event{DummyStartSessionEvent{"hello world"}}}, nil
 }
 
@@ -86,7 +88,7 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ types.Session, _ types.Depot) (types.CommandResult, error) {
+func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ types.Session, _ types.Repository) (types.CommandResult, error) {
 	dc.wasApplied = true
 	return types.CommandResult{dc.s: []types.Event{DummyEvent{}}}, nil
 }
@@ -101,13 +103,15 @@ func Test_Engine_StartSession(t *testing.T) {
 	t.Run("can start a session on an empty Depot", func(t *testing.T) {
 		// Arrange
 		var (
-			ctx           = context.Background()
-			depot         = depot.EmptySimpleMemory()
-			eventManifest = events.NewManifest()
-			idFn          = func() (string, error) { return "123-stub-id", nil }
-			clock         = &Predictable5sJumpClock{}
-
-			resolveFn = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
+			ctx        = context.Background()
+			objdb      = &memory.ObjectStore{}
+			refdb      = &memory.RefStore{}
+			depot      = depot.NewSimple(objdb, refdb)
+			evM        = events.NewManifest()
+			repository = repository.NewSimpleRepository(objdb, refdb, evM)
+			idFn       = func() (string, error) { return "123-stub-id", nil }
+			clock      = &Predictable5sJumpClock{}
+			resolveFn  = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
 				var (
 					fssc = Start{}
 					s    = &dummySession{}
@@ -117,9 +121,9 @@ func Test_Engine_StartSession(t *testing.T) {
 				return fssc.Apply, nil
 			}
 		)
-		eventManifest.Register(&DummyEvent{})
-		eventManifest.Register(&DummyStartSessionEvent{})
-		var e = New(depot, resolveFn, idFn, clock, aggregates.NewManifest(), eventManifest)
+		evM.Register(&DummyEvent{})
+		evM.Register(&DummyStartSessionEvent{})
+		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), evM)
 
 		// Act
 		sessionID, err := e.StartSession(ctx)
@@ -133,13 +137,15 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Arrange
 		var (
-			ctx           = context.Background()
-			depot         = depot.EmptySimpleMemory()
-			eventManifest = events.NewManifest()
-			idFn          = func() (string, error) { return "123-stub-id", nil }
-			clock         = &Predictable5sJumpClock{}
-
-			resolveFn = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
+			ctx        = context.Background()
+			objdb      = &memory.ObjectStore{}
+			refdb      = &memory.RefStore{}
+			depot      = depot.NewSimple(objdb, refdb)
+			evM        = events.NewManifest()
+			repository = repository.NewSimpleRepository(objdb, refdb, evM)
+			idFn       = func() (string, error) { return "123-stub-id", nil }
+			clock      = &Predictable5sJumpClock{}
+			resolveFn  = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
 				var (
 					fssc = Start{}
 					s    = &dummySession{}
@@ -149,9 +155,9 @@ func Test_Engine_StartSession(t *testing.T) {
 				return fssc.Apply, nil
 			}
 		)
-		eventManifest.Register(&DummyEvent{})
-		eventManifest.Register(&DummyStartSessionEvent{})
-		var e = New(depot, resolveFn, idFn, clock, aggregates.NewManifest(), eventManifest)
+		evM.Register(&DummyEvent{})
+		evM.Register(&DummyStartSessionEvent{})
+		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), evM)
 
 		// Act
 		sid, err := e.StartSession(ctx)
@@ -165,7 +171,7 @@ func Test_Engine_StartSession(t *testing.T) {
 			dd.DumpAll(&b)
 		}
 
-		test.H(t).BoolEql(true, depot.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))
+		test.H(t).BoolEql(true, repository.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))
 		_, err = e.StartSession(ctx)
 		test.H(t).NotNil(err)
 	})
@@ -174,12 +180,15 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Arrange
 		var (
-			ctx           = context.Background()
-			depot         = depot.EmptySimpleMemory()
-			eventManifest = events.NewManifest()
-			idFn          = func() (string, error) { return "123-stub-id", nil }
-			clock         = &Predictable5sJumpClock{}
-			resolveFn     = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
+			ctx        = context.Background()
+			objdb      = &memory.ObjectStore{}
+			refdb      = &memory.RefStore{}
+			depot      = depot.NewSimple(objdb, refdb)
+			evM        = events.NewManifest()
+			repository = repository.NewSimpleRepository(objdb, refdb, evM)
+			idFn       = func() (string, error) { return "123-stub-id", nil }
+			clock      = &Predictable5sJumpClock{}
+			resolveFn  = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
 				var (
 					fssc = Start{}
 					s    = &dummySession{}
@@ -189,31 +198,35 @@ func Test_Engine_StartSession(t *testing.T) {
 				return fssc.Apply, nil
 			}
 		)
-		eventManifest.Register(&DummyStartSessionEvent{})
+		evM.Register(&DummyStartSessionEvent{})
 
-		var e = New(depot, resolveFn, idFn, clock, aggregates.NewManifest(), eventManifest)
+		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), evM)
 
 		// Act
 		sid, err := e.StartSession(context.Background())
 
 		// Assert
 		test.H(t).IsNil(err)
-		test.H(t).BoolEql(true, depot.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))
+		test.H(t).BoolEql(true, repository.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))
 	})
 
 	t.Run("forwards errors from the resolvefn to the caller", func(t *testing.T) {
 
 		// Arrange
 		var (
-			resolverErr = fmt.Errorf("error from resolveFn")
-			depot       = depot.EmptySimpleMemory()
-			idFn        = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
-			clock       = &Predictable5sJumpClock{}
-			resolveFn   = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
+			resolverErr   = fmt.Errorf("error from resolveFn")
+			objdb         = &memory.ObjectStore{}
+			refdb         = &memory.RefStore{}
+			depot         = depot.NewSimple(objdb, refdb)
+			eventManifest = events.NewManifest()
+			repository    = repository.NewSimpleRepository(objdb, refdb, eventManifest)
+			idFn          = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
+			clock         = &Predictable5sJumpClock{}
+			resolveFn     = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
 				return nil, resolverErr
 			}
 		)
-		var e = New(depot, resolveFn, idFn, clock, aggregates.NewManifest(), events.NewManifest())
+		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), events.NewManifest())
 
 		// Act
 		_, err := e.StartSession(context.Background())
@@ -238,12 +251,15 @@ func Test_Engine_Apply(t *testing.T) {
 		// Arrange
 		var (
 			ctx           = context.Background()
-			depot         = depot.EmptySimpleMemory()
+			objdb         = &memory.ObjectStore{}
+			refdb         = &memory.RefStore{}
+			depot         = depot.NewSimple(objdb, refdb)
 			eventManifest = events.NewManifest()
+			repository    = repository.NewSimpleRepository(objdb, refdb, eventManifest)
 			idFn          = func() (string, error) { return "123-stub-id", nil }
 			clock         = &Predictable5sJumpClock{}
 
-			resolveFn = func(ctx context.Context, depot types.Depot, cmd []byte) (types.CommandFunc, error) {
+			resolveFn = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
 				var (
 					fssc = Start{}
 					s    = &dummySession{}
@@ -255,7 +271,7 @@ func Test_Engine_Apply(t *testing.T) {
 		)
 		eventManifest.Register(&DummyEvent{})
 		eventManifest.Register(&DummyStartSessionEvent{})
-		var e = New(depot, resolveFn, idFn, clock, aggregates.NewManifest(), eventManifest)
+		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), eventManifest)
 
 		// Act (checking the head pointer happens before routing, so we don't need any setup)
 		var b bytes.Buffer
@@ -281,12 +297,15 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Arrange
 			var (
-				depot             = depot.EmptySimpleMemory()
+				objdb             = &memory.ObjectStore{}
+				refdb             = &memory.RefStore{}
+				depot             = depot.NewSimple(objdb, refdb)
 				idFn              = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
 				clock             = &Predictable5sJumpClock{}
 				aggregateManifest = aggregates.NewManifest()
 				commandManifest   = commands.NewManifest()
 				eventManifest     = events.NewManifest()
+				repository        = repository.NewSimpleRepository(objdb, refdb, eventManifest)
 			)
 
 			// NOTE: no calls to register anything on the manifests except
@@ -299,6 +318,7 @@ func Test_Engine_Apply(t *testing.T) {
 				r = resolver.New(aggregateManifest, commandManifest)
 				e = New(
 					depot,
+					repository,
 					r.Resolve,
 					idFn,
 					clock,
@@ -324,32 +344,32 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Arrange
 			var (
-				ctx   = context.Background()
-				depot = depot.EmptySimpleMemory()
-				idFn  = func() (string, error) {
-					return fmt.Sprintf("%x", rand.Uint64()), nil
-				}
-				clock = &Predictable5sJumpClock{}
-
-				aggm = aggregates.NewManifest()
-				cmdm = commands.NewManifest()
-				evm  = events.NewManifest()
+				ctx        = context.Background()
+				objdb      = &memory.ObjectStore{}
+				refdb      = &memory.RefStore{}
+				depot      = depot.NewSimple(objdb, refdb)
+				idFn       = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
+				clock      = &Predictable5sJumpClock{}
+				aggM       = aggregates.NewManifest()
+				cmdM       = commands.NewManifest()
+				evM        = events.NewManifest()
+				repository = repository.NewSimpleRepository(objdb, refdb, evM)
 
 				err error
 			)
 
-			aggm.Register("agg", &dummyAggregate{})
-			cmdm.Register(&dummyAggregate{}, &dummyCmd{})
+			aggM.Register("agg", &dummyAggregate{})
+			cmdM.Register(&dummyAggregate{}, &dummyCmd{})
 
-			aggm.Register("session", &dummySession{})
-			cmdm.Register(&dummySession{}, &Start{})
+			aggM.Register("session", &dummySession{})
+			cmdM.Register(&dummySession{}, &Start{})
 
-			evm.Register(&DummyEvent{})
-			evm.Register(&DummyStartSessionEvent{})
+			evM.Register(&DummyEvent{})
+			evM.Register(&DummyStartSessionEvent{})
 
 			var (
-				r = resolver.New(aggm, cmdm)
-				e = New(depot, r.Resolve, idFn, clock, aggm, evm)
+				r = resolver.New(aggM, cmdM)
+				e = New(depot, repository, r.Resolve, idFn, clock, aggM, evM)
 			)
 
 			// Act
@@ -362,7 +382,7 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Assert
 			test.H(t).StringEql("ok", resStr)
-			test.H(t).BoolEql(true, depot.Exists(ctx, types.PartitionName("agg/123")))
+			test.H(t).BoolEql(true, repository.Exists(ctx, types.PartitionName("agg/123")))
 		})
 
 		t.Run("raises error if session is not findable", func(t *testing.T) {
@@ -381,34 +401,31 @@ func Test_Engine_Apply(t *testing.T) {
 
 			// Arrange
 			var (
-				depot = depot.EmptySimpleMemory()
-
-				idFn = func() (string, error) {
-					return fmt.Sprintf("%x", []byte("hello")), nil
-					// return fmt.Sprintf("%x", rand.Uint64()), nil
-				}
-
-				clock = &Predictable5sJumpClock{}
-
-				aggm = aggregates.NewManifest()
-				cmdm = commands.NewManifest()
-				evm  = events.NewManifest()
+				objdb      = &memory.ObjectStore{}
+				refdb      = &memory.RefStore{}
+				depot      = depot.NewSimple(objdb, refdb)
+				idFn       = func() (string, error) { return fmt.Sprintf("%x", []byte("hello")), nil }
+				clock      = &Predictable5sJumpClock{}
+				aggM       = aggregates.NewManifest()
+				cmdM       = commands.NewManifest()
+				evM        = events.NewManifest()
+				repository = repository.NewSimpleRepository(objdb, refdb, evM)
 
 				err error
 			)
 
-			aggm.Register("agg", &dummyAggregate{})
-			cmdm.Register(&dummyAggregate{}, &dummyCmd{})
+			aggM.Register("agg", &dummyAggregate{})
+			cmdM.Register(&dummyAggregate{}, &dummyCmd{})
 
-			aggm.Register("session", &dummySession{})
-			cmdm.Register(&dummySession{}, &Start{})
+			aggM.Register("session", &dummySession{})
+			cmdM.Register(&dummySession{}, &Start{})
 
-			evm.Register(&DummyEvent{})
-			evm.Register(&DummyStartSessionEvent{})
+			evM.Register(&DummyEvent{})
+			evM.Register(&DummyStartSessionEvent{})
 
 			var (
-				r   = resolver.New(aggm, cmdm)
-				e   = New(depot, r.Resolve, idFn, clock, aggm, evm)
+				r   = resolver.New(aggM, cmdM)
+				e   = New(depot, repository, r.Resolve, idFn, clock, aggM, evM)
 				ctx = context.Background()
 			)
 

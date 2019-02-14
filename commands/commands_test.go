@@ -17,7 +17,7 @@ type otherDummyCmd struct{ dummyCmd }
 
 func (_ *dummyCmd) SetState(types.Aggregate) error { return nil }
 
-func (_ *dummyCmd) Apply(context.Context, io.Writer, types.Session, types.Depot) (types.CommandResult, error) {
+func (_ *dummyCmd) Apply(context.Context, io.Writer, types.Session, types.Repository) (types.CommandResult, error) {
 	return nil, nil
 }
 

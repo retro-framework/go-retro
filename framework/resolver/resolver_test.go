@@ -12,7 +12,8 @@ import (
 
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
-	"github.com/retro-framework/go-retro/framework/depot"
+	"github.com/retro-framework/go-retro/events"
+	"github.com/retro-framework/go-retro/framework/repository"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/types"
@@ -52,7 +53,7 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(context.Context, io.Writer, types.Session, types.Depot) (types.CommandResult, error) {
+func (dc *dummyCmd) Apply(context.Context, io.Writer, types.Session, types.Repository) (types.CommandResult, error) {
 	if len(dc.s.seenEvents) != 2 {
 		return nil, errors.New(fmt.Sprintf("can't apply ExtraEvent to dummyAggregate unless it has seen precisely two events so far (has seen %d)", len(dc.s.seenEvents)))
 	}
@@ -88,21 +89,22 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 
 		// Arrange
 		var (
-			emd = depot.EmptySimpleMemory()
-
-			aggm = aggregates.NewManifest()
-			cmdm = commands.NewManifest()
+			ctx        = context.Background()
+			objdb      = &memory.ObjectStore{}
+			refdb      = &memory.RefStore{}
+			evM        = events.NewManifest()
+			aggM       = aggregates.NewManifest()
+			cmdM       = commands.NewManifest()
+			repository = repository.NewSimpleRepository(objdb, refdb, evM)
+			r          = New(aggM, cmdM)
 
 			err error
 		)
-
-		aggm.Register("agg", &dummyAggregate{})
-		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
-
-		var r = resolver{aggm: aggm, cmdm: cmdm}
+		aggM.Register("agg", &dummyAggregate{})
+		cmdM.Register(&dummyAggregate{}, &dummyCmd{})
 
 		// Act
-		_, err = r.Resolve(context.Background(), emd, []byte(`{"path":"agg", "name":"dummyCmd"}`))
+		_, err = r.Resolve(ctx, repository, []byte(`{"path":"agg", "name":"dummyCmd"}`))
 
 		// Assert
 		test.H(t).NotNil(err)
@@ -118,43 +120,45 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 
 		// Arrange
 		var (
-			md = depot.NewSimpleStub(
-				t,
-				&memory.ObjectStore{},
-				&memory.RefStore{},
-				map[string][]types.EventNameTuple{
-					"agg/123": []types.EventNameTuple{
-						{Name: "one", Event: OneEvent{}},
-						{Name: "one", Event: OtherEvent{}},
+			agg  = &dummyAggregate{}
+			evM  = events.NewManifest()
+			aggM = aggregates.NewManifest()
+			cmdM = commands.NewManifest()
+		)
+		aggM.Register("agg", &dummyAggregate{})
+		cmdM.Register(&dummyAggregate{}, &dummyCmd{})
+		evM.Register(&OneEvent{})
+		evM.Register(&OtherEvent{})
+
+		agg.SetName("agg/123")
+
+		var (
+			ctx        = context.Background()
+			repository = repository.NewSimpleRepositoryDouble(
+				types.EventFixture{
+					agg: []types.Event{
+						OneEvent{},
+						OtherEvent{},
 					},
 				},
 			)
-
-			aggm = aggregates.NewManifest()
-			cmdm = commands.NewManifest()
+			r   = New(aggM, cmdM)
+			res types.CommandFunc
 
 			err error
 		)
 
-		aggm.Register("agg", &dummyAggregate{})
-		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
+		// Act pt. 1
+		res, err = r.Resolve(context.Background(), repository, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
 
-		var (
-			r   = resolver{aggm: aggm, cmdm: cmdm}
-			res types.CommandFunc
-		)
-
-		// Act
-		res, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
-
-		// Assert
+		// Assert pt. 1
 		test.H(t).IsNil(err)
 
-		// Act
+		// Act pt. 2
 		var b bytes.Buffer
-		newEvs, err := res(context.Background(), &b, &dummySession{}, md)
+		newEvs, err := res(ctx, &b, &dummySession{}, repository)
 
-		// Assert
+		// Assert pt. 2
 		test.H(t).IsNil(err)
 		test.H(t).IntEql(1, len(newEvs))
 	})
@@ -163,44 +167,47 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 
 		// Arrange
 		var (
-			md = depot.NewSimpleStub(
-				t,
-				&memory.ObjectStore{},
-				&memory.RefStore{},
-				map[string][]types.EventNameTuple{
-					"agg/456": []types.EventNameTuple{
-						{Name: "one", Event: OneEvent{}},
-						{Name: "one", Event: OtherEvent{}},
+			agg  = &dummyAggregate{}
+			evM  = events.NewManifest()
+			aggM = aggregates.NewManifest()
+			cmdM = commands.NewManifest()
+		)
+		aggM.Register("agg", &dummyAggregate{})
+		cmdM.Register(&dummyAggregate{}, &dummyCmd{})
+		evM.Register(&OneEvent{})
+		evM.Register(&OtherEvent{})
+
+		agg.SetName("agg/456")
+		//               ^^^ (!= 123 below)
+
+		var (
+			ctx        = context.Background()
+			repository = repository.NewSimpleRepositoryDouble(
+				types.EventFixture{
+					agg: []types.Event{
+						OneEvent{},
+						OtherEvent{},
 					},
 				},
 			)
-
-			aggm = aggregates.NewManifest()
-			cmdm = commands.NewManifest()
+			r   = New(aggM, cmdM)
+			res types.CommandFunc
 
 			err error
 		)
 
-		aggm.Register("agg", &dummyAggregate{})
-		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
-
-		var (
-			r   = resolver{aggm: aggm, cmdm: cmdm}
-			res types.CommandFunc
-		)
-
-		// Act
-		res, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+		// Act pt. 1
+		res, err = r.Resolve(context.Background(), repository, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
 		//                                                                  ^^^
 
-		// Assert
+		// Assert pt. 1
 		test.H(t).IsNil(err)
 
-		// Act
+		// Act pt. 2
 		var b bytes.Buffer
-		newEvs, err := res(context.Background(), &b, &dummySession{}, md)
+		newEvs, err := res(ctx, &b, &dummySession{}, repository)
 
-		// Assert
+		// Assert pt. 2
 		test.H(t).NotNil(err) // dummyCmd throws error in case the aggregate has not !!= 2 events in the history
 		test.H(t).IntEql(0, len(newEvs))
 	})
@@ -213,36 +220,22 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 
 		// Arrange
 		var (
-			md = depot.NewSimpleStub(
-				t,
-				&memory.ObjectStore{},
-				&memory.RefStore{},
-				map[string][]types.EventNameTuple{
-					"agg/456": []types.EventNameTuple{
-						{Name: "one", Event: OneEvent{}},
-						{Name: "one", Event: OtherEvent{}},
-					},
-				},
-			)
-
-			aggm = aggregates.NewManifest()
-			cmdm = commands.NewManifest()
+			ctx        = context.Background()
+			objdb      = &memory.ObjectStore{}
+			refdb      = &memory.RefStore{}
+			aggM       = aggregates.NewManifest()
+			cmdM       = commands.NewManifest()
+			evM        = events.NewManifest()
+			repository = repository.NewSimpleRepository(objdb, refdb, evM)
+			r          = New(aggM, cmdM)
 
 			err error
 		)
-
-		aggm.Register("agg", &dummyAggregate{})
-		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
-
-		var (
-			r = resolver{
-				aggm: aggm,
-				cmdm: cmdm,
-			}
-		)
+		aggM.Register("agg", &dummyAggregate{})
+		cmdM.Register(&dummyAggregate{}, &dummyCmd{})
 
 		// Act
-		_, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd", "args":{"str": "bar", "int": 123}}`))
+		_, err = r.Resolve(ctx, repository, []byte(`{"path":"agg/123", "name":"dummyCmd", "args":{"str": "bar", "int": 123}}`))
 
 		// Assert
 		test.H(t).NotNil(err) // dummyCmd does not implement the CommandWithArgs interface and "args" is given, this should
@@ -253,34 +246,35 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 
 		// Arrange
 		var (
-			md = depot.NewSimpleStub(
-				t,
-				&memory.ObjectStore{},
-				&memory.RefStore{},
-				map[string][]types.EventNameTuple{
-					"agg/456": []types.EventNameTuple{
-						{Name: "one", Event: OneEvent{}},
-						{Name: "one", Event: OtherEvent{}},
+			ctx  = context.Background()
+			agg  = &dummyAggregate{}
+			evM  = events.NewManifest()
+			aggM = aggregates.NewManifest()
+			cmdM = commands.NewManifest()
+		)
+		aggM.Register("agg", &dummyAggregate{})
+		cmdM.Register(&dummyAggregate{}, &dummyCmd{})
+		cmdM.RegisterWithArgs(&dummyAggregate{}, &dummyCmdWithArgs{}, &dummyCmdArgs{})
+		evM.Register(&OneEvent{})
+		evM.Register(&OtherEvent{})
+		agg.SetName("agg/123")
+
+		var (
+			repository = repository.NewSimpleRepositoryDouble(
+				types.EventFixture{
+					agg: []types.Event{
+						OneEvent{},
+						OtherEvent{},
 					},
 				},
 			)
-
-			aggm = aggregates.NewManifest()
-			cmdm = commands.NewManifest()
+			r = New(aggM, cmdM)
 
 			err error
 		)
 
-		aggm.Register("agg", &dummyAggregate{})
-		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
-		cmdm.RegisterWithArgs(&dummyAggregate{}, &dummyCmdWithArgs{}, &dummyCmdArgs{})
-
-		var (
-			r = resolver{aggm: aggm, cmdm: cmdm}
-		)
-
 		// Act
-		_, err = r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmdWithArgs", "args":{"str": "bar", "int": 123}}`))
+		_, err = r.Resolve(ctx, repository, []byte(`{"path":"agg/123", "name":"dummyCmdWithArgs", "args":{"str": "bar", "int": 123}}`))
 
 		// Assert
 		test.H(t).IsNil(err)
@@ -295,21 +289,21 @@ func Benchmark_Resolver_ResolveExistingCmdSuccessfully(b *testing.B) {
 
 	// Arrange
 	var (
-		md = depot.EmptySimpleMemory()
-
-		aggm = aggregates.NewManifest()
-		cmdm = commands.NewManifest()
+		ctx        = context.Background()
+		aggM       = aggregates.NewManifest()
+		cmdM       = commands.NewManifest()
+		evM        = events.NewManifest()
+		objdb      = &memory.ObjectStore{}
+		refdb      = &memory.RefStore{}
+		repository = repository.NewSimpleRepository(objdb, refdb, evM)
+		r          = New(aggM, cmdM)
 	)
 
-	aggm.Register("agg", &dummyAggregate{})
-	cmdm.Register(&dummyAggregate{}, &dummyCmd{})
-
-	var (
-		r = resolver{aggm: aggm, cmdm: cmdm}
-	)
+	aggM.Register("agg", &dummyAggregate{})
+	cmdM.Register(&dummyAggregate{}, &dummyCmd{})
 
 	for n := 0; n < b.N; n++ {
 		// Act
-		r.Resolve(context.Background(), md, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+		r.Resolve(ctx, repository, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
 	}
 }

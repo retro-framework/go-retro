@@ -25,10 +25,11 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
-func New(d types.Depot, r types.ResolveFunc, i types.IDFactory, c types.Clock, a types.AggregateManifest, e types.EventManifest) Engine {
+func New(d types.Depot, r types.Repository, rFn types.ResolveFunc, i types.IDFactory, c types.Clock, a types.AggregateManifest, e types.EventManifest) Engine {
 	return Engine{
 		depot:        d,
-		resolver:     r,
+		repository:   r,
+		resolver:     rFn,
 		idFactory:    i,
 		clock:        c,
 		aggm:         a,
@@ -38,7 +39,8 @@ func New(d types.Depot, r types.ResolveFunc, i types.IDFactory, c types.Clock, a
 }
 
 type Engine struct {
-	depot types.Depot
+	depot      types.Depot
+	repository types.Repository
 
 	resolver  types.ResolveFunc
 	idFactory types.IDFactory
@@ -130,7 +132,7 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 			err := Error{"session-lookup", err, "aggregate name did not persist"}
 			return "", err
 		}
-		err := e.depot.Rehydrate(ctx, seshAgg, types.PartitionName(sessionPath))
+		err := e.repository.Rehydrate(ctx, seshAgg, types.PartitionName(sessionPath))
 		if err != nil {
 			err := Error{"session-lookup", err, "could not look up session"}
 			spnRehydrateSesh.LogKV("event", "error", "error.object", err)
@@ -140,14 +142,14 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 	}
 
 	spnResolveCmd := opentracing.StartSpan("resolve command", opentracing.ChildOf(spnApply.Context()))
-	commandFn, err := e.resolver(ctx, e.depot, cmd)
+	commandFn, err := e.resolver(ctx, e.repository, cmd)
 	if err != nil {
 		return "", errors.Errorf("Couldn't resolve %s (%s)", cmd, err)
 	}
 	spnResolveCmd.Finish()
 
 	spnApplyCmd := opentracing.StartSpan("apply command", opentracing.ChildOf(spnApply.Context()))
-	newEvs, err := commandFn(ctx, w, seshAgg, e.depot)
+	newEvs, err := commandFn(ctx, w, seshAgg, e.repository)
 	if err != nil {
 		return "", errors.Wrap(err, "error applying command")
 	}
@@ -214,7 +216,7 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	// if we used a cryptographically secure prng in the id factory
 	// but users may provide a bad implementation (also, tests.)
 	var path = fmt.Sprintf("session/%s", sid)
-	if e.depot.Exists(ctx, types.PartitionName(path)) {
+	if e.repository.Exists(ctx, types.PartitionName(path)) {
 		return sid, Error{Op: "guard-unique-session-id", Msg: fmt.Sprintf("session id %q was not unique in depot, can't start.", path)}
 	}
 
@@ -239,8 +241,8 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
 	// Try and get an exclusive claim on the resource, it will
 	// honor the timeout we have already set.
-	e.depot.Claim(claimCtx, path)
-	defer e.depot.Release(path)
+	e.repository.Claim(claimCtx, path)
+	defer e.repository.Release(path)
 
 	// Tracing
 	b, err := json.Marshal(struct {
@@ -255,14 +257,14 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
 	// A command to start a session is mandatory, even if it's a virtual no-op
 	// this looks up the command handler.
-	sessionStart, err := e.resolver(ctx, e.depot, b)
+	sessionStart, err := e.resolver(ctx, e.repository, b)
 	if err != nil {
 		return sid, Error{"resolve-session-start-cmd", err, "can't resolve session start command"}
 	}
 
 	// Trigger the session handler, and see what events, if any are emitted.
 	var buf bytes.Buffer
-	sessionStartedEvents, err := sessionStart(ctx, &buf, nil, e.depot)
+	sessionStartedEvents, err := sessionStart(ctx, &buf, nil, e.repository)
 	if err != nil {
 		return sid, Error{"execute-session-start-cmd", err, "error calling session start command"}
 	}

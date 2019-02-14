@@ -39,7 +39,7 @@ func New(aggm types.AggregateManifest, cmdm types.CommandManifest) types.Resolve
 //
 // To construct the command object the registered type will be instantiated
 // if the manifest contains a type for the args.
-func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (types.CommandFunc, error) {
+func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b []byte) (types.CommandFunc, error) {
 
 	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "resolver.Resolve")
 	defer spnResolve.Finish()
@@ -171,7 +171,7 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 
 	spnRehydrate := opentracing.StartSpan("rehydrate target aggregate", opentracing.ChildOf(spnResolve.Context()))
 	defer spnRehydrate.Finish()
-	err = depot.Rehydrate(ctx, agg, types.PartitionName(cmdDesc.Path))
+	err = repository.Rehydrate(ctx, agg, types.PartitionName(cmdDesc.Path))
 	if err != nil {
 		// TODO: This exit condition is a nasty "magic string"
 		// artefact. It is designed ot match against a string

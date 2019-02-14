@@ -145,38 +145,6 @@ func refFromCtx(ctx context.Context) string {
 	return DefaultBranchName
 }
 
-func (s Simple) Claim(ctx context.Context, partition string) bool {
-	// TODO: Implement locking properly
-	return true
-}
-
-func (s Simple) Release(partition string) {
-	// TODO: Implement locking properly
-	return
-}
-
-func (s Simple) Exists(ctx context.Context, partitionName types.PartitionName) bool {
-	found, _ := simplePartitionExistenceChecker{
-		objdb:   s.objdb,
-		refdb:   s.refdb,
-		pattern: partitionName,
-		matcher: GlobPatternMatcher{},
-	}.Exists(ctx, partitionName)
-	return found
-}
-
-// Rehydrate replays the events onto an aggregate, it's kinda brutal in that it completely
-// walks from the tip until the first orphan checkpoint, and stacks all relevant partitions
-// then emits them all, it's very expensive.
-func (s Simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
-	return simpleAggregateRehydrater{
-		objdb:   s.objdb,
-		refdb:   s.refdb,
-		pattern: partitionName,
-		matcher: GlobPatternMatcher{},
-	}.Rehydrate(ctx, dst, partitionName)
-}
-
 // Watch makes the world go round
 func (s *Simple) Watch(_ context.Context, partition string) types.PartitionIterator {
 	var subscriberNotificationCh = make(chan types.RefMove)

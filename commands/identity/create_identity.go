@@ -44,10 +44,7 @@ func (cmd *CreateIdentity) SetArgs(a types.CommandArgs) error {
 	return nil
 }
 
-// Apply for sessions is effectively a noop in the default implementation
-// it need only make a record in the data store that a session has been
-// created and that we can look it up in the future.
-func (cmd *CreateIdentity) Apply(ctxt context.Context, w io.Writer, session types.Session, aggStore types.Depot) (types.CommandResult, error) {
+func (cmd *CreateIdentity) Apply(ctxt context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
 
 	var ownEvents = []types.Event{
 		events.SetDisplayName{Name: cmd.args.Name},

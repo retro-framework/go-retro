@@ -1,4 +1,4 @@
-package depot
+package repository
 
 import (
 	"context"
@@ -8,30 +8,100 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/matcher"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
-type simpleAggregateRehydrater struct {
+type simple struct {
 	objdb object.DB
 	refdb ref.DB
 
 	eventManifest types.EventManifest
 
-	pattern types.PartitionName
-	matcher PatternMatcher
+	matcher types.PatternMatcher
 }
 
-func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
+type double struct {
+	fixture types.EventFixture
+}
 
-	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "simpleAggregateRehydrater.Rehydrate")
+func NewSimpleRepository(odb object.DB, rdb ref.DB, evM types.EventManifest) types.Repository {
+	return simple{
+		objdb:         odb,
+		refdb:         rdb,
+		eventManifest: evM,
+		matcher:       matcher.Glob{},
+	}
+}
+
+func NewSimpleRepositoryDouble(evFix types.EventFixture) types.Repository {
+	return double{evFix}
+}
+
+func (s double) Claim(ctx context.Context, partition string) bool {
+	// TODO: Implement locking properly
+	return true
+}
+
+func (s double) Release(partition string) {
+	// TODO: Implement locking properly
+	return
+}
+
+func (s double) Exists(_ context.Context, partitionName types.PartitionName) bool {
+	for k := range s.fixture {
+		if k.Name() == partitionName {
+			return true
+		}
+	}
+	return false
+}
+
+func (s double) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
+	var events []types.Event
+	for k, v := range s.fixture {
+		if k.Name() == partitionName {
+			events = v
+		}
+	}
+	for _, ev := range events {
+		dst.ReactTo(ev)
+	}
+	return nil
+}
+
+func (s simple) Claim(ctx context.Context, partition string) bool {
+	// TODO: Implement locking properly
+	return true
+}
+
+func (s simple) Release(partition string) {
+	// TODO: Implement locking properly
+	return
+}
+
+func (s simple) Exists(ctx context.Context, partitionName types.PartitionName) bool {
+	found, _ := simplePartitionExistenceChecker{
+		objdb:   s.objdb,
+		refdb:   s.refdb,
+		pattern: partitionName,
+		matcher: matcher.Glob{},
+	}.Exists(ctx, partitionName)
+	return found
+}
+
+func (s simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
+
+	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "repository.simple.Rehydrate")
 	spnRehydrate.SetTag("partitionName", string(partitionName))
 	defer spnRehydrate.Finish()
 
 	var (
-		oStack cpAffixStack
+		oStack storage.AffixStack
 		jp     *packing.JSONPacker
 	)
 
@@ -46,31 +116,24 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 	// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
 	// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
 	// breaks the loop and we come back here.
-	err = s.enqueueCheckpointIfRelevant(headRef, &oStack)
+	err = s.enqueueCheckpointIfRelevant(partitionName, headRef, &oStack)
 	if err != nil {
 		return errors.Wrap(err, "error when stacking relevant partitions")
 	}
-	spnRehydrate.LogFields(log.Int("found.checkpoints", oStack.s.Len()))
+	spnRehydrate.LogFields(log.Int("found.checkpoints", oStack.Len()))
 	spanGatherCheckpoints.Finish()
-
-	// TODO: this needs to be refactored out. Depot.Rehydrate cannot work as it can't check the
-	// types of the events because it has no access to a manifest.
-	// if s.eventManifest == nil {
-	// 	return fmt.Errorf("cannot rehydrate aggreage without an eventManifest")
-	// }
 
 	spanDrainCheckpoints := opentracing.StartSpan("draining relavant checkpoints", opentracing.ChildOf(spnRehydrate.Context()))
 	defer spanDrainCheckpoints.Finish()
 	for {
-		rC := oStack.s.Pop()
-		if rC == nil {
+		h := oStack.Pop()
+		if h == nil {
 			break
 		}
-		h := rC.(relevantCheckpoint)
-		for partitionName, affixEvHashes := range h.affix {
-			match, err := s.matcher.DoesMatch(string(partitionName), string(s.pattern))
+		for partitionName, affixEvHashes := range h.Affix {
+			match, err := s.matcher.DoesMatch(string(partitionName), string(partitionName))
 			if err != nil {
-				return fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, s.pattern)
+				return fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, partitionName)
 			}
 			if match {
 
@@ -138,7 +201,7 @@ func (s simpleAggregateRehydrater) Rehydrate(ctx context.Context, dst types.Aggr
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s simpleAggregateRehydrater) enqueueCheckpointIfRelevant(checkpointObjHash types.Hash, st *cpAffixStack) error {
+func (s simple) enqueueCheckpointIfRelevant(pattern types.PartitionName, checkpointObjHash types.Hash, st *storage.AffixStack) error {
 
 	var jp *packing.JSONPacker
 
@@ -179,17 +242,16 @@ func (s simpleAggregateRehydrater) enqueueCheckpointIfRelevant(checkpointObjHash
 	}
 
 	for partition := range affix {
-		matched, err := s.matcher.DoesMatch(string(s.pattern), string(partition))
+		matched, err := s.matcher.DoesMatch(string(pattern), string(partition))
 		if err != nil {
 			// TODO: test this case
-			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, s.pattern))
+			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, pattern))
 		}
 		if matched {
-			st.Push(relevantCheckpoint{
-				// TODO: Something about times????
-				time:           time.Time{},
-				checkpointHash: packedCheckpoint.Hash(),
-				affix:          affix,
+			st.Push(storage.RelevantCheckpoint{
+				Time:           time.Time{},
+				CheckpointHash: packedCheckpoint.Hash(),
+				Affix:          affix,
 			})
 		}
 	}
@@ -198,7 +260,7 @@ func (s simpleAggregateRehydrater) enqueueCheckpointIfRelevant(checkpointObjHash
 	// subject possibly to the order the hashes are written by the packer, which I believe to be alphabetic
 	// Either way we should peek into a structure and find out which checkpoint is younger and start there
 	for _, parentCheckpointHash := range checkpoint.ParentHashes {
-		err := s.enqueueCheckpointIfRelevant(parentCheckpointHash, st)
+		err := s.enqueueCheckpointIfRelevant(pattern, parentCheckpointHash, st)
 		if err != nil {
 			errors.Wrap(err, fmt.Sprintf("error looking up parent hash %s for checkpoint %s", parentCheckpointHash.String(), packedCheckpoint.Hash().String()))
 		}

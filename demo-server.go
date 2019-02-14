@@ -21,6 +21,7 @@ import (
 
 	"github.com/retro-framework/go-retro/framework/depot"
 	"github.com/retro-framework/go-retro/framework/engine"
+	"github.com/retro-framework/go-retro/framework/repository"
 	"github.com/retro-framework/go-retro/framework/resolver"
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/types"
@@ -68,6 +69,7 @@ func main() {
 		objDBSrv = objectDBServer{odb}
 		refDBSrv = refDBServer{refdb}
 		d        = depot.NewSimple(odb, refdb)
+		r        = repository.NewSimpleRepository(odb, refdb, events.DefaultManifest)
 		idFn     = func() (string, error) {
 			b := make([]byte, 12)
 			_, err := rand.Read(b)
@@ -76,8 +78,8 @@ func main() {
 			}
 			return fmt.Sprintf("%x", b), nil
 		}
-		r = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest)
-		e = engine.New(d, r.Resolve, idFn, clock{}, aggregates.DefaultManifest, events.DefaultManifest)
+		rFn = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest).Resolve
+		e   = engine.New(d, r, rFn, idFn, clock{}, aggregates.DefaultManifest, events.DefaultManifest)
 	)
 
 	mux := http.NewServeMux()

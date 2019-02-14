@@ -147,7 +147,7 @@ type SessionID string
 // current session, and a Depot which it may use to look up any other
 // Aggregates that it needs to apply business logic.
 type Command interface {
-	Apply(context.Context, io.Writer, Session, Depot) (CommandResult, error)
+	Apply(context.Context, io.Writer, Session, Repository) (CommandResult, error)
 	SetState(Aggregate) error
 }
 
@@ -167,7 +167,7 @@ type CommandArgs interface{}
 // CommandFunc is the main heavy-lifting of a Command. The CommandFunc
 // is easier to use in tests where there may be no need for heavy
 // boilerplate code.
-type CommandFunc func(context.Context, io.Writer, Session, Depot) (CommandResult, error)
+type CommandFunc func(context.Context, io.Writer, Session, Repository) (CommandResult, error)
 
 // CommandResult is a type alias for map[string][]Event
 // to make the function signatures expressive. The resulting
@@ -184,14 +184,14 @@ type EventFixture CommandResult
 // func returned will usually be a function on a struct type
 // which the resolver will instantiate and prepare for execution.
 type Resolver interface {
-	Resolve(context.Context, Depot, []byte) (CommandFunc, error)
+	Resolve(context.Context, Repository, []byte) (CommandFunc, error)
 }
 
 // ResolveFunc does the heavy lifting on the resolution. The Resolver
 // interface is clumbsy for use in tests and the ResolveFunc allows
 // a simple anonymous drop-in in tests which can resolve a stub/double
 // without lots of boilerplate code.
-type ResolveFunc func(context.Context, Depot, []byte) (CommandFunc, error)
+type ResolveFunc func(context.Context, Repository, []byte) (CommandFunc, error)
 
 // IDFactory is a function that should generate IDs. This is primarily
 // used in the Engine implementations to generate an ID for newly created

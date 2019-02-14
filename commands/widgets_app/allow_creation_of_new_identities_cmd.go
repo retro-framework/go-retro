@@ -35,10 +35,10 @@ func (cmd *AllowCreationOfNewIdentities) SetState(agg types.Aggregate) error {
 // there have not yet been any created, it will permit the creation of a new one.
 //
 // This allows configuration of the app early in its lifecycle.
-func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, w io.Writer, session types.Session, depot types.Depot) (types.CommandResult, error) {
+func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
 
-	identities := depot.Watch(ctx, "identities/*")
-	_ = identities
+	// identities := repo.Watch(ctx, "identities/*")
+	// _ = identities
 	// if !identities.HasAny() { // TODO: not implemented
 	// 	return nil, errors.New("can't change application settings anonymously once identities exist")
 	// }
