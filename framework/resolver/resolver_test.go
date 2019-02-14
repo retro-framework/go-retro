@@ -63,26 +63,19 @@ func (dc *dummyCmd) Apply(context.Context, io.Writer, types.Session, types.Depot
 type dummyCmdWithArgs struct {
 	dummyCmd
 
+	args dummyCmdArgs
+}
+
+type dummyCmdArgs struct {
 	str string
-	itn int
+	i   int32 `json:"int"`
 }
 
 func (dcwa *dummyCmdWithArgs) SetArgs(args types.CommandArgs) error {
-
-	// NOTE:
-	//       JSON permits only float64 numbers in the JSON spec which
-	//       places a burden on all implementors of CommandWithArgs.
-
-	if strArg, ok := args["str"].(string); !ok {
-		return errors.New("expected args[str] to be castable to string, it wasn't")
+	if typedArgs, ok := args.(*dummyCmdArgs); ok {
+		dcwa.args = *typedArgs
 	} else {
-		dcwa.str = strArg
-	}
-
-	if intArg, ok := args["int"].(float64); !ok {
-		return errors.New("expected args[int] to be castable to float64, it wasn't")
-	} else {
-		dcwa.itn = int(intArg)
+		return fmt.Errorf("can't typecast args")
 	}
 	return nil
 }
@@ -280,7 +273,7 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 
 		aggm.Register("agg", &dummyAggregate{})
 		cmdm.Register(&dummyAggregate{}, &dummyCmd{})
-		cmdm.Register(&dummyAggregate{}, &dummyCmdWithArgs{})
+		cmdm.RegisterWithArgs(&dummyAggregate{}, &dummyCmdWithArgs{}, &dummyCmdArgs{})
 
 		var (
 			r = resolver{aggm: aggm, cmdm: cmdm}

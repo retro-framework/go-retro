@@ -156,14 +156,13 @@ type Command interface {
 // user data (parsed out of {params: ...} in the CommandDesc)
 type CommandWithArgs interface {
 	Command
-	SetArgs(interface{}) error
+	SetArgs(CommandArgs) error
 }
 
-// CommandArgs is a type alias for map[string]interface{}
-// command args (params) are an optional interface upgrade
-// on Commands which need to take arguments which cannot
-// be inferred from the current session.
-type CommandArgs map[string]interface{}
+// CommandArgs is a type alias for interface{}
+// to express when we are dealing with CommandArgs
+// and not a real anon interface.
+type CommandArgs interface{}
 
 // CommandFunc is the main heavy-lifting of a Command. The CommandFunc
 // is easier to use in tests where there may be no need for heavy

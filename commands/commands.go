@@ -9,7 +9,10 @@ import (
 )
 
 func NewManifest() types.CommandManifest {
-	return &manifest{make(map[reflect.Type][]types.Command)}
+	return &manifest{
+		m: make(map[reflect.Type][]types.Command),
+		a: make(map[types.Command]reflect.Type),
+	}
 }
 
 var DefaultManifest = NewManifest()
@@ -18,8 +21,15 @@ func Register(agg types.Aggregate, cmd types.Command) error {
 	return DefaultManifest.Register(agg, cmd)
 }
 
+func RegisterWithArgs(agg types.Aggregate, cmd types.Command, arg types.CommandArgs) error {
+	return DefaultManifest.RegisterWithArgs(agg, cmd, arg)
+}
+
 type manifest struct {
+	// Agg:[]Command
 	m map[reflect.Type][]types.Command
+	// Command:Args
+	a map[types.Command]reflect.Type
 }
 
 func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
@@ -32,6 +42,21 @@ func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
 	}
 	m.m[m.toType(agg)] = append(m.m[m.toType(agg)], cmd)
 	return nil
+}
+
+func (m *manifest) RegisterWithArgs(agg types.Aggregate, cmd types.Command, arg interface{}) error {
+	if err := m.Register(agg, cmd); err != nil {
+		return err
+	}
+	m.a[cmd] = m.toType(arg)
+	return nil
+}
+
+func (m *manifest) ArgTypeFor(c types.Command) (types.CommandArgs, bool) {
+	if at, ok := m.a[c]; ok {
+		return reflect.New(at).Elem().Addr().Interface(), true
+	}
+	return nil, false
 }
 
 func (m *manifest) ForAggregate(agg types.Aggregate) ([]types.Command, error) {

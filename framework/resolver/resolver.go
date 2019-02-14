@@ -190,12 +190,23 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 	cmd.SetState(agg)
 
 	if len(cmdDesc.Args) > 0 {
-		if cmdWithArgs, ok := cmd.(types.CommandWithArgs); !ok {
+		var cmdWithArgs, ok = cmd.(types.CommandWithArgs)
+		if !ok {
 			return nil, Error{"cast-cmd-with-args", errors.New("args given, but command does not implement CommandWithArgs")}
-		} else {
-			if err := cmdWithArgs.SetArgs(cmdDesc.Args); err != nil {
-				return nil, Error{"assign-args", err}
-			}
+		}
+
+		var typedArgs, found = r.cmdm.ArgTypeFor(cmd)
+		if !found {
+			return nil, Error{"assign-args", fmt.Errorf("no arg type registered for cmd, was registered with Register not RegisterWithArgs?")}
+		}
+
+		err := json.Unmarshal(cmdDesc.Args, typedArgs)
+		if err != nil {
+			return nil, Error{"assign-args", err}
+		}
+
+		if err := cmdWithArgs.SetArgs(typedArgs); err != nil {
+			return nil, Error{"assign-args", err}
 		}
 	}
 
@@ -209,5 +220,5 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 type commandDesc struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
-	Args types.CommandArgs
+	Args json.RawMessage
 }

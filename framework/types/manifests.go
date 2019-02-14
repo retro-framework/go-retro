@@ -38,6 +38,9 @@ type EventFactory interface {
 type CommandManifest interface {
 	Register(Aggregate, Command) error
 	ForAggregate(Aggregate) ([]Command, error)
+
+	RegisterWithArgs(Aggregate, Command, interface{}) error
+	ArgTypeFor(Command) (CommandArgs, bool)
 }
 
 type ListingCommandManifest interface {
