@@ -64,6 +64,9 @@ type Engine struct {
 // There is presently no way (should there be?) to construct a command "by
 // hand" it must be serializable to account for the repo rehydrating the
 // aggregate.
+//
+// Apply cannot write to an empty Depot, it will propagate depot.ErrUnknownRef
+// as a real error. SessionStart will allow writing to an empty depot however
 func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cmd []byte) (string, error) {
 
 	var err error
@@ -87,9 +90,14 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 	}
 
 	headPtr, err := e.depot.HeadPointer(ctx)
+	if headPtr == nil && err == nil {
+		return "", Error{Op: "get-head-pointer", Msg: "depot is empty, start a session first"}
+	}
+
 	if err != nil {
 		return "", Error{"get-head-pointer", err, "could not get head pointer from depot"}
 	}
+
 	if headPtr != nil {
 		spnApply.SetTag("head pointer", headPtr.String())
 	}
@@ -183,6 +191,10 @@ func dumpCommandResult(w io.Writer, cr types.CommandResult) {
 //
 // If error is non-nil the SID is not usable. The session ID is returned to
 // facilitate correlating logs with failed session start commands.
+//
+// If the Depot is completely empty a session must be started first before
+// using Apply. Apply will not gracefully handle seeing a depot.ErrUnknownRef
+// but SessionStart will.
 func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
 	// Tracing

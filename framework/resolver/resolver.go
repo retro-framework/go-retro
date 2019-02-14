@@ -90,8 +90,7 @@ func (r *resolver) Resolve(ctx context.Context, depot types.Depot, b []byte) (ty
 		aggType, aggID = cmdDescParts[0], cmdDescParts[1]
 		spnUnmarshal.SetTag("agg.type", aggType)
 		spnUnmarshal.SetTag("agg.id", aggID)
-		if len(aggType) == 0 && len(aggID) == 0 { // neither aggName or ID given … maybe we route to `_` if defined?
-			// TODO: Check if there's a "_" aggregate defined (may likely not be the case in many tests)
+		if len(aggType) == 0 && len(aggID) == 0 {
 			return nil, Error{"parse-agg-path", fmt.Errorf("can't split %q into name and id, both parts empty (empty string?)", cmdDesc.Path)}
 		} else if len(aggType) > 0 && len(aggID) == 0 { // path given, no ID
 			return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not include an id", cmdDesc.Path)}
