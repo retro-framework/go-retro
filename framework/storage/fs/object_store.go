@@ -63,7 +63,8 @@ func (s *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
 	w.Close()
 
 	var (
-		objPath = filepath.Join(s.BasePath, fmt.Sprintf("%x/%x/%x", p.Hash().String()[0:1], p.Hash().String()[1:2], p.Hash().String()[2:]))
+		hb      = p.Hash().Bytes()
+		objPath = filepath.Join(s.BasePath, fmt.Sprintf("%x/%x/%x", hb[0:1], hb[1:2], hb[2:]))
 		objDir  = filepath.Dir(objPath)
 	)
 
@@ -115,9 +116,11 @@ func (s *ObjectStore) RetrievePacked(str string) (types.HashedObject, error) {
 		return nil, ErrUnsupportedHash
 	}
 
-	h := packing.NewHash(packing.HashAlgoNameSHA256, dst)
-
-	objPath := filepath.Join(s.BasePath, fmt.Sprintf("%x/%x/%x", h.String()[0:1], h.String()[1:2], h.String()[2:]))
+	var (
+		h       = packing.NewHash(packing.HashAlgoNameSHA256, dst)
+		hb      = h.Bytes()
+		objPath = filepath.Join(s.BasePath, fmt.Sprintf("%x/%x/%x", hb[0:1], hb[1:2], hb[2:]))
+	)
 
 	content, err := ioutil.ReadFile(objPath)
 	if err != nil {
