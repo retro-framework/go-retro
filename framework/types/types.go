@@ -156,7 +156,7 @@ type Command interface {
 // user data (parsed out of {params: ...} in the CommandDesc)
 type CommandWithArgs interface {
 	Command
-	SetArgs(CommandArgs) error
+	SetArgs(interface{}) error
 }
 
 // CommandArgs is a type alias for map[string]interface{}
