@@ -81,8 +81,6 @@ func (m *manifest) toTypeString(t reflect.Type) string {
 	return strings.Join([]string{t.PkgPath(), t.Name()}, ".")
 }
 
-// TODO: This is not tested and printing the * for pointers
-// without printing the package name is not super helpful
 func (m *manifest) List() map[string][]string {
 	var r = make(map[string][]string)
 	for k, v := range m.m {
