@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/retro-framework/go-retro/aggregates"
-	"github.com/retro-framework/go-retro/framework/depot"
+	"github.com/retro-framework/go-retro/framework/repository"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
@@ -24,7 +24,7 @@ func Test_WidgetsApp_AllowCreateIdentitesCmd_TogglesTheStateAndReturnsOneEvInSuc
 	assertBoolEql(receiver.AllowCreateIdentities, false)
 	cmd := AllowCreationOfNewIdentities{receiver}
 	var b bytes.Buffer
-	_, err := cmd.Apply(context.Background(), &b, &aggregates.Session{}, depot.EmptySimpleMemory())
+	_, err := cmd.Apply(context.Background(), &b, &aggregates.Session{}, repository.NewSimpleRepositoryDouble(nil))
 
 	// Assert
 	assertErrEql(err, nil)

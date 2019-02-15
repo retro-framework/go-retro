@@ -14,8 +14,8 @@ func Test_Session_State_IsAnonymousByDefault(t *testing.T) {
 	assertBoolEql := test.H(t).BoolEql
 
 	// Act
-	app := Session{}
+	session := Session{}
 
 	// Assert
-	assertBoolEql(app.IsAnonymous, true) // TODO: ZeroValues ?
+	assertBoolEql(session.HasIdentity, false)
 }
