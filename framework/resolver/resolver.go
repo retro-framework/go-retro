@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gobuffalo/flect"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/retro-framework/go-retro/framework/types"
 )
@@ -154,8 +155,11 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 	sp := opentracing.StartSpan("iterating over aggregate commands", opentracing.ChildOf(spnAggCmdLookup.Context()))
 	var cmd types.Command
 	for _, c := range cmds {
-		sp.LogKV(reflect.TypeOf(c).Elem().Name(), cmdDesc.Name)
-		if strings.Compare(reflect.TypeOf(c).Elem().Name(), cmdDesc.Name) == 0 {
+		var cmdDescName = flect.Pascalize(cmdDesc.Name)
+		sp.LogKV(reflect.TypeOf(c).Elem().Name(), cmdDescName)
+		// Accept SomeCommand or some_command
+		if strings.Compare(reflect.TypeOf(c).Elem().Name(), cmdDescName) == 0 ||
+			strings.Compare(reflect.TypeOf(c).Elem().Name(), cmdDesc.Name) == 0 {
 			sp.LogKV("matched", reflect.TypeOf(c).Elem().Name())
 			cmd = c
 		} else {

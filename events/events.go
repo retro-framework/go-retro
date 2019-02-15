@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gobuffalo/flect"
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/types"
 )
@@ -41,7 +42,7 @@ func (m *manifest) Register(ev types.Event) error {
 		v      = m.toType(ev)
 		evName = v.Name()
 	)
-	return m.RegisterAs(evName, ev)
+	return m.RegisterAs(flect.Underscore(evName), ev)
 }
 
 func (m *manifest) KeyFor(ev types.Event) (string, error) {
@@ -52,7 +53,7 @@ func (m *manifest) KeyFor(ev types.Event) (string, error) {
 	}
 
 	var registeredEvNames []string
-	for name, _ := range m.m {
+	for name := range m.m {
 		registeredEvNames = append(registeredEvNames, name)
 	}
 

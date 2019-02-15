@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gobuffalo/flect"
 	"github.com/retro-framework/go-retro/framework/types"
 )
 
@@ -86,7 +87,7 @@ func (m *manifest) List() map[string][]string {
 	var r = make(map[string][]string)
 	for k, v := range m.m {
 		if _, ok := r[k.String()]; !ok {
-			r[k.String()] = []string{}
+			r[k.Name()] = []string{}
 		}
 		for _, cmd := range v {
 			var cmdName string
@@ -95,7 +96,7 @@ func (m *manifest) List() map[string][]string {
 			} else {
 				cmdName = t.Name()
 			}
-			r[k.String()] = append(r[k.String()], cmdName)
+			r[k.Name()] = append(r[k.Name()], flect.Underscore(cmdName))
 		}
 	}
 	return r

@@ -6,7 +6,7 @@ type AggregateManifest interface {
 }
 
 type ListingAggregateManifest interface {
-	List() map[string]string
+	List() []string
 }
 
 type EventManifest interface {
