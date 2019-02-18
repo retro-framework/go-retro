@@ -27,16 +27,6 @@ type Depot interface {
 	MoveHeadPointer(old, new Hash) error
 }
 
-// Repository frames all the behaviours we need to play back events
-// and have a domain model which is unconcerned with storage and
-// simply behaves as though the entities exist readily in memory.
-type Repository interface {
-	Claim(context.Context, string) bool
-	Release(string)
-	Exists(context.Context, PartitionName) bool
-	Rehydrate(context.Context, Aggregate, PartitionName) error
-}
-
 // DumpableDepot is an optional interface which implements
 // a single method which dumps the contents as preformatted
 // text to facilitate easy debugging. It is mostly used in

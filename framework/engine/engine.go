@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"reflect"
 	"time"
 
+	"github.com/gobuffalo/flect"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -155,24 +157,12 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 	}
 	spnApplyCmd.Finish()
 
-	// TODO: I think this code path is redundant, it is written to "peek" into
-	// the command desc and extract the "path" and use that to persist the new EVs
-	// but I think its redundant with the way that CommandResult is going now and
-	// having aggregates know their own name (not exposed in default interface)
-	//
-	// var peek = struct {
-	// 	Path string `json:"path"`
-	// }{}
-	// err = json.Unmarshal(cmd, &peek)
-	// if err != nil {
-	// 	return "", Error{"peek-path", err, "could not peek into cmd desc to determine path"}
-	// }
-
-	// dumpCommandResult(os.Stdout, newEvs)
-
 	if err := e.persistEvs(ctx, sid, cmd, headPtr, newEvs); err != nil {
 		return "", err // TODO: wrap me
 	}
+
+	dumpCommandResult(w, newEvs)
+
 	return "ok", nil
 }
 
@@ -278,8 +268,39 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	// // 	return sid, Error{"depot-partial-store", err, "depot encountered error storing events for aggregate"}
 	// // }
 	// spnAppendEvs.Finish()
+}
 
-	// return sid, nil
+// guardHasID takes an aggregate, and checks if it has a name, if so then
+// it will pass-thru else it will leverage the ID generating function
+// to make one before persisting.
+//
+// TODO: could also check if an aggregate has a bogus name that doesn't
+// match its type.
+func (e *Engine) guardHasID(a types.Aggregate) (types.PartitionName, error) {
+
+	var (
+		name   types.PartitionName = a.Name()
+		toType                     = func(t types.Aggregate) reflect.Type {
+			// TODO this code is copy-pasted from the aggregates.go manifest
+			// it should be consolidated
+			var v = reflect.ValueOf(t)
+			if reflect.Ptr == v.Kind() || reflect.Interface == v.Kind() {
+				v = v.Elem()
+			}
+			return v.Type()
+		}
+		err error
+	)
+	if len(name) == 0 {
+		var id, err = e.idFactory()
+		if err != nil {
+			return "", err
+		}
+		var n = filepath.Join(flect.Underscore(toType(a).Name()), id)
+		name = types.PartitionName(n)
+	}
+	a.SetName(name)
+	return name, err
 }
 
 // TODO: Fix all the error messages (or Error types, etc, who knows.)
@@ -335,15 +356,18 @@ func (e *Engine) persistEvs(ctx context.Context, sid types.SessionID, cmdDesc []
 	}
 
 	for agg, evs := range cmdRes {
-		var aggPath types.PartitionName = agg.Name()
+		aggPath, err := e.guardHasID(agg)
+		if err != nil {
+			return Error{"persist-evs", err, "could not generate id for anonymous aggregate"}
+		}
 		for _, ev := range evs {
 			name, err := e.evm.KeyFor(ev)
 			if err != nil {
-				return Error{"persist-events-from-session-start", err, "error looking up event"}
+				return Error{"persist-evs", err, "error looking up event"}
 			}
 			packedEv, err := jp.PackEvent(name, ev)
 			if err != nil {
-				return Error{"persist-events-from-session-start", err, "error packing event"}
+				return Error{"persist-evs", err, "error packing event"}
 			}
 			packedeObjs = append(packedeObjs, packedEv)
 			affix[aggPath] = append(affix[aggPath], packedEv.Hash())

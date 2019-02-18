@@ -2,7 +2,6 @@ package identity
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -46,9 +45,9 @@ func (cmd *CreateIdentity) SetArgs(a types.CommandArgs) error {
 
 func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
 
-	if repo.Exists(ctx, cmd.identity.Name()) {
-		return nil, fmt.Errorf("identity already exists with name %q", cmd.identity.Name())
-	}
+	// if repo.Exists(ctx, cmd.identity.Name()) {
+	// 	return nil, fmt.Errorf("identity already exists with name %q", cmd.identity.Name())
+	// }
 
 	// var s = session.(*aggregates.Session)
 	// if s.HasIdentity && s.IdentityName == cmd.identity.Name() {
@@ -67,16 +66,14 @@ func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session types
 		ownEvents = append(ownEvents, events.SetAvatar{ImgData: cmd.args.Avatar})
 	}
 
-	json.NewEncoder(w).Encode(cmd.identity)
-
 	return types.CommandResult{
 		session: []types.Event{
-			&events.AssociateIdentity{Identity: cmd.identity.Name()},
+			&events.AssociateIdentity{Identity: cmd.identity},
 		},
-		cmd.identity: ownEvents,
+		&aggregates.Identity{}: ownEvents,
 	}, nil
 }
 
 func init() {
-	commands.RegisterWithArgs(&aggregates.Identity{}, &CreateIdentity{}, &args{})
+	commands.RegisterWithArgs(&aggregates.WidgetsApp{}, &CreateIdentity{}, &args{})
 }

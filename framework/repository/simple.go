@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/retro-framework/go-retro/events"
+	"github.com/retro-framework/go-retro/framework/storage/memory"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -28,6 +31,15 @@ type simple struct {
 
 type double struct {
 	fixture types.EventFixture
+}
+
+func NewEmptyMemory() types.Repository {
+	return simple{
+		objdb:         &memory.ObjectStore{},
+		refdb:         &memory.RefStore{},
+		eventManifest: events.NewManifest(),
+		matcher:       matcher.Glob{},
+	}
 }
 
 func NewSimpleRepository(odb object.DB, rdb ref.DB, evM types.EventManifest) types.Repository {

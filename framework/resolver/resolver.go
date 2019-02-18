@@ -32,14 +32,29 @@ func New(aggm types.AggregateManifest, cmdm types.CommandManifest) types.Resolve
 }
 
 // Resolve uses the byte slice provided and unmarshals it with JSON
-// the provided byte slice must at least have keys "name" and "path".
+// the provided byte slice must at least have the key "name".
 //
-// The JSON object may also contain an "args" key which will be used for a second
-// phase of unmarshalling after using the path and name to resolve the
-// aggregate and command respectively.
+// Optional fields "path" and "args" can be set on the []byte to specify
+// that the command targets a "real" aggregate and not the root aggregate
+// the args will be conditionally parsed if the command implements types.CommentWithArgs
 //
-// To construct the command object the registered type will be instantiated
-// if the manifest contains a type for the args.
+// Valid values for []byte here include:
+//
+// {"name":"any_command"} - this will be routed to the Aggregate mounted at "_". Such
+// commands may be used to create "root" level objects, in so far as a hierarchy has meaning
+// in this part of the model, or to toggle global settings early in the application
+// lifecycle.
+//
+// {"name":"some_command", "path":"user/123"} - this will be routed to Aggregate "user" and
+// the repository will be searched for events pertaining to this aggregate name. If the aggregate
+// does not exist or has no history to date an error is returned. Assuming that a matching
+// aggregate can be rehydrated from the given partitionName then it will be set into the aggregate
+// via the command's "SetState" method.
+//
+// {"name":"some_command", "path":"user/123", "args":{"foo":"bar"}} - as above with args. For
+// this to work the command registered under that name must implement types.CommandWithArgs. The
+// arguments will be parsed into a copy of the registered arg type for this command and passed to
+// the command the command's "SetArgs" method.
 func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b []byte) (types.CommandFunc, error) {
 
 	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "resolver.Resolve")
@@ -51,89 +66,80 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 	// however we're not interested in the concrete instance of the aggregate
 	// or not, we just need it's type in order to find it's command set and
 	// proceed to deconstructing the byte slice into real objects.
-	spnUnmarshal := opentracing.StartSpan("unmarshal json byte steam", opentracing.ChildOf(spnResolve.Context()))
+	spnUnmarshal := opentracing.StartSpan("unmarshal command description", opentracing.ChildOf(spnResolve.Context()))
 	spnUnmarshal.SetTag("payload", string(b))
-	defer spnUnmarshal.Finish()
 	var cmdDesc commandDesc
-	err := json.Unmarshal(b, &cmdDesc)
-	if err != nil {
+	if err := json.Unmarshal(b, &cmdDesc); err != nil {
 		err = Error{"json-unmarshal", err}
 		spnUnmarshal.LogKV("event", "error", "error.object", err)
+		spnUnmarshal.Finish()
 		return nil, err
 	}
 	spnUnmarshal.Finish()
 
-	// Check if the aggregate described by the "path" field of the cmdDesc
-	// includes "basename"
-	cmdDescParts := strings.Split(strings.TrimSpace(cmdDesc.Path), "/")
-	if len(cmdDescParts) > 2 {
-		return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q contains too many slashes (may not nest)", cmdDesc.Path)}
+	// Validate the command description, see the implementation for
+	// details
+	spnValidateCmdDesc := opentracing.StartSpan("validate command description", opentracing.ChildOf(spnResolve.Context()))
+	if errs, ok := cmdDesc.HasErrors(); !ok {
+		spnValidateCmdDesc.Finish()
+		return nil, Error{"validate-cmd-desc", errs[0]}
 	}
+	spnValidateCmdDesc.Finish()
 
-	// Examine the path now to find look for a viable,
-	// targetable aggregate. Assume that "_" (Aggregate
-	// root) is targeted for a start, and work to correct
-	// that assumption over the next two dozen lines.
-	var (
-		aggType              = "_"
-		aggID                string
-		targetsRootAggregate bool
-	)
-	if len(cmdDescParts) < 2 {
-		if cmdDescParts[0] != "_" {
-			return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not split into exactly two parts", cmdDesc.Path)}
-		}
-		targetsRootAggregate = true
-		spnResolve.SetTag("agg.isRoot", true)
-	}
+	var cmdFn, err = r.resolve(ctx, spnResolve, repository, cmdDesc)
 
-	if !targetsRootAggregate {
-		aggType, aggID = cmdDescParts[0], cmdDescParts[1]
-		spnResolve.SetTag("agg.type", aggType)
-		spnResolve.SetTag("agg.id", aggID)
-		if len(aggType) == 0 && len(aggID) == 0 {
-			return nil, Error{"parse-agg-path", fmt.Errorf("can't split %q into name and id, both parts empty (empty string?)", cmdDesc.Path)}
-		} else if len(aggType) > 0 && len(aggID) == 0 { // path given, no ID
-			return nil, Error{"parse-agg-path", fmt.Errorf("agg path %q does not include an id", cmdDesc.Path)}
-		} else if len(aggType) == 0 && len(aggID) > 0 { // no `/` in path
-			// TODO: Check for this case in the test
-		}
-	}
+	return cmdFn, err
+}
 
-	// Check if the given path corresponds to a known aggregate,
-	// if not we might consider falling back to `_` to effectively
-	// make the "_" optional upstream.
+// Resolve does the heavy lifting of finding out what commands and aggregates
+// are targeted here.
+//
+// It may make sense to expose this as a public API to avoid the serialization
+// overhead of JSON someday.
+func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, repository types.Repository, cmdDesc commandDesc) (types.CommandFunc, error) {
+
+	// cmdDesc handles the details for us, we may fall-back
+	// to looking up "_" if no path was specified.
 	spnAggLookup := opentracing.StartSpan("look up aggregate", opentracing.ChildOf(spnResolve.Context()))
-	defer spnAggLookup.Finish()
-	agg, err := r.aggm.ForPath(aggType)
+	var agg, err = r.aggm.ForPath(cmdDesc.AggregateType())
 	if err != nil {
 		err = Error{"agg-lookup", err}
-		spnAggLookup.LogKV("event", "error", "error.object", err)
+		spnAggLookup.SetTag("error", err)
+		spnAggLookup.Finish()
 		return nil, err
 	}
 	if agg == nil {
 		err := Error{"agg-lookup", fmt.Errorf("could not find aggreate")}
-		spnAggLookup.LogKV("event", "error", "error.object", err)
+		spnAggLookup.SetTag("error", err)
+		spnAggLookup.Finish()
 		return nil, err
 	}
 	spnAggLookup.Finish()
 
-	// Set the aggregate name (useful to ensure that things survive a roundtrip to Commands
-	// and back into the Engine)
-	//
-	// TODO: this needs to be the NAME not the path, for sessions
-	// it is the name only not the whole path... must be precise
-	agg.SetName(types.PartitionName(cmdDesc.Path))
-	if err != nil {
-		return nil, Error{"agg-assign-name", fmt.Errorf("could not set name on Aggregate: %s", err)}
+	var setAggregateName = func(a types.Aggregate, pn types.PartitionName) error {
+		agg.SetName(types.PartitionName(cmdDesc.Path))
+		if err != nil {
+			return Error{"agg-assign-name", fmt.Errorf("could not set name on Aggregate: %s", err)}
+		}
+		if agg.Name() != types.PartitionName(cmdDesc.Path) {
+			return Error{"agg-read-back-name", fmt.Errorf("name change on Aggregate didn't take (check for pointer receivers?)")}
+		}
+		return nil
 	}
 
-	// Read back the name, this came up in a testing condition. It's an inexpensive test and
-	// guards against weird errors where for some reason a types.Aggregate is implementing it's own
-	// Name() and SetName() methods rather than embedding aggregates.NamedAggregate.
-	if agg.Name() != types.PartitionName(cmdDesc.Path) {
-		return nil, Error{"agg-read-back-name", fmt.Errorf("name change on Aggregate didn't take (check for pointer receivers?)")}
+	// fmt.Println("checking for existence of cmdDesc.Path", cmdDesc.Path)
+
+	// If the aggregate we're dealing with actually exists then we need to make a few
+	// more quick steps... set it's name, and then actually rehydrate it.
+	if repository.Exists(ctx, types.PartitionName(cmdDesc.Path)) {
+		if err := setAggregateName(agg, types.PartitionName(cmdDesc.Path)); err != nil {
+			return nil, err
+		}
 	}
+
+	// return nil, Error{"find-existing-aggregate", fmt.Errorf("no existing aggregate with name: %s", cmdDesc.Path)}
+	// Set the aggregate name (useful to ensure that things survive a roundtrip to Commands
+	// and back into the Engine)
 
 	// Look up the command before we invest effort to rehydrate something
 	// we might not be able to use
@@ -144,7 +150,7 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 	spnAggCmdLookup.SetTag("commands.num", len(cmds))
 	if err != nil {
 		err = Error{"agg-cmd-lookup", err}
-		spnAggCmdLookup.LogKV("event", "error", "error.object", err)
+		spnAggCmdLookup.SetTag("error", err)
 		return nil, err
 	}
 
@@ -173,26 +179,6 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 		return nil, Error{"agg-cmd-lookup", fmt.Errorf("no command registered with name %s for aggregate %v", cmdDesc.Name, reflect.TypeOf(agg).Elem().Name())}
 	}
 
-	spnRehydrate := opentracing.StartSpan("rehydrate target aggregate", opentracing.ChildOf(spnResolve.Context()))
-	defer spnRehydrate.Finish()
-	err = repository.Rehydrate(ctx, agg, types.PartitionName(cmdDesc.Path))
-	if err != nil {
-		// TODO: This exit condition is a nasty "magic string"
-		// artefact. It is designed ot match against a string
-		// in the "simple-aggregate-rehydrater.go" file where
-		// a "not found" error manifests as unknown ref. We don't
-		// necessarily expect to find something to rehydrate,
-		// this may be a SessionStart event, so we're happy to
-		// swallow an error about a non-exixtent partition and
-		// failure to rehydrate something we're in the process
-		// of creating. These errors need to be better typed.
-		if !strings.Contains(err.Error(), "unknown ref") {
-			return nil, Error{"agg-rehydrate", err}
-		}
-	}
-
-	cmd.SetState(agg)
-
 	if len(cmdDesc.Args) > 0 {
 		var cmdWithArgs, ok = cmd.(types.CommandWithArgs)
 		if !ok {
@@ -214,6 +200,28 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 		}
 	}
 
+	if repository.Exists(ctx, types.PartitionName(cmdDesc.Path)) {
+		spnRehydrate := opentracing.StartSpan("rehydrate target aggregate", opentracing.ChildOf(spnResolve.Context()))
+		defer spnRehydrate.Finish()
+		err = repository.Rehydrate(ctx, agg, types.PartitionName(cmdDesc.Path))
+		if err != nil {
+			// TODO: This exit condition is a nasty "magic string"
+			// artefact. It is designed ot match against a string
+			// in the "simple-aggregate-rehydrater.go" file where
+			// a "not found" error manifests as unknown ref. We don't
+			// necessarily expect to find something to rehydrate,
+			// this may be a SessionStart event, so we're happy to
+			// swallow an error about a non-exixtent partition and
+			// failure to rehydrate something we're in the process
+			// of creating. These errors need to be better typed.
+			if !strings.Contains(err.Error(), "unknown ref") {
+				return nil, Error{"agg-rehydrate", err}
+			}
+		}
+	}
+
+	cmd.SetState(agg)
+
 	// TODO: Could implement an INFO level warning incase args are absent but
 	//       the command actually implements CommandWithArgs (annoying if use-
 	//			 case permits optional args?)
@@ -225,4 +233,49 @@ type commandDesc struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Args json.RawMessage
+}
+
+func (cD commandDesc) HasErrors() ([]error, bool) {
+	var errors []error
+	if cD.Name == "" {
+		errors = append(errors, fmt.Errorf("command name may not be empty"))
+	}
+	if len(cD.pathParts()) > 2 {
+		errors = append(errors, fmt.Errorf("aggregate paths may not contain more than one forwardslash"))
+	}
+	if len(cD.pathParts()) == 1 && !cD.DoesTargetRootAggregate() {
+		errors = append(errors, fmt.Errorf("aggregate path must include an aggregate id after the first forwardslash"))
+	}
+	return errors, len(errors) == 0
+}
+
+func (cD commandDesc) DoesTargetRootAggregate() bool {
+	if cD.Path == "_" || cD.Path == "" {
+		return true
+	}
+	return false
+}
+
+func (cD commandDesc) AggregateType() string {
+	if cD.DoesTargetRootAggregate() {
+		return "_"
+	}
+	return cD.pathParts()[0]
+}
+
+func (cD commandDesc) AggregateID() string {
+	if cD.DoesTargetRootAggregate() {
+		return ""
+	}
+	return cD.pathParts()[1]
+}
+
+func (cD commandDesc) pathParts() []string {
+	var r []string
+	for _, str := range strings.Split(strings.TrimSpace(cD.Path), "/") {
+		if str != "" {
+			r = append(r, str)
+		}
+	}
+	return r
 }

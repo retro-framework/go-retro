@@ -56,10 +56,9 @@ type Aggregate interface {
 // then allows the use of the interface via upgrade on
 // the keys of the map to get the names to use when persisting
 // the events.
-// type NamedAggregate interface {
-// 	Name() PartitionName
-// 	SetName(PartitionName) error
-// }
+type ExistingAggregate interface {
+	Name() PartitionName
+}
 
 // Event interface may be any type which may carry any baggage it likes.
 // It must serialize and deserialize cleanly for storage reasons.
