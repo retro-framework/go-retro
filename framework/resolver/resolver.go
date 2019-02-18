@@ -86,9 +86,12 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 	}
 	spnValidateCmdDesc.Finish()
 
-	var cmdFn, err = r.resolve(ctx, spnResolve, repository, cmdDesc)
+	var cmd, err = r.resolve(ctx, spnResolve, repository, cmdDesc)
+	if cmd != nil {
+		return cmd.Apply, err
+	}
 
-	return cmdFn, err
+	return nil, err
 }
 
 // Resolve does the heavy lifting of finding out what commands and aggregates
@@ -96,7 +99,7 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 //
 // It may make sense to expose this as a public API to avoid the serialization
 // overhead of JSON someday.
-func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, repository types.Repository, cmdDesc commandDesc) (types.CommandFunc, error) {
+func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, repository types.Repository, cmdDesc commandDesc) (types.Command, error) {
 
 	// cmdDesc handles the details for us, we may fall-back
 	// to looking up "_" if no path was specified.
@@ -226,7 +229,7 @@ func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, rep
 	//       the command actually implements CommandWithArgs (annoying if use-
 	//			 case permits optional args?)
 
-	return cmd.Apply, nil
+	return cmd, nil
 }
 
 type commandDesc struct {
