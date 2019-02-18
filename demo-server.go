@@ -78,7 +78,7 @@ func main() {
 			}
 			return fmt.Sprintf("%x", b), nil
 		}
-		rFn = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest).Resolve
+		rFn = resolver.New(aggregates.DefaultManifest, commands.DefaultManifest)
 		e   = engine.New(d, r, rFn, idFn, clock{}, aggregates.DefaultManifest, events.DefaultManifest)
 	)
 

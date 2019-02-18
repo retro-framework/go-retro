@@ -27,11 +27,11 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
-func New(d types.Depot, r types.Repository, rFn types.ResolveFunc, i types.IDFactory, c types.Clock, a types.AggregateManifest, e types.EventManifest) Engine {
+func New(d types.Depot, r types.Repository, resolver types.Resolver, i types.IDFactory, c types.Clock, a types.AggregateManifest, e types.EventManifest) Engine {
 	return Engine{
 		depot:        d,
 		repository:   r,
-		resolver:     rFn,
+		resolver:     resolver,
 		idFactory:    i,
 		clock:        c,
 		aggm:         a,
@@ -44,7 +44,7 @@ type Engine struct {
 	depot      types.Depot
 	repository types.Repository
 
-	resolver  types.ResolveFunc
+	resolver  types.Resolver
 	idFactory types.IDFactory
 	clock     types.Clock
 
@@ -144,14 +144,14 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 	}
 
 	spnResolveCmd := opentracing.StartSpan("resolve command", opentracing.ChildOf(spnApply.Context()))
-	commandFn, err := e.resolver(ctx, e.repository, cmd)
+	command, err := e.resolver.Resolve(ctx, e.repository, cmd)
 	if err != nil {
 		return "", errors.Errorf("Couldn't resolve %s (%s)", cmd, err)
 	}
 	spnResolveCmd.Finish()
 
 	spnApplyCmd := opentracing.StartSpan("apply command", opentracing.ChildOf(spnApply.Context()))
-	newEvs, err := commandFn(ctx, w, seshAgg, e.repository)
+	newEvs, err := command.Apply(ctx, w, seshAgg, e.repository)
 	if err != nil {
 		return "", errors.Wrap(err, "error applying command")
 	}
@@ -161,7 +161,9 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 		return "", err // TODO: wrap me
 	}
 
-	dumpCommandResult(w, newEvs)
+	if commandWithRenderFn, hasRenderFn := command.(types.CommandWithRenderFn); hasRenderFn {
+		commandWithRenderFn.Render(ctx, w, seshAgg, newEvs)
+	}
 
 	return "ok", nil
 }
@@ -247,14 +249,14 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 
 	// A command to start a session is mandatory, even if it's a virtual no-op
 	// this looks up the command handler.
-	sessionStart, err := e.resolver(ctx, e.repository, b)
+	sessionStartCmd, err := e.resolver.Resolve(ctx, e.repository, b)
 	if err != nil {
 		return sid, Error{"resolve-session-start-cmd", err, "can't resolve session start command"}
 	}
 
 	// Trigger the session handler, and see what events, if any are emitted.
 	var buf bytes.Buffer
-	sessionStartedEvents, err := sessionStart(ctx, &buf, nil, e.repository)
+	sessionStartedEvents, err := sessionStartCmd.Apply(ctx, &buf, nil, e.repository)
 	if err != nil {
 		return sid, Error{"execute-session-start-cmd", err, "error calling session start command"}
 	}

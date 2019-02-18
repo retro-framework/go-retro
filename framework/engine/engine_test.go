@@ -89,6 +89,18 @@ func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ types.Session, _ typ
 	return types.CommandResult{dc.s: []types.Event{DummyEvent{}}}, nil
 }
 
+func ResolverDouble(resolverFn types.ResolveFunc) types.Resolver {
+	return resolverDouble{resolverFn}
+}
+
+type resolverDouble struct {
+	resolveFn types.ResolveFunc
+}
+
+func (rd resolverDouble) Resolve(ctx context.Context, repository types.Repository, buf []byte) (types.Command, error) {
+	return rd.resolveFn(ctx, repository, buf)
+}
+
 // Sessions are a special case of aggregate We always need one, even if anon to
 // do anything.
 //
@@ -107,19 +119,19 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolveFn  = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
 				var (
-					fssc = Start{}
+					fssc = &Start{}
 					s    = &dummySession{}
 				)
 				s.SetName(types.PartitionName("session/123-stub-id"))
 				fssc.SetState(s)
-				return fssc.Apply, nil
-			}
+				return fssc, nil
+			})
 		)
 		evM.Register(&DummyEvent{})
 		evM.Register(&DummyStartSessionEvent{})
-		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), evM)
+		var e = New(depot, repository, resolver, idFn, clock, aggregates.NewManifest(), evM)
 
 		// Act
 		sessionID, err := e.StartSession(ctx)
@@ -141,19 +153,19 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolveFn  = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
 				var (
-					fssc = Start{}
+					fssc = &Start{}
 					s    = &dummySession{}
 				)
 				s.SetName(types.PartitionName("session/123-stub-id"))
 				fssc.SetState(s)
-				return fssc.Apply, nil
-			}
+				return fssc, nil
+			})
 		)
 		evM.Register(&DummyEvent{})
 		evM.Register(&DummyStartSessionEvent{})
-		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), evM)
+		var e = New(depot, repository, resolver, idFn, clock, aggregates.NewManifest(), evM)
 
 		// Act
 		sid, err := e.StartSession(ctx)
@@ -184,19 +196,19 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolveFn  = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
 				var (
-					fssc = Start{}
+					fssc = &Start{}
 					s    = &dummySession{}
 				)
 				s.SetName(types.PartitionName("session/123-stub-id"))
 				fssc.SetState(s)
-				return fssc.Apply, nil
-			}
+				return fssc, nil
+			})
 		)
 		evM.Register(&DummyStartSessionEvent{})
 
-		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), evM)
+		var e = New(depot, repository, resolver, idFn, clock, aggregates.NewManifest(), evM)
 
 		// Act
 		sid, err := e.StartSession(context.Background())
@@ -218,11 +230,11 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository    = repository.NewSimpleRepository(objdb, refdb, eventManifest)
 			idFn          = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
 			clock         = &Predictable5sJumpClock{}
-			resolveFn     = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
+			resolver      = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
 				return nil, resolverErr
-			}
+			})
 		)
-		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), events.NewManifest())
+		var e = New(depot, repository, resolver, idFn, clock, aggregates.NewManifest(), events.NewManifest())
 
 		// Act
 		_, err := e.StartSession(context.Background())
@@ -254,20 +266,19 @@ func Test_Engine_Apply(t *testing.T) {
 			repository    = repository.NewSimpleRepository(objdb, refdb, eventManifest)
 			idFn          = func() (string, error) { return "123-stub-id", nil }
 			clock         = &Predictable5sJumpClock{}
-
-			resolveFn = func(_ context.Context, _ types.Repository, _ []byte) (types.CommandFunc, error) {
+			resolver      = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
 				var (
-					fssc = Start{}
+					fssc = &Start{}
 					s    = &dummySession{}
 				)
 				s.SetName(types.PartitionName("session/123-stub-id"))
 				fssc.SetState(s)
-				return fssc.Apply, nil
-			}
+				return fssc, nil
+			})
 		)
 		eventManifest.Register(&DummyEvent{})
 		eventManifest.Register(&DummyStartSessionEvent{})
-		var e = New(depot, repository, resolveFn, idFn, clock, aggregates.NewManifest(), eventManifest)
+		var e = New(depot, repository, resolver, idFn, clock, aggregates.NewManifest(), eventManifest)
 
 		// Act (checking the head pointer happens before routing, so we don't need any setup)
 		var b bytes.Buffer
@@ -311,11 +322,10 @@ func Test_Engine_Apply(t *testing.T) {
 			eventManifest.Register(&DummyStartSessionEvent{})
 
 			var (
-				r = resolver.New(aggregateManifest, commandManifest)
 				e = New(
 					depot,
 					repository,
-					r.Resolve,
+					resolver.New(aggregateManifest, commandManifest),
 					idFn,
 					clock,
 					aggregateManifest,
@@ -365,7 +375,7 @@ func Test_Engine_Apply(t *testing.T) {
 
 			var (
 				r = resolver.New(aggM, cmdM)
-				e = New(depot, repository, r.Resolve, idFn, clock, aggM, evM)
+				e = New(depot, repository, r, idFn, clock, aggM, evM)
 			)
 
 			// Act
@@ -426,7 +436,7 @@ func Test_Engine_Apply(t *testing.T) {
 
 			var (
 				r   = resolver.New(aggM, cmdM)
-				e   = New(depot, repository, r.Resolve, idFn, clock, aggM, evM)
+				e   = New(depot, repository, r, idFn, clock, aggM, evM)
 				ctx = context.Background()
 			)
 

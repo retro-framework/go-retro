@@ -55,7 +55,7 @@ func New(aggm types.AggregateManifest, cmdm types.CommandManifest) types.Resolve
 // this to work the command registered under that name must implement types.CommandWithArgs. The
 // arguments will be parsed into a copy of the registered arg type for this command and passed to
 // the command the command's "SetArgs" method.
-func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b []byte) (types.CommandFunc, error) {
+func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b []byte) (types.Command, error) {
 
 	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "resolver.Resolve")
 	defer spnResolve.Finish()
@@ -86,12 +86,7 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 	}
 	spnValidateCmdDesc.Finish()
 
-	var cmd, err = r.resolve(ctx, spnResolve, repository, cmdDesc)
-	if cmd != nil {
-		return cmd.Apply, err
-	}
-
-	return nil, err
+	return r.resolve(ctx, spnResolve, repository, cmdDesc)
 }
 
 // Resolve does the heavy lifting of finding out what commands and aggregates

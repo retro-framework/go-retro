@@ -183,14 +183,14 @@ type EventFixture CommandResult
 // func returned will usually be a function on a struct type
 // which the resolver will instantiate and prepare for execution.
 type Resolver interface {
-	Resolve(context.Context, Repository, []byte) (CommandFunc, error)
+	Resolve(context.Context, Repository, []byte) (Command, error)
 }
 
 // ResolveFunc does the heavy lifting on the resolution. The Resolver
 // interface is clumbsy for use in tests and the ResolveFunc allows
 // a simple anonymous drop-in in tests which can resolve a stub/double
 // without lots of boilerplate code.
-type ResolveFunc func(context.Context, Repository, []byte) (CommandFunc, error)
+type ResolveFunc func(context.Context, Repository, []byte) (Command, error)
 
 // IDFactory is a function that should generate IDs. This is primarily
 // used in the Engine implementations to generate an ID for newly created

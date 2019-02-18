@@ -162,7 +162,7 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 				},
 			)
 			r   = New(aggM, cmdM)
-			res types.CommandFunc
+			res types.Command
 
 			err error
 		)
@@ -175,7 +175,7 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 
 		// Act pt. 2
 		var b bytes.Buffer
-		newEvs, err := res(ctx, &b, &dummySession{}, repository)
+		newEvs, err := res.Apply(ctx, &b, &dummySession{}, repository)
 
 		// Assert pt. 2
 		test.H(t).IsNil(err)
