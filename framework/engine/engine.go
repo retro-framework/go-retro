@@ -162,7 +162,12 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 	}
 
 	if commandWithRenderFn, hasRenderFn := command.(types.CommandWithRenderFn); hasRenderFn {
-		commandWithRenderFn.Render(ctx, w, seshAgg, newEvs)
+		err := commandWithRenderFn.Render(ctx, w, seshAgg, newEvs)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		fmt.Fprintf(w, "no renderer defined: OK")
 	}
 
 	return "ok", nil

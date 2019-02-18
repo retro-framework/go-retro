@@ -158,6 +158,10 @@ type CommandWithArgs interface {
 	SetArgs(CommandArgs) error
 }
 
+type CommandWithRenderFn interface {
+	Render(context.Context, io.Writer, Session, CommandResult) error
+}
+
 // CommandArgs is a type alias for interface{}
 // to express when we are dealing with CommandArgs
 // and not a real anon interface.

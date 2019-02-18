@@ -74,6 +74,11 @@ func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session types
 	}, nil
 }
 
+func (cmd *CreateIdentity) Render(ctx context.Context, w io.Writer, session types.Session, res types.CommandResult) error {
+	fmt.Fprintf(w, "helo world")
+	return nil
+}
+
 func init() {
 	commands.RegisterWithArgs(&aggregates.WidgetsApp{}, &CreateIdentity{}, &args{})
 }

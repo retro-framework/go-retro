@@ -89,6 +89,11 @@ func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ types.Session, _ typ
 	return types.CommandResult{dc.s: []types.Event{DummyEvent{}}}, nil
 }
 
+func (dc *dummyCmd) Render(_ context.Context, w io.Writer, _ types.Session, _ types.CommandResult) error {
+	fmt.Fprintf(w, "ok")
+	return nil
+}
+
 func ResolverDouble(resolverFn types.ResolveFunc) types.Resolver {
 	return resolverDouble{resolverFn}
 }
@@ -296,6 +301,50 @@ func Test_Engine_Apply(t *testing.T) {
 
 	t.Run("with a non-existent sesionID", func(t *testing.T) {
 		t.Skip("not implemented yet")
+	})
+
+	t.Run("will call the render func if the command supports that interface", func(t *testing.T) {
+
+		// Arrange
+		var (
+			objdb      = &memory.ObjectStore{}
+			refdb      = &memory.RefStore{}
+			depot      = depot.NewSimple(objdb, refdb)
+			idFn       = func() (string, error) { return fmt.Sprintf("%x", []byte("hello")), nil }
+			clock      = &Predictable5sJumpClock{}
+			aggM       = aggregates.NewManifest()
+			cmdM       = commands.NewManifest()
+			evM        = events.NewManifest()
+			repository = repository.NewSimpleRepository(objdb, refdb, evM)
+
+			err error
+		)
+
+		aggM.Register("agg", &dummyAggregate{})
+		cmdM.Register(&dummyAggregate{}, &dummyCmd{})
+
+		aggM.Register("session", &dummySession{})
+		cmdM.Register(&dummySession{}, &Start{})
+
+		evM.Register(&DummyEvent{})
+		evM.Register(&DummyStartSessionEvent{})
+
+		var (
+			r   = resolver.New(aggM, cmdM)
+			e   = New(depot, repository, r, idFn, clock, aggM, evM)
+			ctx = context.Background()
+		)
+
+		// Act
+		sid, err := e.StartSession(ctx)
+		test.H(t).IsNil(err)
+
+		var b bytes.Buffer
+		_, err = e.Apply(ctx, &b, sid, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+
+		// Assert
+		test.H(t).IsNil(err)
+		test.H(t).StringEql("ok", b.String())
 	})
 
 	t.Run("routing", func(t *testing.T) {
