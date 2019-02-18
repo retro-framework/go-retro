@@ -17,8 +17,10 @@ func (agg *Session) ReactTo(aev types.Event) error {
 	switch ev := aev.(type) {
 	case *events.StartSession:
 	case *events.AssociateIdentity:
-		agg.HasIdentity = true
-		agg.IdentityName = ev.Identity.Name()
+		if ev.Identity != nil {
+			agg.HasIdentity = true
+			agg.IdentityName = ev.Identity.Name()
+		}
 	default:
 		return errors.Errorf("Session aggregate doesn't know what to do with %s", aev)
 	}
