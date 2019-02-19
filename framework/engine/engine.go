@@ -310,10 +310,39 @@ func (e *Engine) guardHasID(a retro.Aggregate) (retro.PartitionName, error) {
 	return name, err
 }
 
+func (e *Engine) nameAnonAggregates(ctx context.Context, cmdRes retro.CommandResult) error {
+	for _, evs := range cmdRes {
+		for _, ev := range evs {
+			var x reflect.Value
+			if reflect.ValueOf(ev).Kind() == reflect.Ptr {
+				x = reflect.ValueOf(ev).Elem()
+			} else {
+				x = reflect.ValueOf(ev)
+			}
+			for i := 0; i < x.NumField(); i++ {
+				if x.Field(i).CanInterface() {
+					var y = x.Field(i).Interface()
+					if z, ok := y.(retro.Aggregate); ok {
+						_, err := e.guardHasID(z)
+						if err != nil {
+							return err // TODO: test me
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // TODO: Fix all the error messages (or Error types, etc, who knows.)
 //
 // TODO: extracting writing the checkpoint from here would be a good separation
 // of concerns.
+//
+// This currently mixes up some logic about naming aggregates.
+// persistEvs will range over the cmdResult itself, and will also
+// call e.nameAnonAggregates
 func (e *Engine) persistEvs(ctx context.Context, sid retro.SessionID, cmdDesc []byte, head retro.Hash, cmdRes retro.CommandResult) error {
 
 	var (
@@ -321,6 +350,10 @@ func (e *Engine) persistEvs(ctx context.Context, sid retro.SessionID, cmdDesc []
 		affix       = packing.Affix{}
 		packedeObjs []retro.HashedObject
 	)
+
+	if err := e.nameAnonAggregates(ctx, cmdRes); err != nil {
+		return err // TODO: wrap me
+	}
 
 	currentHead, err := e.depot.HeadPointer(ctx)
 	if err != nil {

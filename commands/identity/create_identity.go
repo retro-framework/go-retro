@@ -2,7 +2,7 @@ package identity
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -19,19 +19,19 @@ type args struct {
 }
 
 type CreateIdentity struct {
-	identity *aggregates.Identity
-	args     args
+	args args
 }
 
 // SetState receieves an anonymous Aggregate and must type assert
 // it to the correct type (Identity).
 func (cmd *CreateIdentity) SetState(agg retro.Aggregate) error {
-	if typedAggregate, ok := agg.(*aggregates.Identity); ok {
-		cmd.identity = typedAggregate
-		return nil
-	} else {
-		return errors.New("can't cast")
-	}
+	// if typedAggregate, ok := agg.(*aggregates.Identity); ok {
+	// 	cmd.identity = typedAggregate
+	// 	return nil
+	// } else {
+	// 	return errors.New("can't cast")
+	// }
+	return nil // we don't need access to the WidgetsApp
 }
 
 func (cmd *CreateIdentity) SetArgs(a retro.CommandArgs) error {
@@ -44,6 +44,8 @@ func (cmd *CreateIdentity) SetArgs(a retro.CommandArgs) error {
 }
 
 func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session retro.Session, repo retro.Repo) (retro.CommandResult, error) {
+
+	var newIdentity = &aggregates.Identity{}
 
 	// if repo.Exists(ctx, cmd.identity.Name()) {
 	// 	return nil, fmt.Errorf("identity already exists with name %q", cmd.identity.Name())
@@ -67,15 +69,13 @@ func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session retro
 	}
 
 	return retro.CommandResult{
-		session: []retro.Event{
-			&events.AssociateIdentity{Identity: cmd.identity},
-		},
-		&aggregates.Identity{}: ownEvents,
+		session:     []retro.Event{&events.AssociateIdentity{Identity: newIdentity}},
+		newIdentity: ownEvents,
 	}, nil
 }
 
 func (cmd *CreateIdentity) Render(ctx context.Context, w io.Writer, session retro.Session, res retro.CommandResult) error {
-	fmt.Fprintf(w, "helo world")
+	json.NewEncoder(w).Encode(res)
 	return nil
 }
 

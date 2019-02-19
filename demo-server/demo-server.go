@@ -102,7 +102,7 @@ func main() {
 	rMux.Handle("/list/events", eventManifestServer{events.DefaultManifest}).Methods("GET")
 	rMux.Handle("/obj/{hash}", objDBSrv).Methods("GET")
 	rMux.Handle("/ref/", refDBSrv).Methods("GET")
-	rMux.Handle("/", engineServer{e}).Methods("POST")
+	rMux.Handle("/apply", engineServer{e}).Methods("POST")
 
 	var (
 		demoApp  = app.NewServer(e, templatePath, projections)

@@ -5,6 +5,7 @@ package engine
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -37,6 +38,10 @@ func (c *Predictable5sJumpClock) Now() time.Time {
 
 type DummyEvent struct{}
 
+type dummyAssociationEvent struct {
+	Rel retro.ExistingAggregate `json:"rel"`
+}
+
 type DummyStartSessionEvent struct {
 	Greeting string
 }
@@ -67,6 +72,30 @@ type dummyAggregate struct {
 
 func (da *dummyAggregate) ReactTo(ev retro.Event) error {
 	da.seenEvents = append(da.seenEvents, ev)
+	return nil
+}
+
+type dummyRelationCmd struct{}
+
+func (drc *dummyRelationCmd) SetState(s retro.Aggregate) error { return nil }
+
+// Includes a pointer and non-pointer event just
+// to make sure that the reflection code in Engine
+// is doing the right thing.
+func (drc *dummyRelationCmd) Apply(_ context.Context, _ io.Writer, s retro.Session, _ retro.Repo) (retro.CommandResult, error) {
+	return retro.CommandResult{
+		&dummyAggregate{}: []retro.Event{
+			dummyAssociationEvent{&dummyAggregate{}},
+			&dummyAssociationEvent{&dummyAggregate{}},
+		},
+	}, nil
+}
+func (drc *dummyRelationCmd) Render(_ context.Context, w io.Writer, _ retro.Session, cmdRes retro.CommandResult) error {
+	// CommandResult should contain two aggregates with their names!
+	err := json.NewEncoder(w).Encode(cmdRes)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -453,6 +482,59 @@ func Test_Engine_Apply(t *testing.T) {
 		t.Run("allows routing of certain commands to root object (_?)", func(t *testing.T) {
 			t.Skip("not implemented yet")
 		})
+
+	})
+
+	// Some special meaning events (e.g associations) need to be evaluated
+	// and have names resolved after the storage phase. An example is the
+	//
+	//     &events.AssociateIdentity{Identity: cmd.identity},
+	//
+	// event from the Demo App. the cmd.identity may be new, and may not
+	// have a name, so having the engine do something to resolve the name
+	// when modifying the events is important.
+	t.Run("special meaning events", func(t *testing.T) {
+
+		// Arrange
+		var (
+			i          = 0
+			objdb      = &memory.ObjectStore{}
+			refdb      = &memory.RefStore{}
+			depot      = depot.NewSimple(objdb, refdb)
+			idFn       = func() (string, error) { i++; return fmt.Sprintf("%d", i), nil }
+			clock      = &Predictable5sJumpClock{}
+			aggM       = aggregates.NewManifest()
+			cmdM       = commands.NewManifest()
+			evM        = events.NewManifest()
+			repository = repository.NewSimpleRepository(objdb, refdb, evM)
+
+			err error
+		)
+
+		var (
+			r   = resolver.New(aggM, cmdM)
+			e   = New(depot, repository, r, idFn, clock, aggM, evM)
+			ctx = context.Background()
+		)
+
+		aggM.Register("_", &dummyAggregate{})
+		cmdM.Register(&dummyAggregate{}, &dummyRelationCmd{})
+
+		aggM.Register("session", &dummySession{})
+		cmdM.Register(&dummySession{}, &Start{})
+
+		evM.Register(&DummyEvent{})
+		evM.Register(&DummyStartSessionEvent{})
+		evM.Register(&dummyAssociationEvent{})
+
+		// Act
+		sid, err := e.StartSession(ctx)
+		test.H(t).IsNil(err)
+
+		var b bytes.Buffer
+		_, err = e.Apply(ctx, &b, sid, []byte(`{"name":"dummyRelationCmd"}`))
+		test.H(t).IsNil(err)
+		test.H(t).StringEql(b.String(), "{\"dummy_aggregate/5\":[{\"rel\":{\"name\":\"dummy_aggregate/3\"}},{\"rel\":{\"name\":\"dummy_aggregate/4\"}}]}\n")
 
 	})
 
