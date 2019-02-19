@@ -14,7 +14,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/packing"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type Error struct {
@@ -27,7 +27,7 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
-func New(d types.Depot, r types.Repository, resolver types.Resolver, i types.IDFactory, c types.Clock, a types.AggregateManifest, e types.EventManifest) Engine {
+func New(d retro.Depot, r retro.Repository, resolver retro.Resolver, i retro.IDFactory, c retro.Clock, a retro.AggregateManifest, e retro.EventManifest) Engine {
 	return Engine{
 		depot:        d,
 		repository:   r,
@@ -41,16 +41,16 @@ func New(d types.Depot, r types.Repository, resolver types.Resolver, i types.IDF
 }
 
 type Engine struct {
-	depot      types.Depot
-	repository types.Repository
+	depot      retro.Depot
+	repository retro.Repository
 
-	resolver  types.Resolver
-	idFactory types.IDFactory
-	clock     types.Clock
+	resolver  retro.Resolver
+	idFactory retro.IDFactory
+	clock     retro.Clock
 
 	// TODO: this is a big hammer for finding out which aggregate is registered at "session"
-	aggm types.AggregateManifest
-	evm  types.EventManifest
+	aggm retro.AggregateManifest
+	evm  retro.EventManifest
 
 	claimTimeout time.Duration
 }
@@ -71,7 +71,7 @@ type Engine struct {
 //
 // Apply cannot write to an empty Depot, it will propagate depot.ErrUnknownRef
 // as a real error. SessionStart will allow writing to an empty depot however
-func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cmd []byte) (string, error) {
+func (e *Engine) Apply(ctx context.Context, w io.Writer, sid retro.SessionID, cmd []byte) (string, error) {
 
 	var err error
 
@@ -130,11 +130,11 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 		sessionPath := filepath.Join("session", string(sid))
 		spnRehydrateSesh := opentracing.StartSpan("rehydrating session", opentracing.ChildOf(spnApply.Context()))
 		defer spnRehydrateSesh.Finish()
-		if err := seshAgg.SetName(types.PartitionName(sessionPath)); err != nil {
+		if err := seshAgg.SetName(retro.PartitionName(sessionPath)); err != nil {
 			err := Error{"session-lookup", err, "aggregate name did not persist"}
 			return "", err
 		}
-		err := e.repository.Rehydrate(ctx, seshAgg, types.PartitionName(sessionPath))
+		err := e.repository.Rehydrate(ctx, seshAgg, retro.PartitionName(sessionPath))
 		if err != nil {
 			err := Error{"session-lookup", err, "could not look up session"}
 			spnRehydrateSesh.LogKV("event", "error", "error.object", err)
@@ -161,7 +161,7 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 		return "", err // TODO: wrap me
 	}
 
-	if commandWithRenderFn, hasRenderFn := command.(types.CommandWithRenderFn); hasRenderFn {
+	if commandWithRenderFn, hasRenderFn := command.(retro.CommandWithRenderFn); hasRenderFn {
 		err := commandWithRenderFn.Render(ctx, w, seshAgg, newEvs)
 		if err != nil {
 			return "", err
@@ -173,9 +173,9 @@ func (e *Engine) Apply(ctx context.Context, w io.Writer, sid types.SessionID, cm
 	return "ok", nil
 }
 
-func dumpCommandResult(w io.Writer, cr types.CommandResult) {
+func dumpCommandResult(w io.Writer, cr retro.CommandResult) {
 	fmt.Fprint(w, "Command Result Dump:\n")
-	var m = make(map[types.PartitionName][]types.Event)
+	var m = make(map[retro.PartitionName][]retro.Event)
 	for k, v := range cr {
 		m[k.Name()] = v
 	}
@@ -186,7 +186,7 @@ func dumpCommandResult(w io.Writer, cr types.CommandResult) {
 // calling it's "Start" command. If no session aggregate is registered and no
 // "start" command for it exists an error will be raised.
 //
-// The ID is generated internally using the types.IDFactory given to the
+// The ID is generated internally using the retro.IDFactory given to the
 // constructor. This function can be tied into a ticket server, or a simple
 // central sequential store or random hex string generator function at will.
 //
@@ -196,7 +196,7 @@ func dumpCommandResult(w io.Writer, cr types.CommandResult) {
 // If the Depot is completely empty a session must be started first before
 // using Apply. Apply will not gracefully handle seeing a depot.ErrUnknownRef
 // but SessionStart will.
-func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
+func (e *Engine) StartSession(ctx context.Context) (retro.SessionID, error) {
 
 	// Tracing
 	spnStartSession, ctx := opentracing.StartSpanFromContext(ctx, "engine.StartSession")
@@ -207,13 +207,13 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 	if err != nil {
 		return "", Error{"generate-id-for-session", err, "id factory returned an error when genrating an id"}
 	}
-	var sid = types.SessionID(sidStr)
+	var sid = retro.SessionID(sidStr)
 
 	// Guard against reuse of session ids, we could avoid this
 	// if we used a cryptographically secure prng in the id factory
 	// but users may provide a bad implementation (also, tests.)
 	var path = fmt.Sprintf("session/%s", sid)
-	if e.repository.Exists(ctx, types.PartitionName(path)) {
+	if e.repository.Exists(ctx, retro.PartitionName(path)) {
 		return sid, Error{Op: "guard-unique-session-id", Msg: fmt.Sprintf("session id %q was not unique in depot, can't start.", path)}
 	}
 
@@ -283,11 +283,11 @@ func (e *Engine) StartSession(ctx context.Context) (types.SessionID, error) {
 //
 // TODO: could also check if an aggregate has a bogus name that doesn't
 // match its type.
-func (e *Engine) guardHasID(a types.Aggregate) (types.PartitionName, error) {
+func (e *Engine) guardHasID(a retro.Aggregate) (retro.PartitionName, error) {
 
 	var (
-		name   types.PartitionName = a.Name()
-		toType                     = func(t types.Aggregate) reflect.Type {
+		name   retro.PartitionName = a.Name()
+		toType                     = func(t retro.Aggregate) reflect.Type {
 			// TODO this code is copy-pasted from the aggregates.go manifest
 			// it should be consolidated
 			var v = reflect.ValueOf(t)
@@ -304,7 +304,7 @@ func (e *Engine) guardHasID(a types.Aggregate) (types.PartitionName, error) {
 			return "", err
 		}
 		var n = filepath.Join(flect.Underscore(toType(a).Name()), id)
-		name = types.PartitionName(n)
+		name = retro.PartitionName(n)
 	}
 	a.SetName(name)
 	return name, err
@@ -314,12 +314,12 @@ func (e *Engine) guardHasID(a types.Aggregate) (types.PartitionName, error) {
 //
 // TODO: extracting writing the checkpoint from here would be a good separation
 // of concerns.
-func (e *Engine) persistEvs(ctx context.Context, sid types.SessionID, cmdDesc []byte, head types.Hash, cmdRes types.CommandResult) error {
+func (e *Engine) persistEvs(ctx context.Context, sid retro.SessionID, cmdDesc []byte, head retro.Hash, cmdRes retro.CommandResult) error {
 
 	var (
 		jp          = packing.NewJSONPacker()
 		affix       = packing.Affix{}
-		packedeObjs []types.HashedObject
+		packedeObjs []retro.HashedObject
 	)
 
 	currentHead, err := e.depot.HeadPointer(ctx)
@@ -330,7 +330,7 @@ func (e *Engine) persistEvs(ctx context.Context, sid types.SessionID, cmdDesc []
 	// parentHashes can be complicated to infer, so pull that logic out
 	// here to a variable and a set of conditional statements to make
 	// constructing the packing.Checkpoint easier below.
-	var parentHashes []types.Hash
+	var parentHashes []retro.Hash
 
 	// There are possible cases here, that currentHead and head are both, or indiviudally
 	// nil. This can only happen incase the ctx carries a branch name which has no history

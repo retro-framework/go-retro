@@ -28,8 +28,8 @@ import (
 	"github.com/retro-framework/go-retro/framework/engine"
 	"github.com/retro-framework/go-retro/framework/repository"
 	"github.com/retro-framework/go-retro/framework/resolver"
+	"github.com/retro-framework/go-retro/framework/retro"
 	"github.com/retro-framework/go-retro/framework/storage/fs"
-	"github.com/retro-framework/go-retro/framework/types"
 
 	_ "github.com/retro-framework/go-retro/commands/identity"
 	_ "github.com/retro-framework/go-retro/commands/session"
@@ -105,7 +105,7 @@ func main() {
 	rMux.Handle("/", engineServer{e}).Methods("POST")
 
 	var (
-		demoApp  = app.NewServer(e, templatePath)
+		demoApp  = app.NewServer(e, templatePath, projections)
 		profile  = demoApp.NewProfileServer()
 		appMount = "/demo-app"
 	)
@@ -158,7 +158,7 @@ func main() {
 				return
 			}
 			if everythingEvents != nil {
-				go func(evIter types.EventIterator) {
+				go func(evIter retro.EventIterator) {
 					for {
 						var ev, err = evIter.Next(ctx)
 						if err == depot.Done {
@@ -207,7 +207,7 @@ func (rsm retroSessionMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var (
 			err error
-			sid types.SessionID
+			sid retro.SessionID
 		)
 
 		var ctx = r.Context()
@@ -226,7 +226,7 @@ func (rsm retroSessionMiddleware) Middleware(next http.Handler) http.Handler {
 			}
 			http.SetCookie(w, &cookie)
 		} else {
-			sid = types.SessionID(sessionCookie.Value)
+			sid = retro.SessionID(sessionCookie.Value)
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, app.ContextKeySessionID, string(sid))))
 	})

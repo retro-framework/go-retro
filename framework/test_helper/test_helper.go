@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 	"gopkg.in/yaml.v2"
 )
 
@@ -93,7 +93,7 @@ func (h helper) BoolEql(got, want bool) {
 	}
 }
 
-func (h helper) Rehydrate(fixture types.EventFixture, agg types.Aggregate) error {
+func (h helper) Rehydrate(fixture retro.EventFixture, agg retro.Aggregate) error {
 	for a, evs := range fixture {
 		if agg == a {
 			fmt.Printf("Found the aggregate I was looking for %p (%#v)\n", agg, a)

@@ -16,11 +16,11 @@ import (
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type aggregateManifestServer struct {
-	m types.AggregateManifest
+	m retro.AggregateManifest
 }
 
 func (ms aggregateManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func (ms aggregateManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
-	if lAggregate, ok := ms.m.(types.ListingAggregateManifest); ok {
+	if lAggregate, ok := ms.m.(retro.ListingAggregateManifest); ok {
 		var enc = json.NewEncoder(w)
 		enc.SetIndent("", "    ")
 		err := enc.Encode(lAggregate.List())
@@ -42,7 +42,7 @@ func (ms aggregateManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Reque
 }
 
 type commandManifestServer struct {
-	m types.CommandManifest
+	m retro.CommandManifest
 }
 
 func (ms commandManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +50,7 @@ func (ms commandManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
-	if lCommand, ok := ms.m.(types.ListingCommandManifest); ok {
+	if lCommand, ok := ms.m.(retro.ListingCommandManifest); ok {
 		var enc = json.NewEncoder(w)
 		enc.SetIndent("", "    ")
 		err := enc.Encode(lCommand.List())
@@ -64,7 +64,7 @@ func (ms commandManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request
 }
 
 type eventManifestServer struct {
-	m types.EventManifest
+	m retro.EventManifest
 }
 
 func (ms eventManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +72,7 @@ func (ms eventManifestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
-	if lEvent, ok := ms.m.(types.ListingEventManifest); ok {
+	if lEvent, ok := ms.m.(retro.ListingEventManifest); ok {
 		var enc = json.NewEncoder(w)
 		enc.SetIndent("", "    ")
 		err := enc.Encode(lEvent.List())
@@ -203,7 +203,7 @@ func (e engineServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// set it into the response
 	var (
 		err error
-		sid types.SessionID
+		sid retro.SessionID
 	)
 	if sessionCookie, _ := req.Cookie("retroSessionID"); sessionCookie == nil {
 		sid, err = e.e.StartSession(ctx)
@@ -218,7 +218,7 @@ func (e engineServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 		http.SetCookie(w, &cookie)
 	} else {
-		sid = types.SessionID(sessionCookie.Value)
+		sid = retro.SessionID(sessionCookie.Value)
 	}
 
 	body, err := ioutil.ReadAll(req.Body)

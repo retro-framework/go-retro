@@ -1,7 +1,7 @@
 package packing
 
 import (
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 const (
@@ -35,4 +35,4 @@ type Event interface{}
 // a partial affix, but checkpoint it with an error. The reader
 // may prefer to ignore these events, but they do form part
 // of our conceptual model.
-type Affix map[types.PartitionName][]types.Hash
+type Affix map[retro.PartitionName][]retro.Hash

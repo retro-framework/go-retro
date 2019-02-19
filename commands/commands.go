@@ -6,34 +6,34 @@ import (
 	"strings"
 
 	"github.com/gobuffalo/flect"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
-func NewManifest() types.CommandManifest {
+func NewManifest() retro.CommandManifest {
 	return &manifest{
-		m: make(map[reflect.Type][]types.Command),
-		a: make(map[types.Command]reflect.Type),
+		m: make(map[reflect.Type][]retro.Command),
+		a: make(map[retro.Command]reflect.Type),
 	}
 }
 
 var DefaultManifest = NewManifest()
 
-func Register(agg types.Aggregate, cmd types.Command) error {
+func Register(agg retro.Aggregate, cmd retro.Command) error {
 	return DefaultManifest.Register(agg, cmd)
 }
 
-func RegisterWithArgs(agg types.Aggregate, cmd types.Command, arg types.CommandArgs) error {
+func RegisterWithArgs(agg retro.Aggregate, cmd retro.Command, arg retro.CommandArgs) error {
 	return DefaultManifest.RegisterWithArgs(agg, cmd, arg)
 }
 
 type manifest struct {
 	// Agg:[]Command
-	m map[reflect.Type][]types.Command
+	m map[reflect.Type][]retro.Command
 	// Command:Args
-	a map[types.Command]reflect.Type
+	a map[retro.Command]reflect.Type
 }
 
-func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
+func (m *manifest) Register(agg retro.Aggregate, cmd retro.Command) error {
 	if existingCmds, anyCmds := m.m[m.toType(agg)]; anyCmds {
 		for _, existingCmd := range existingCmds {
 			if cmd == existingCmd {
@@ -45,7 +45,7 @@ func (m *manifest) Register(agg types.Aggregate, cmd types.Command) error {
 	return nil
 }
 
-func (m *manifest) RegisterWithArgs(agg types.Aggregate, cmd types.Command, arg interface{}) error {
+func (m *manifest) RegisterWithArgs(agg retro.Aggregate, cmd retro.Command, arg interface{}) error {
 	if err := m.Register(agg, cmd); err != nil {
 		return err
 	}
@@ -53,20 +53,20 @@ func (m *manifest) RegisterWithArgs(agg types.Aggregate, cmd types.Command, arg 
 	return nil
 }
 
-func (m *manifest) ArgTypeFor(c types.Command) (types.CommandArgs, bool) {
+func (m *manifest) ArgTypeFor(c retro.Command) (retro.CommandArgs, bool) {
 	if at, ok := m.a[c]; ok {
 		return reflect.New(at).Elem().Addr().Interface(), true
 	}
 	return nil, false
 }
 
-func (m *manifest) ForAggregate(agg types.Aggregate) ([]types.Command, error) {
+func (m *manifest) ForAggregate(agg retro.Aggregate) ([]retro.Command, error) {
 	for key, cmds := range m.m {
 		if m.toTypeString(m.toType(agg)) == m.toTypeString(key) {
 			return cmds, nil
 		}
 	}
-	return []types.Command{}, nil
+	return []retro.Command{}, nil
 }
 
 func (m *manifest) toType(t interface{}) reflect.Type {

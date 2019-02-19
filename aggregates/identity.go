@@ -3,7 +3,7 @@ package aggregates
 import (
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type Identity struct {
@@ -13,7 +13,7 @@ type Identity struct {
 	HasAvatar bool `json:"hasAvatar"`
 }
 
-func (agg *Identity) ReactTo(aev types.Event) error {
+func (agg *Identity) ReactTo(aev retro.Event) error {
 	switch ev := aev.(type) {
 	case *events.SetVisibility:
 		switch ev.Radius {

@@ -21,7 +21,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/resolver"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type Predictable5sJumpClock struct {
@@ -43,11 +43,11 @@ type DummyStartSessionEvent struct {
 
 type dummySession struct{ aggregates.NamedAggregate }
 
-func (_ *dummySession) ReactTo(types.Event) error { return nil }
+func (_ *dummySession) ReactTo(retro.Event) error { return nil }
 
 type Start struct{ s *dummySession }
 
-func (fssc *Start) SetState(s types.Aggregate) error {
+func (fssc *Start) SetState(s retro.Aggregate) error {
 	if agg, ok := s.(*dummySession); ok {
 		fssc.s = agg
 		return nil
@@ -56,16 +56,16 @@ func (fssc *Start) SetState(s types.Aggregate) error {
 	}
 }
 
-func (fssc *Start) Apply(context.Context, io.Writer, types.Session, types.Repository) (types.CommandResult, error) {
-	return types.CommandResult{fssc.s: []types.Event{DummyStartSessionEvent{"hello world"}}}, nil
+func (fssc *Start) Apply(context.Context, io.Writer, retro.Session, retro.Repository) (retro.CommandResult, error) {
+	return retro.CommandResult{fssc.s: []retro.Event{DummyStartSessionEvent{"hello world"}}}, nil
 }
 
 type dummyAggregate struct {
 	aggregates.NamedAggregate
-	seenEvents []types.Event
+	seenEvents []retro.Event
 }
 
-func (da *dummyAggregate) ReactTo(ev types.Event) error {
+func (da *dummyAggregate) ReactTo(ev retro.Event) error {
 	da.seenEvents = append(da.seenEvents, ev)
 	return nil
 }
@@ -75,7 +75,7 @@ type dummyCmd struct {
 	wasApplied bool
 }
 
-func (dc *dummyCmd) SetState(s types.Aggregate) error {
+func (dc *dummyCmd) SetState(s retro.Aggregate) error {
 	if agg, ok := s.(*dummyAggregate); ok {
 		dc.s = agg
 		return nil
@@ -84,25 +84,25 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ types.Session, _ types.Repository) (types.CommandResult, error) {
+func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ retro.Session, _ retro.Repository) (retro.CommandResult, error) {
 	dc.wasApplied = true
-	return types.CommandResult{dc.s: []types.Event{DummyEvent{}}}, nil
+	return retro.CommandResult{dc.s: []retro.Event{DummyEvent{}}}, nil
 }
 
-func (dc *dummyCmd) Render(_ context.Context, w io.Writer, _ types.Session, _ types.CommandResult) error {
+func (dc *dummyCmd) Render(_ context.Context, w io.Writer, _ retro.Session, _ retro.CommandResult) error {
 	fmt.Fprintf(w, "ok")
 	return nil
 }
 
-func ResolverDouble(resolverFn types.ResolveFunc) types.Resolver {
+func ResolverDouble(resolverFn retro.ResolveFunc) retro.Resolver {
 	return resolverDouble{resolverFn}
 }
 
 type resolverDouble struct {
-	resolveFn types.ResolveFunc
+	resolveFn retro.ResolveFunc
 }
 
-func (rd resolverDouble) Resolve(ctx context.Context, repository types.Repository, buf []byte) (types.Command, error) {
+func (rd resolverDouble) Resolve(ctx context.Context, repository retro.Repository, buf []byte) (retro.Command, error) {
 	return rd.resolveFn(ctx, repository, buf)
 }
 
@@ -124,12 +124,12 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolver   = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
 				var (
 					fssc = &Start{}
 					s    = &dummySession{}
 				)
-				s.SetName(types.PartitionName("session/123-stub-id"))
+				s.SetName(retro.PartitionName("session/123-stub-id"))
 				fssc.SetState(s)
 				return fssc, nil
 			})
@@ -158,12 +158,12 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolver   = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
 				var (
 					fssc = &Start{}
 					s    = &dummySession{}
 				)
-				s.SetName(types.PartitionName("session/123-stub-id"))
+				s.SetName(retro.PartitionName("session/123-stub-id"))
 				fssc.SetState(s)
 				return fssc, nil
 			})
@@ -177,14 +177,14 @@ func Test_Engine_StartSession(t *testing.T) {
 		// Assert
 		test.H(t).IsNil(err)
 
-		if dd, ok := depot.(types.DumpableDepot); !ok {
+		if dd, ok := depot.(retro.DumpableDepot); !ok {
 			t.Fatal("could not upgrade depot to diff it")
 		} else {
 			var b bytes.Buffer
 			dd.DumpAll(&b)
 		}
 
-		test.H(t).BoolEql(true, repository.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))
+		test.H(t).BoolEql(true, repository.Exists(ctx, retro.PartitionName(fmt.Sprintf("session/%s", sid))))
 		_, err = e.StartSession(ctx)
 		test.H(t).NotNil(err)
 	})
@@ -201,12 +201,12 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolver   = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
 				var (
 					fssc = &Start{}
 					s    = &dummySession{}
 				)
-				s.SetName(types.PartitionName("session/123-stub-id"))
+				s.SetName(retro.PartitionName("session/123-stub-id"))
 				fssc.SetState(s)
 				return fssc, nil
 			})
@@ -220,7 +220,7 @@ func Test_Engine_StartSession(t *testing.T) {
 
 		// Assert
 		test.H(t).IsNil(err)
-		test.H(t).BoolEql(true, repository.Exists(ctx, types.PartitionName(fmt.Sprintf("session/%s", sid))))
+		test.H(t).BoolEql(true, repository.Exists(ctx, retro.PartitionName(fmt.Sprintf("session/%s", sid))))
 	})
 
 	t.Run("forwards errors from the resolvefn to the caller", func(t *testing.T) {
@@ -235,7 +235,7 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository    = repository.NewSimpleRepository(objdb, refdb, eventManifest)
 			idFn          = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
 			clock         = &Predictable5sJumpClock{}
-			resolver      = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
+			resolver      = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
 				return nil, resolverErr
 			})
 		)
@@ -271,12 +271,12 @@ func Test_Engine_Apply(t *testing.T) {
 			repository    = repository.NewSimpleRepository(objdb, refdb, eventManifest)
 			idFn          = func() (string, error) { return "123-stub-id", nil }
 			clock         = &Predictable5sJumpClock{}
-			resolver      = ResolverDouble(func(_ context.Context, _ types.Repository, _ []byte) (types.Command, error) {
+			resolver      = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
 				var (
 					fssc = &Start{}
 					s    = &dummySession{}
 				)
-				s.SetName(types.PartitionName("session/123-stub-id"))
+				s.SetName(retro.PartitionName("session/123-stub-id"))
 				fssc.SetState(s)
 				return fssc, nil
 			})
@@ -442,7 +442,7 @@ func Test_Engine_Apply(t *testing.T) {
 			// TODO: Address this case. With the current code in place, the path agg/123
 			// will not be found by the resolver, and rightfully so. It will therefore
 			// overwrite the (empty) name in the Engine when persisting Evs.
-			test.H(t).BoolEql(true, repository.Exists(ctx, types.PartitionName("agg/123")))
+			test.H(t).BoolEql(true, repository.Exists(ctx, retro.PartitionName("agg/123")))
 		})
 
 		t.Run("raises error if session is not findable", func(t *testing.T) {
@@ -534,7 +534,7 @@ event json dummy_start_session_event 26\u0000{"Greeting":"hello world"}
 
 refs/heads/master -> sha256:bff4eee5edbee7ff29c9b02e039310e23f05d5b2e827a50bb118c41dfc3eebcd
 `
-			if dd, ok := depot.(types.DumpableDepot); !ok {
+			if dd, ok := depot.(retro.DumpableDepot); !ok {
 				t.Fatal("could not upgrade depot to diff it")
 			} else {
 				var b bytes.Buffer

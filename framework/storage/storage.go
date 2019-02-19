@@ -6,17 +6,17 @@ import (
 
 	"github.com/golang-collections/collections/stack"
 	"github.com/retro-framework/go-retro/framework/packing"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type AffixStack struct {
 	s               stack.Stack
-	KnownPartitions []types.PartitionName
+	KnownPartitions []retro.PartitionName
 }
 
 type RelevantCheckpoint struct {
 	Time           time.Time
-	CheckpointHash types.Hash
+	CheckpointHash retro.Hash
 	Affix          packing.Affix
 }
 

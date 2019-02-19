@@ -1,9 +1,9 @@
 package events
 
-import "github.com/retro-framework/go-retro/framework/types"
+import "github.com/retro-framework/go-retro/framework/retro"
 
 type AssociateIdentity struct {
-	Identity types.ExistingAggregate `json:"identity"`
+	Identity retro.ExistingAggregate `json:"identity"`
 }
 
 func init() {

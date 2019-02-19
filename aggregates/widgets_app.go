@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 // WidgetsApp is a lorem ipsum
@@ -17,7 +17,7 @@ type WidgetsApp struct {
 	AllowBindingIdentitiesToAuthorizations bool
 }
 
-func (wa *WidgetsApp) ReactTo(ev types.Event) error {
+func (wa *WidgetsApp) ReactTo(ev retro.Event) error {
 	time.Sleep(time.Duration(rand.Int31n(1)) * time.Millisecond)
 	switch ev.(type) {
 	case *events.AllowCreateIdentities:

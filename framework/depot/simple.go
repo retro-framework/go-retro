@@ -17,7 +17,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 // DefaultBranchName is defined so that without an override changes
@@ -29,15 +29,15 @@ const DefaultBranchName = "refs/heads/master"
 func NewSimpleStub(t *testing.T,
 	objDB object.DB,
 	refDB ref.DB,
-	fixture map[string][]types.EventNameTuple,
-) types.Depot {
+	fixture map[string][]retro.EventNameTuple,
+) retro.Depot {
 	var (
 		jp    = packing.NewJSONPacker()
 		affix = packing.Affix{}
 	)
 	for aggName, evNameTuples := range fixture {
 		var (
-			evHashesForAffix []types.Hash
+			evHashesForAffix []retro.Hash
 		)
 		for _, evNameTuple := range evNameTuples {
 			packedEv, err := jp.PackEvent(evNameTuple.Name, evNameTuple.Event)
@@ -49,7 +49,7 @@ func NewSimpleStub(t *testing.T,
 			}
 			evHashesForAffix = append(evHashesForAffix, packedEv.Hash())
 		}
-		affix[types.PartitionName(aggName)] = evHashesForAffix
+		affix[retro.PartitionName(aggName)] = evHashesForAffix
 	}
 	packedAffix, err := jp.PackAffix(affix)
 	if err != nil {
@@ -74,12 +74,12 @@ func NewSimpleStub(t *testing.T,
 	return &Simple{objdb: objDB, refdb: refDB}
 }
 
-func NewSimple(odb object.DB, refdb ref.DB) types.Depot {
+func NewSimple(odb object.DB, refdb ref.DB) retro.Depot {
 	return &Simple{objdb: odb, refdb: refdb}
 }
 
 // EmptySimpleMemory returns an empty depot to keep the type system happy
-func EmptySimpleMemory() types.Depot {
+func EmptySimpleMemory() retro.Depot {
 	return &Simple{
 		objdb: &memory.ObjectStore{},
 		refdb: &memory.RefStore{},
@@ -91,7 +91,7 @@ func EmptySimpleMemory() types.Depot {
 // it uses the context to try and get a branch name, and
 // in case of failure falls back to the default branch
 // name.
-func (s *Simple) HeadPointer(ctx context.Context) (types.Hash, error) {
+func (s *Simple) HeadPointer(ctx context.Context) (retro.Hash, error) {
 	ptr, err := s.refdb.Retrieve(refFromCtx(ctx))
 	if err == storage.ErrUnknownRef {
 		return nil, nil
@@ -137,7 +137,7 @@ type Simple struct {
 	objdb object.DB
 	refdb ref.DB
 
-	subscribers []chan<- types.RefMove
+	subscribers []chan<- retro.RefMove
 }
 
 // TODO: make this respect the actual value that might come in a context
@@ -146,8 +146,8 @@ func refFromCtx(ctx context.Context) string {
 }
 
 // Watch makes the world go round
-func (s *Simple) Watch(_ context.Context, partition string) types.PartitionIterator {
-	var subscriberNotificationCh = make(chan types.RefMove)
+func (s *Simple) Watch(_ context.Context, partition string) retro.PartitionIterator {
+	var subscriberNotificationCh = make(chan retro.RefMove)
 	s.subscribers = append(s.subscribers, subscriberNotificationCh)
 	return &simplePartitionIterator{
 		objdb:          s.objdb,
@@ -161,7 +161,7 @@ func (s *Simple) Watch(_ context.Context, partition string) types.PartitionItera
 
 // StorePacked takes a variable number of hashed objects, packs and stores them
 // in the object store backing the Simple Depot
-func (s Simple) StorePacked(packed ...types.HashedObject) error {
+func (s Simple) StorePacked(packed ...retro.HashedObject) error {
 	for _, p := range packed {
 		_, err := s.objdb.WritePacked(p)
 		if err != nil {
@@ -176,7 +176,7 @@ func (s Simple) StorePacked(packed ...types.HashedObject) error {
 //
 // TODO: check for fastforward 🔜 before allowing write and/or something
 // to make this not totally unsafe
-func (s Simple) MoveHeadPointer(old, new types.Hash) error {
+func (s Simple) MoveHeadPointer(old, new retro.Hash) error {
 	_, err := s.refdb.Write(DefaultBranchName, new)
 	if err == nil {
 		s.notifySubscribers(old, new)
@@ -195,11 +195,11 @@ func (s Simple) MoveHeadPointer(old, new types.Hash) error {
 // It also comes to my mind whether subscribers can be global, or whether
 // they need to be differentiated by which pattern they searched for
 // I suspect "global" (to the Depot instance) is ok for the time being.
-func (s Simple) notifySubscribers(old, new types.Hash) error {
+func (s Simple) notifySubscribers(old, new retro.Hash) error {
 	for _, subscriber := range s.subscribers {
-		go func(subscriber chan<- types.RefMove) {
+		go func(subscriber chan<- retro.RefMove) {
 			select {
-			case subscriber <- types.RefMove{Old: old, New: new}:
+			case subscriber <- retro.RefMove{Old: old, New: new}:
 				// TODO: something about metrics ?
 			case <-time.After(1 * time.Minute):
 				fmt.Fprintf(os.Stderr, "blocked for one minute waiting to notify subscriber, skipping.")

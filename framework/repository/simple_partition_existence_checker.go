@@ -10,14 +10,14 @@ import (
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/storage"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type simplePartitionExistenceChecker struct {
 	objdb   object.DB
 	refdb   ref.DB
-	pattern types.PartitionName
-	matcher types.PatternMatcher
+	pattern retro.PartitionName
+	matcher retro.PatternMatcher
 }
 
 // refs/heads/master => sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
@@ -28,7 +28,7 @@ type simplePartitionExistenceChecker struct {
 // 3. get all events for "users/dario"
 // 4. loop over them and apply them to &dario
 
-func (s simplePartitionExistenceChecker) Exists(ctx context.Context, partitionName types.PartitionName) (bool, error) {
+func (s simplePartitionExistenceChecker) Exists(ctx context.Context, partitionName retro.PartitionName) (bool, error) {
 	spnExists, ctx := opentracing.StartSpanFromContext(ctx, "simplePartitionExistenceChecker.Exists")
 	spnExists.SetTag("partitionName", string(partitionName))
 	defer spnExists.Finish()
@@ -44,7 +44,7 @@ func (s simplePartitionExistenceChecker) Exists(ctx context.Context, partitionNa
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s simplePartitionExistenceChecker) returnTruOnMatching(ctx context.Context, checkpointObjHash types.Hash) (bool, error) {
+func (s simplePartitionExistenceChecker) returnTruOnMatching(ctx context.Context, checkpointObjHash retro.Hash) (bool, error) {
 
 	var jp *packing.JSONPacker
 

@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/retro-framework/go-retro/framework/packing"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 var (
@@ -37,7 +37,7 @@ func (s *ObjectStore) mkdirAll(path string) error {
 	return os.MkdirAll(path, 0766)
 }
 
-func (s *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
+func (s *ObjectStore) WritePacked(p retro.HashedObject) (int, error) {
 
 	// TODO: What if basepath points to a _file_ not a dir?
 	if _, err := os.Stat(s.BasePath); os.IsNotExist(err) {
@@ -91,7 +91,7 @@ func (s *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
 // TODO: should also parse the aglo out of the string and set the PO Hash
 // algo/etc to the right values., the new PackedObject could be kept and
 // maybe simply take an AlgoName in the second position?
-func (s *ObjectStore) RetrievePacked(str string) (types.HashedObject, error) {
+func (s *ObjectStore) RetrievePacked(str string) (retro.HashedObject, error) {
 
 	parts := strings.Split(str, ":") // ["sha256", "hexbyteshexbtytes"]
 	if len(parts) != 2 {

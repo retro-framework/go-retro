@@ -11,7 +11,7 @@ import (
 
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/storage"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 var (
@@ -32,8 +32,8 @@ func (r *RefStore) mkdirAll(path string) error {
 	return os.MkdirAll(path, 0766)
 }
 
-func (s *RefStore) Ls() (map[string]types.Hash, error) {
-	var hashes = make(map[string]types.Hash)
+func (s *RefStore) Ls() (map[string]retro.Hash, error) {
+	var hashes = make(map[string]retro.Hash)
 	files, err := filepath.Glob(fmt.Sprintf("%s/refs/**/*", s.BasePath))
 	if err != nil {
 		return hashes, err // TODO: Wrap me
@@ -55,7 +55,7 @@ func (s *RefStore) Ls() (map[string]types.Hash, error) {
 	return hashes, nil
 }
 
-func (s *RefStore) Write(name string, hash types.Hash) (bool, error) {
+func (s *RefStore) Write(name string, hash retro.Hash) (bool, error) {
 
 	// TODO: What if basepath points to a _file_ not a dir?
 	if _, err := os.Stat(s.BasePath); os.IsNotExist(err) {
@@ -159,7 +159,7 @@ func (s *RefStore) WriteSymbolic(name, ref string) (bool, error) {
 	return false, nil
 }
 
-func (s *RefStore) Retrieve(name string) (types.Hash, error) {
+func (s *RefStore) Retrieve(name string) (retro.Hash, error) {
 
 	var refPath = filepath.Join(s.BasePath, name)
 

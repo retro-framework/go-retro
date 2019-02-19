@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/retro-framework/go-retro/framework/packing"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 var (
@@ -21,18 +21,18 @@ type ObjectStore struct {
 	o map[string][]byte
 }
 
-func (os *ObjectStore) Ls() []types.Hash {
+func (os *ObjectStore) Ls() []retro.Hash {
 	os.RLock()
 	defer os.RUnlock()
 
-	var r []types.Hash
+	var r []retro.Hash
 	for k := range os.o {
 		r = append(r, packing.HashStrToHash(k))
 	}
 	return r
 }
 
-func (os *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
+func (os *ObjectStore) WritePacked(p retro.HashedObject) (int, error) {
 
 	os.Lock()
 	defer os.Unlock()
@@ -61,7 +61,7 @@ func (os *ObjectStore) WritePacked(p types.HashedObject) (int, error) {
 // TODO: should also parse the aglo out of the string and set the PO Hash
 // algo/etc to the right values., the new PackedObject could be kept and
 // maybe simply take an AlgoName in the second position?
-func (os *ObjectStore) RetrievePacked(s string) (types.HashedObject, error) {
+func (os *ObjectStore) RetrievePacked(s string) (retro.HashedObject, error) {
 	os.RLock()
 	defer os.RUnlock()
 

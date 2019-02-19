@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 func NewJSONPacker() *JSONPacker {
@@ -36,7 +36,7 @@ type JSONPacker struct {
 // byte.
 //
 // See the tests for an example of how the on-disk format looks.
-func (jp *JSONPacker) PackEvent(evName string, ev types.Event) (types.HashedObject, error) {
+func (jp *JSONPacker) PackEvent(evName string, ev retro.Event) (retro.HashedObject, error) {
 
 	var payload bytes.Buffer
 
@@ -92,7 +92,7 @@ func (jp *JSONPacker) UnpackAffix(b []byte) (Affix, error) {
 	for scanner.Scan() {
 		var (
 			cols          = strings.SplitN(scanner.Text(), " ", 3)
-			partitionName = types.PartitionName(cols[1])
+			partitionName = retro.PartitionName(cols[1])
 			evHash        = HashStrToHash(cols[2])
 		)
 		res[partitionName] = append(res[partitionName], evHash)
@@ -144,12 +144,12 @@ func (jp *JSONPacker) UnpackCheckpoint(b []byte) (Checkpoint, error) {
 
 // PackAffix packs an affix by rendering a text-table
 // and injecting the prefix header, etc
-func (jp *JSONPacker) PackAffix(affix Affix) (types.HashedObject, error) {
+func (jp *JSONPacker) PackAffix(affix Affix) (retro.HashedObject, error) {
 
 	var (
 		affB       bytes.Buffer
 		payload    bytes.Buffer
-		partitions []types.PartitionName
+		partitions []retro.PartitionName
 	)
 
 	// Write the affix text representation in lexographical
@@ -194,7 +194,7 @@ func (jp *JSONPacker) PackAffix(affix Affix) (types.HashedObject, error) {
 
 // PackCheckpoint packs a checkpoint by rendering an email
 // or HTTP style set of headers and injecting the prefix header, etc
-func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (types.HashedObject, error) {
+func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (retro.HashedObject, error) {
 
 	var (
 		cpB     bytes.Buffer

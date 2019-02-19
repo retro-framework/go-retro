@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type DummyEvent struct {
@@ -42,7 +42,7 @@ func Test_UnpackPack(t *testing.T) {
 		var (
 			jp    = NewJSONPacker()
 			hash  = hashStr("foo")
-			affix = Affix{"baz/123": []types.Hash{hash}, "bar/123": []types.Hash{hash}}
+			affix = Affix{"baz/123": []retro.Hash{hash}, "bar/123": []retro.Hash{hash}}
 		)
 
 		// Act
@@ -67,7 +67,7 @@ func Test_UnpackPack(t *testing.T) {
 				AffixHash:    affixHash,
 				CommandDesc:  []byte(`{"foo":"bar"}`),
 				Fields:       map[string]string{"session": "DEADBEEF-SESSIONID"},
-				ParentHashes: []types.Hash{checkpointHash},
+				ParentHashes: []retro.Hash{checkpointHash},
 			}
 		)
 
@@ -116,7 +116,7 @@ func Test_Pack(t *testing.T) {
 		)
 
 		// Act
-		res, err := jp.PackAffix(Affix{"baz/123": []types.Hash{hash}, "bar/123": []types.Hash{hash}})
+		res, err := jp.PackAffix(Affix{"baz/123": []retro.Hash{hash}, "bar/123": []retro.Hash{hash}})
 
 		// Assert
 		test.H(t).IsNil(err)
@@ -153,7 +153,7 @@ func Test_Pack(t *testing.T) {
 			AffixHash:    hash,
 			CommandDesc:  []byte(`{"foo":"bar"}`),
 			Fields:       map[string]string{"session": "DEADBEEF-SESSIONID"},
-			ParentHashes: []types.Hash{},
+			ParentHashes: []retro.Hash{},
 		}
 		res, err := jp.PackCheckpoint(checkpoint)
 

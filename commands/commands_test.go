@@ -9,15 +9,15 @@ import (
 
 	"github.com/retro-framework/go-retro/aggregates"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type dummyCmd struct{}
 type otherDummyCmd struct{ dummyCmd }
 
-func (_ *dummyCmd) SetState(types.Aggregate) error { return nil }
+func (_ *dummyCmd) SetState(retro.Aggregate) error { return nil }
 
-func (_ *dummyCmd) Apply(context.Context, io.Writer, types.Session, types.Repository) (types.CommandResult, error) {
+func (_ *dummyCmd) Apply(context.Context, io.Writer, retro.Session, retro.Repository) (retro.CommandResult, error) {
 	return nil, nil
 }
 
@@ -25,7 +25,7 @@ type dummyAggregate struct {
 	aggregates.NamedAggregate
 }
 
-func (_ dummyAggregate) ReactTo(types.Event) error { return nil }
+func (_ dummyAggregate) ReactTo(retro.Event) error { return nil }
 
 func Test_Commands_Register_TwiceSameCmdRaisesError(t *testing.T) {
 	assertErrEql := test.H(t).ErrEql

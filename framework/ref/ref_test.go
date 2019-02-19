@@ -13,7 +13,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 func Test_DB(t *testing.T) {
@@ -118,7 +118,7 @@ func Test_DB(t *testing.T) {
 				_, err = db.Write("refs/heads/bar", barHash)
 				test.H(t).IsNil(err)
 
-				var want = map[string]types.Hash{
+				var want = map[string]retro.Hash{
 					"refs/heads/bar": packing.HashStrToHash("sha256:fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9"),
 					"refs/heads/foo": packing.HashStrToHash("sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"),
 				}

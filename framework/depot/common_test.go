@@ -18,7 +18,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type DummyEvSetAuthorName struct {
@@ -80,18 +80,18 @@ func Test_Depot(t *testing.T) {
 
 	// Affixes
 	var (
-		affixOne, _   = jp.PackAffix(packing.Affix{"author/maxine": []types.Hash{setAuthorName1.Hash()}})
-		affixTwo, _   = jp.PackAffix(packing.Affix{"article/first": []types.Hash{setArticleTitle1.Hash(), associateArticleAuthor1.Hash()}})
-		affixThree, _ = jp.PackAffix(packing.Affix{"article/first": []types.Hash{setArticleTitle2.Hash(), setArticleBody1.Hash()}})
+		affixOne, _   = jp.PackAffix(packing.Affix{"author/maxine": []retro.Hash{setAuthorName1.Hash()}})
+		affixTwo, _   = jp.PackAffix(packing.Affix{"article/first": []retro.Hash{setArticleTitle1.Hash(), associateArticleAuthor1.Hash()}})
+		affixThree, _ = jp.PackAffix(packing.Affix{"article/first": []retro.Hash{setArticleTitle2.Hash(), setArticleBody1.Hash()}})
 
 		// extended
 		affixFourA, _ = jp.PackAffix(packing.Affix{
-			"author/paul":    []types.Hash{setAuthorName2.Hash()},
-			"article/second": []types.Hash{associateArticleAuthor2.Hash()},
+			"author/paul":    []retro.Hash{setAuthorName2.Hash()},
+			"article/second": []retro.Hash{associateArticleAuthor2.Hash()},
 		})
 
 		affixFourB, _ = jp.PackAffix(packing.Affix{
-			"article/first": []types.Hash{associateArticleAuthor2.Hash()},
+			"article/first": []retro.Hash{associateArticleAuthor2.Hash()},
 		})
 	)
 
@@ -115,7 +115,7 @@ func Test_Depot(t *testing.T) {
 				"session": "hello world",
 				"date":    clock.Now().Format(time.RFC3339),
 			},
-			ParentHashes: []types.Hash{checkpointOne.Hash()},
+			ParentHashes: []retro.Hash{checkpointOne.Hash()},
 		})
 
 		checkpointThree, _ = jp.PackCheckpoint(packing.Checkpoint{
@@ -125,7 +125,7 @@ func Test_Depot(t *testing.T) {
 				"session": "hello world",
 				"date":    clock.Now().Format(time.RFC3339),
 			},
-			ParentHashes: []types.Hash{checkpointTwo.Hash()},
+			ParentHashes: []retro.Hash{checkpointTwo.Hash()},
 		})
 
 		// Extend
@@ -136,7 +136,7 @@ func Test_Depot(t *testing.T) {
 				"session": "hello world",
 				"date":    clock.Now().Format(time.RFC3339),
 			},
-			ParentHashes: []types.Hash{checkpointThree.Hash()},
+			ParentHashes: []retro.Hash{checkpointThree.Hash()},
 		})
 
 		checkpointFourB, _ = jp.PackCheckpoint(packing.Checkpoint{
@@ -146,7 +146,7 @@ func Test_Depot(t *testing.T) {
 				"session": "hello world",
 				"date":    clock.Now().Format(time.RFC3339),
 			},
-			ParentHashes: []types.Hash{checkpointThree.Hash()},
+			ParentHashes: []retro.Hash{checkpointThree.Hash()},
 		})
 	)
 
@@ -210,8 +210,8 @@ func Test_Depot(t *testing.T) {
 		return odb
 	}
 
-	depotFns := map[string]func() types.Depot{
-		"memory": func() types.Depot {
+	depotFns := map[string]func() retro.Depot{
+		"memory": func() retro.Depot {
 			var odb = populateOdb(odbs["memory"]())
 			return &Simple{
 				objdb: odb,
@@ -239,7 +239,7 @@ func Test_Depot(t *testing.T) {
 				depot.MoveHeadPointer(nil, checkpointThree.Hash())
 
 				var (
-					expectedResult = map[types.PartitionName][]string{
+					expectedResult = map[retro.PartitionName][]string{
 						"author/maxine": []string{"set_author_name"},
 						"article/first": []string{
 							"set_article_title",
@@ -253,8 +253,8 @@ func Test_Depot(t *testing.T) {
 					diffs = make(chan string)
 
 					foundEvs = make(chan struct {
-						pn  types.PartitionName
-						pEv types.PersistedEvent
+						pn  retro.PartitionName
+						pEv retro.PersistedEvent
 					})
 				)
 
@@ -285,10 +285,10 @@ func Test_Depot(t *testing.T) {
 				// This goroutine passes the test by closing the other iterators
 				// when it has all the information it expected to see.
 				go func(ctx context.Context, received chan struct {
-					pn  types.PartitionName
-					pEv types.PersistedEvent
+					pn  retro.PartitionName
+					pEv retro.PersistedEvent
 				}) {
-					var seenResults = make(map[types.PartitionName][]string)
+					var seenResults = make(map[retro.PartitionName][]string)
 					for recv := range received {
 						// TODO: redundant, I think
 						// if _, ok := seenResults[recv.pn]; !ok {
@@ -301,10 +301,10 @@ func Test_Depot(t *testing.T) {
 
 				// Event handler makes a tuple of the data about the event, and sends
 				// it on the channel where the results are being collected
-				var eventHandler = func(ctx context.Context, pn types.PartitionName, pEv types.PersistedEvent) {
+				var eventHandler = func(ctx context.Context, pn retro.PartitionName, pEv retro.PersistedEvent) {
 					foundEvs <- struct {
-						pn  types.PartitionName
-						pEv types.PersistedEvent
+						pn  retro.PartitionName
+						pEv retro.PersistedEvent
 					}{
 						pn:  pn,
 						pEv: pEv,
@@ -313,10 +313,10 @@ func Test_Depot(t *testing.T) {
 
 				go func() {
 					for partition := range partitions {
-						go func(ctx context.Context, evIter types.EventIterator) {
+						go func(ctx context.Context, evIter retro.EventIterator) {
 							events, _ := evIter.Events(ctx)
 							for event := range events {
-								eventHandler(ctx, types.PartitionName(evIter.Pattern()), event)
+								eventHandler(ctx, retro.PartitionName(evIter.Pattern()), event)
 							}
 						}(ctx, partition)
 					}
@@ -409,7 +409,7 @@ func Test_Depot(t *testing.T) {
 					depot.MoveHeadPointer(checkpointThree.Hash(), checkpointFourB.Hash())
 				}
 
-				var handleEvents = func(ctx context.Context, evi types.EventIterator) {
+				var handleEvents = func(ctx context.Context, evi retro.EventIterator) {
 					events, errors := evi.Events(ctx)
 					for {
 						select {

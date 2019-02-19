@@ -1,4 +1,4 @@
-package types
+package retro
 
 // PartitionName is a typealias for string
 // to help keep the internals of the library

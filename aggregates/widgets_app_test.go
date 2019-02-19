@@ -5,7 +5,7 @@ import (
 
 	"github.com/retro-framework/go-retro/events"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 func Test_WidgetsApp_State_AllowCreationOfIdentities(t *testing.T) {
@@ -15,8 +15,8 @@ func Test_WidgetsApp_State_AllowCreationOfIdentities(t *testing.T) {
 		assertErrEql  = test.H(t).ErrEql
 
 		app     = &WidgetsApp{}
-		fixture = types.EventFixture{
-			app: []types.Event{
+		fixture = retro.EventFixture{
+			app: []retro.Event{
 				&events.AllowCreateIdentities{},
 			},
 		}
@@ -38,8 +38,8 @@ func Test_WidgetsApp_State_DisableCreationOfIdentities(t *testing.T) {
 		assertErrEql  = test.H(t).ErrEql
 
 		app     = &WidgetsApp{}
-		fixture = types.EventFixture{
-			app: []types.Event{
+		fixture = retro.EventFixture{
+			app: []retro.Event{
 				&events.AllowCreateIdentities{},
 				&events.DisableCreateIdentities{},
 			},

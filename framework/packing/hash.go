@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 // Hash returns a hashed in raw bytes (not hex encoded)
@@ -37,7 +37,7 @@ func NewHash(n HashAlgoName, b []byte) Hash {
 	return Hash{n, b}
 }
 
-func HashStrToHash(str string) types.Hash {
+func HashStrToHash(str string) retro.Hash {
 	parts := strings.Split(str, ":")
 	decoded, err := hex.DecodeString(parts[1])
 	if err != nil {
@@ -48,11 +48,11 @@ func HashStrToHash(str string) types.Hash {
 }
 
 // TODO: make this respect algoname in the given string
-func hashStr(str string) types.Hash {
+func hashStr(str string) retro.Hash {
 	var s = sha256.Sum256([]byte(str))
 	return NewHash(HashAlgoNameSHA256, s[:])
 }
 
-func HashStr(str string) types.Hash {
+func HashStr(str string) retro.Hash {
 	return hashStr(str)
 }

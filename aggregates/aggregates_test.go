@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type dummyAggregate struct{ NamedAggregate }
 
-// ReactTo is required to fulfil the types.Aggregate interface
-func (dummyAggregate) ReactTo(types.Event) error { return nil }
+// ReactTo is required to fulfil the retro.Aggregate interface
+func (dummyAggregate) ReactTo(retro.Event) error { return nil }
 
 func Test_Aggregates_Register_TwiceSameEvRaisesError(t *testing.T) {
 	assertNotNil := test.H(t).NotNil

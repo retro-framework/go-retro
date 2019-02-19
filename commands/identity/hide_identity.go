@@ -10,7 +10,7 @@ import (
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type HideIdentity struct {
@@ -19,7 +19,7 @@ type HideIdentity struct {
 
 // SetState receieves an anonymous Aggregate and must type assert
 // it to the correct type (Identity).
-func (cmd *HideIdentity) SetState(agg types.Aggregate) error {
+func (cmd *HideIdentity) SetState(agg retro.Aggregate) error {
 	if typedAggregate, ok := agg.(*aggregates.Identity); ok {
 		cmd.identity = typedAggregate
 		return nil
@@ -28,7 +28,7 @@ func (cmd *HideIdentity) SetState(agg types.Aggregate) error {
 	}
 }
 
-func (cmd *HideIdentity) Apply(ctxt context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
+func (cmd *HideIdentity) Apply(ctxt context.Context, w io.Writer, session retro.Session, repo retro.Repository) (retro.CommandResult, error) {
 
 	s := session.(*aggregates.Session)
 	if !s.HasIdentity {
@@ -40,8 +40,8 @@ func (cmd *HideIdentity) Apply(ctxt context.Context, w io.Writer, session types.
 
 	json.NewEncoder(w).Encode(cmd.identity)
 
-	return types.CommandResult{
-		cmd.identity: []types.Event{
+	return retro.CommandResult{
+		cmd.identity: []retro.Event{
 			events.SetVisibility{Radius: "private"},
 		},
 	}, nil

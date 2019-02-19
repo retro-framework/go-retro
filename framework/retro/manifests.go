@@ -1,4 +1,4 @@
-package types
+package retro
 
 type AggregateManifest interface {
 	Register(string, Aggregate) error

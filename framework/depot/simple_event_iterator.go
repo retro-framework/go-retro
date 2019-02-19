@@ -8,7 +8,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/storage"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 // SimpleEventIter emits events on a given partition
@@ -19,9 +19,9 @@ type simpleEventIterator struct {
 
 	stackCh chan storage.AffixStack
 
-	matcher types.PatternMatcher
+	matcher retro.PatternMatcher
 
-	out    chan types.PersistedEvent
+	out    chan retro.PersistedEvent
 	outErr chan error
 }
 
@@ -29,10 +29,10 @@ func (s *simpleEventIterator) Pattern() string {
 	return s.pattern
 }
 
-func (s *simpleEventIterator) Next(ctx context.Context) (types.PersistedEvent, error) {
+func (s *simpleEventIterator) Next(ctx context.Context) (retro.PersistedEvent, error) {
 
 	if s.out == nil && s.outErr == nil {
-		s.out = make(chan types.PersistedEvent)
+		s.out = make(chan retro.PersistedEvent)
 		s.outErr = make(chan error, 1)
 		go s.events(ctx, s.out, s.outErr)
 	}
@@ -47,19 +47,19 @@ func (s *simpleEventIterator) Next(ctx context.Context) (types.PersistedEvent, e
 	}
 }
 
-func (s *simpleEventIterator) Events(ctx context.Context) (<-chan types.PersistedEvent, <-chan error) {
+func (s *simpleEventIterator) Events(ctx context.Context) (<-chan retro.PersistedEvent, <-chan error) {
 	var (
-		out    = make(chan types.PersistedEvent)
+		out    = make(chan retro.PersistedEvent)
 		outErr = make(chan error, 1)
 	)
 	return s.events(ctx, out, outErr)
 }
 
-func (s *simpleEventIterator) events(ctx context.Context, out chan types.PersistedEvent, outErr chan error) (<-chan types.PersistedEvent, <-chan error) {
+func (s *simpleEventIterator) events(ctx context.Context, out chan retro.PersistedEvent, outErr chan error) (<-chan retro.PersistedEvent, <-chan error) {
 
 	var jp *packing.JSONPacker
 
-	var drainStack = func(ctx context.Context, out chan<- types.PersistedEvent, outErr chan<- error, stack storage.AffixStack) {
+	var drainStack = func(ctx context.Context, out chan<- retro.PersistedEvent, outErr chan<- error, stack storage.AffixStack) {
 		for {
 			var h = stack.Pop()
 			if h == nil {
@@ -98,7 +98,7 @@ func (s *simpleEventIterator) events(ctx context.Context, out chan types.Persist
 							time:          h.Time,
 							bytes:         evPayload,
 							name:          evName,
-							partitionName: types.PartitionName(s.pattern),
+							partitionName: retro.PartitionName(s.pattern),
 							cpHash:        h.CheckpointHash,
 						}
 						select {

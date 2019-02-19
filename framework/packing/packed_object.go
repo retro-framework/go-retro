@@ -3,7 +3,7 @@ package packing
 import (
 	"bytes"
 
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 // Packed event represents a packed event in memory. The payload is a zlib
@@ -11,10 +11,10 @@ import (
 // msgpack, etc).
 type po struct {
 	payload []byte
-	hash    types.Hash
+	hash    retro.Hash
 }
 
-func NewPackedObject(payloadStr string) types.HashedObject {
+func NewPackedObject(payloadStr string) retro.HashedObject {
 	return po{
 		payload: []byte(payloadStr),
 		hash:    hashStr(payloadStr),
@@ -22,10 +22,10 @@ func NewPackedObject(payloadStr string) types.HashedObject {
 }
 
 // Type returns a ObjectTypeName of either Affix, Checkpoint or Event
-func (p po) Type() types.ObjectTypeName {
+func (p po) Type() retro.ObjectTypeName {
 	parts := bytes.SplitN(p.payload, []byte(" "), 2)
 	for _, kot := range KnownObjectTypes {
-		if kot == types.ObjectTypeName(string(parts[0])) {
+		if kot == retro.ObjectTypeName(string(parts[0])) {
 			return kot
 		}
 	}
@@ -36,30 +36,30 @@ func (p po) Contents() []byte {
 	return p.payload
 }
 
-func (p po) Hash() types.Hash {
+func (p po) Hash() retro.Hash {
 	return p.hash
 }
 
 type PackedEvent struct {
-	types.HashedObject
+	retro.HashedObject
 }
 
-func (pe PackedEvent) TypeName() types.ObjectTypeName {
+func (pe PackedEvent) TypeName() retro.ObjectTypeName {
 	return ObjectTypeEvent
 }
 
 type PackedAffix struct {
-	types.HashedObject
+	retro.HashedObject
 }
 
-func (pe PackedAffix) TypeName() types.ObjectTypeName {
+func (pe PackedAffix) TypeName() retro.ObjectTypeName {
 	return ObjectTypeAffix
 }
 
 type PackedCheckpoint struct {
-	types.HashedObject
+	retro.HashedObject
 }
 
-func (pc PackedCheckpoint) TypeName() types.ObjectTypeName {
+func (pc PackedCheckpoint) TypeName() retro.ObjectTypeName {
 	return ObjectTypeCheckpoint
 }

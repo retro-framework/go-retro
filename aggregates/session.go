@@ -3,17 +3,17 @@ package aggregates
 import (
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type Session struct {
 	NamedAggregate
 
 	HasIdentity  bool
-	IdentityName types.PartitionName
+	IdentityName retro.PartitionName
 }
 
-func (agg *Session) ReactTo(aev types.Event) error {
+func (agg *Session) ReactTo(aev retro.Event) error {
 	switch ev := aev.(type) {
 	case *events.StartSession:
 	case *events.AssociateIdentity:

@@ -8,7 +8,7 @@ import (
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 // AllowCreationOfNewIdentities is used to toggle the creation of new
@@ -22,7 +22,7 @@ type AllowCreationOfNewIdentities struct {
 
 // SetState returns a WidgetsApp from the Aggregate that everyone else
 // wants to deal with, every Aggregate type must implement this.
-func (cmd *AllowCreationOfNewIdentities) SetState(agg types.Aggregate) error {
+func (cmd *AllowCreationOfNewIdentities) SetState(agg retro.Aggregate) error {
 	if wa, ok := agg.(*aggregates.WidgetsApp); ok {
 		cmd.widgetsApp = wa
 		return nil
@@ -35,7 +35,7 @@ func (cmd *AllowCreationOfNewIdentities) SetState(agg types.Aggregate) error {
 // there have not yet been any created, it will permit the creation of a new one.
 //
 // This allows configuration of the app early in its lifecycle.
-func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
+func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, w io.Writer, session retro.Session, repo retro.Repository) (retro.CommandResult, error) {
 
 	// identities := repo.Watch(ctx, "identities/*")
 	// _ = identities
@@ -53,8 +53,8 @@ func (cmd *AllowCreationOfNewIdentities) Apply(ctx context.Context, w io.Writer,
 	// an event which attests to that fact in the future.
 	// The aggregates.WidgetsApp must consider events.AllowCreationOfIdentities
 	// in its ApplyTo() function.
-	return types.CommandResult{
-		cmd.widgetsApp: []types.Event{
+	return retro.CommandResult{
+		cmd.widgetsApp: []retro.Event{
 			events.AllowCreateIdentities{},
 		},
 	}, nil

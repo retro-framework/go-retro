@@ -9,7 +9,7 @@ import (
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 // AllowCreationOfNewIdentities is used to toggle the creation of new
@@ -23,7 +23,7 @@ type ListAllPriorSessions struct {
 
 // SetState returns a WidgetsApp from the Aggregate that everyone else
 // wants to deal with, every Aggregate type must implement this.
-func (cmd *ListAllPriorSessions) SetState(agg types.Aggregate) error {
+func (cmd *ListAllPriorSessions) SetState(agg retro.Aggregate) error {
 	if wa, ok := agg.(*aggregates.WidgetsApp); ok {
 		cmd.widgetsApp = wa
 		return nil
@@ -36,12 +36,12 @@ func (cmd *ListAllPriorSessions) SetState(agg types.Aggregate) error {
 // there have not yet been any created, it will permit the creation of a new one.
 //
 // This allows configuration of the app early in its lifecycle.
-func (cmd *ListAllPriorSessions) Apply(ctx context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
+func (cmd *ListAllPriorSessions) Apply(ctx context.Context, w io.Writer, session retro.Session, repo retro.Repository) (retro.CommandResult, error) {
 
 	fmt.Fprint(w, "Hello World!")
 
-	return types.CommandResult{
-		cmd.widgetsApp: []types.Event{
+	return retro.CommandResult{
+		cmd.widgetsApp: []retro.Event{
 			events.PriorSessionsListed{},
 		},
 	}, nil

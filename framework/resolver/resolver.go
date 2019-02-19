@@ -10,7 +10,7 @@ import (
 
 	"github.com/gobuffalo/flect"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type Error struct {
@@ -23,11 +23,11 @@ func (e Error) Error() string {
 }
 
 type resolver struct {
-	aggm types.AggregateManifest
-	cmdm types.CommandManifest
+	aggm retro.AggregateManifest
+	cmdm retro.CommandManifest
 }
 
-func New(aggm types.AggregateManifest, cmdm types.CommandManifest) types.Resolver {
+func New(aggm retro.AggregateManifest, cmdm retro.CommandManifest) retro.Resolver {
 	return &resolver{aggm, cmdm}
 }
 
@@ -36,7 +36,7 @@ func New(aggm types.AggregateManifest, cmdm types.CommandManifest) types.Resolve
 //
 // Optional fields "path" and "args" can be set on the []byte to specify
 // that the command targets a "real" aggregate and not the root aggregate
-// the args will be conditionally parsed if the command implements types.CommentWithArgs
+// the args will be conditionally parsed if the command implements retro.CommentWithArgs
 //
 // Valid values for []byte here include:
 //
@@ -52,10 +52,10 @@ func New(aggm types.AggregateManifest, cmdm types.CommandManifest) types.Resolve
 // via the command's "SetState" method.
 //
 // {"name":"some_command", "path":"user/123", "args":{"foo":"bar"}} - as above with args. For
-// this to work the command registered under that name must implement types.CommandWithArgs. The
+// this to work the command registered under that name must implement retro.CommandWithArgs. The
 // arguments will be parsed into a copy of the registered arg type for this command and passed to
 // the command the command's "SetArgs" method.
-func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b []byte) (types.Command, error) {
+func (r *resolver) Resolve(ctx context.Context, repository retro.Repository, b []byte) (retro.Command, error) {
 
 	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "resolver.Resolve")
 	defer spnResolve.Finish()
@@ -94,7 +94,7 @@ func (r *resolver) Resolve(ctx context.Context, repository types.Repository, b [
 //
 // It may make sense to expose this as a public API to avoid the serialization
 // overhead of JSON someday.
-func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, repository types.Repository, cmdDesc commandDesc) (types.Command, error) {
+func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, repository retro.Repository, cmdDesc commandDesc) (retro.Command, error) {
 
 	// cmdDesc handles the details for us, we may fall-back
 	// to looking up "_" if no path was specified.
@@ -114,12 +114,12 @@ func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, rep
 	}
 	spnAggLookup.Finish()
 
-	var setAggregateName = func(a types.Aggregate, pn types.PartitionName) error {
-		agg.SetName(types.PartitionName(cmdDesc.Path))
+	var setAggregateName = func(a retro.Aggregate, pn retro.PartitionName) error {
+		agg.SetName(retro.PartitionName(cmdDesc.Path))
 		if err != nil {
 			return Error{"agg-assign-name", fmt.Errorf("could not set name on Aggregate: %s", err)}
 		}
-		if agg.Name() != types.PartitionName(cmdDesc.Path) {
+		if agg.Name() != retro.PartitionName(cmdDesc.Path) {
 			return Error{"agg-read-back-name", fmt.Errorf("name change on Aggregate didn't take (check for pointer receivers?)")}
 		}
 		return nil
@@ -129,8 +129,8 @@ func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, rep
 
 	// If the aggregate we're dealing with actually exists then we need to make a few
 	// more quick steps... set it's name, and then actually rehydrate it.
-	if repository.Exists(ctx, types.PartitionName(cmdDesc.Path)) {
-		if err := setAggregateName(agg, types.PartitionName(cmdDesc.Path)); err != nil {
+	if repository.Exists(ctx, retro.PartitionName(cmdDesc.Path)) {
+		if err := setAggregateName(agg, retro.PartitionName(cmdDesc.Path)); err != nil {
 			return nil, err
 		}
 	}
@@ -157,7 +157,7 @@ func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, rep
 	}
 
 	sp := opentracing.StartSpan("iterating over aggregate commands", opentracing.ChildOf(spnAggCmdLookup.Context()))
-	var cmd types.Command
+	var cmd retro.Command
 	for _, c := range cmds {
 		var cmdDescName = flect.Pascalize(cmdDesc.Name)
 		sp.LogKV(reflect.TypeOf(c).Elem().Name(), cmdDescName)
@@ -178,7 +178,7 @@ func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, rep
 	}
 
 	if len(cmdDesc.Args) > 0 {
-		var cmdWithArgs, ok = cmd.(types.CommandWithArgs)
+		var cmdWithArgs, ok = cmd.(retro.CommandWithArgs)
 		if !ok {
 			return nil, Error{"cast-cmd-with-args", errors.New("args given, but command does not implement CommandWithArgs")}
 		}
@@ -198,10 +198,10 @@ func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, rep
 		}
 	}
 
-	if repository.Exists(ctx, types.PartitionName(cmdDesc.Path)) {
+	if repository.Exists(ctx, retro.PartitionName(cmdDesc.Path)) {
 		spnRehydrate := opentracing.StartSpan("rehydrate target aggregate", opentracing.ChildOf(spnResolve.Context()))
 		defer spnRehydrate.Finish()
-		err = repository.Rehydrate(ctx, agg, types.PartitionName(cmdDesc.Path))
+		err = repository.Rehydrate(ctx, agg, retro.PartitionName(cmdDesc.Path))
 		if err != nil {
 			// TODO: This exit condition is a nasty "magic string"
 			// artefact. It is designed ot match against a string

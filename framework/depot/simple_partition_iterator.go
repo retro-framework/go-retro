@@ -10,7 +10,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/storage"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 var Done = fmt.Errorf("iterator depleted: done")
@@ -20,13 +20,13 @@ type simplePartitionIterator struct {
 	refdb ref.DB
 
 	pattern string
-	matcher types.PatternMatcher
+	matcher retro.PatternMatcher
 
-	subscribedOn <-chan types.RefMove
+	subscribedOn <-chan retro.RefMove
 
 	eventIterators map[string]*simpleEventIterator
 
-	out    chan types.EventIterator
+	out    chan retro.EventIterator
 	outErr chan error
 }
 
@@ -34,10 +34,10 @@ func (s *simplePartitionIterator) Pattern() string {
 	return s.pattern
 }
 
-func (s *simplePartitionIterator) Next(ctx context.Context) (types.EventIterator, error) {
+func (s *simplePartitionIterator) Next(ctx context.Context) (retro.EventIterator, error) {
 
 	if s.out == nil && s.outErr == nil {
-		s.out = make(chan types.EventIterator)
+		s.out = make(chan retro.EventIterator)
 		s.outErr = make(chan error, 1)
 		go s.partitions(ctx, s.out, s.outErr)
 	}
@@ -52,19 +52,19 @@ func (s *simplePartitionIterator) Next(ctx context.Context) (types.EventIterator
 	}
 }
 
-func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan types.EventIterator, <-chan error) {
+func (s *simplePartitionIterator) Partitions(ctx context.Context) (<-chan retro.EventIterator, <-chan error) {
 	var (
-		out    = make(chan types.EventIterator)
+		out    = make(chan retro.EventIterator)
 		outErr = make(chan error, 1)
 	)
 	return s.partitions(ctx, out, outErr)
 }
 
-func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types.EventIterator, outErr chan error) (<-chan types.EventIterator, <-chan error) {
+func (s *simplePartitionIterator) partitions(ctx context.Context, out chan retro.EventIterator, outErr chan error) (<-chan retro.EventIterator, <-chan error) {
 
 	var stacks = make(chan storage.AffixStack)
 
-	var emitPartitionIterator = func(ctx context.Context, out chan<- types.EventIterator, oStack storage.AffixStack, kp string) {
+	var emitPartitionIterator = func(ctx context.Context, out chan<- retro.EventIterator, oStack storage.AffixStack, kp string) {
 		// Check if we have a consumer for this
 		// already, doesn't check if that consumer
 		// is still behaving properly
@@ -93,7 +93,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types
 		}
 	}
 
-	var collectRelevantCheckpoints = func(from, to types.Hash) error {
+	var collectRelevantCheckpoints = func(from, to retro.Hash) error {
 		var st storage.AffixStack
 		// enqueueCheckpointIfRelevant will push the checkpoint and any ancestors
 		// onto the stack and we'll continue when the recursive enqueueCheckpointIfRelevant
@@ -154,7 +154,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan types
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash types.Hash, st *storage.AffixStack) error {
+func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash retro.Hash, st *storage.AffixStack) error {
 
 	var jp *packing.JSONPacker
 

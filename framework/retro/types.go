@@ -1,4 +1,4 @@
-package types
+package retro
 
 import (
 	"context"
@@ -52,7 +52,7 @@ type Aggregate interface {
 // For known, loaded-from-storage aggregates the name can
 // be set in the engine and survive the roundtrip to the
 // command and be read back in the Engine after Apply has
-// returned. The CommandResult map[types.Aggregage][]types.Event
+// returned. The CommandResult map[retro.Aggregage][]retro.Event
 // then allows the use of the interface via upgrade on
 // the keys of the map to get the names to use when persisting
 // the events.

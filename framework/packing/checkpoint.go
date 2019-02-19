@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 var (
@@ -19,8 +19,8 @@ var (
 // and persistence of the resulting events. It stores
 // an error incase the command failed.
 type Checkpoint struct {
-	AffixHash    types.Hash        `json:"affixHash"`
-	ParentHashes []types.Hash      `json:"parentHashes"`
+	AffixHash    retro.Hash        `json:"affixHash"`
+	ParentHashes []retro.Hash      `json:"parentHashes"`
 	Fields       map[string]string `json:"fields"`
 	Summary      string            `json:"summary"`
 	CommandDesc  []byte            `json:"commandDesc"`

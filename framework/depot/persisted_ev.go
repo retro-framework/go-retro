@@ -3,7 +3,7 @@ package depot
 import (
 	"time"
 
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type PersistedEv struct {
@@ -11,11 +11,11 @@ type PersistedEv struct {
 	name  string
 	bytes []byte
 
-	partitionName types.PartitionName
+	partitionName retro.PartitionName
 
 	// The hash of the checkpoint which referred to the affix
 	// from which this event was retrieved/unpacked.
-	cpHash types.Hash
+	cpHash retro.Hash
 }
 
 func (pEv PersistedEv) Time() time.Time {
@@ -26,7 +26,7 @@ func (pEv PersistedEv) Name() string {
 	return pEv.name
 }
 
-func (pEv PersistedEv) PartitionName() types.PartitionName {
+func (pEv PersistedEv) PartitionName() retro.PartitionName {
 	return pEv.partitionName
 }
 
@@ -34,6 +34,6 @@ func (pEv PersistedEv) Bytes() []byte {
 	return pEv.bytes
 }
 
-func (pEv PersistedEv) CheckpointHash() types.Hash {
+func (pEv PersistedEv) CheckpointHash() retro.Hash {
 	return pEv.cpHash
 }

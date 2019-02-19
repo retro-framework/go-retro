@@ -16,7 +16,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/repository"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type OneEvent struct{}
@@ -25,10 +25,10 @@ type ExtraEvent struct{}
 
 type dummyAggregate struct {
 	aggregates.NamedAggregate
-	seenEvents []types.Event
+	seenEvents []retro.Event
 }
 
-func (da *dummyAggregate) ReactTo(ev types.Event) error {
+func (da *dummyAggregate) ReactTo(ev retro.Event) error {
 	da.seenEvents = append(da.seenEvents, ev)
 	return nil
 }
@@ -37,14 +37,14 @@ type dummySession struct {
 	aggregates.NamedAggregate
 }
 
-func (_ *dummySession) ReactTo(types.Event) error { return nil }
+func (_ *dummySession) ReactTo(retro.Event) error { return nil }
 
 type dummyCmd struct {
 	s          *dummyAggregate
 	wasApplied bool
 }
 
-func (dc *dummyCmd) SetState(s types.Aggregate) error {
+func (dc *dummyCmd) SetState(s retro.Aggregate) error {
 	if agg, ok := s.(*dummyAggregate); ok {
 		dc.s = agg
 		return nil
@@ -53,12 +53,12 @@ func (dc *dummyCmd) SetState(s types.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(context.Context, io.Writer, types.Session, types.Repository) (types.CommandResult, error) {
+func (dc *dummyCmd) Apply(context.Context, io.Writer, retro.Session, retro.Repository) (retro.CommandResult, error) {
 	if len(dc.s.seenEvents) != 2 {
 		return nil, errors.New(fmt.Sprintf("can't apply ExtraEvent to dummyAggregate unless it has seen precisely two events so far (has seen %d)", len(dc.s.seenEvents)))
 	}
 	dc.wasApplied = true
-	return types.CommandResult{dc.s: []types.Event{ExtraEvent{}}}, nil
+	return retro.CommandResult{dc.s: []retro.Event{ExtraEvent{}}}, nil
 }
 
 type dummyCmdWithArgs struct {
@@ -72,7 +72,7 @@ type dummyCmdArgs struct {
 	i   int32 `json:"int"`
 }
 
-func (dcwa *dummyCmdWithArgs) SetArgs(args types.CommandArgs) error {
+func (dcwa *dummyCmdWithArgs) SetArgs(args retro.CommandArgs) error {
 	if typedArgs, ok := args.(*dummyCmdArgs); ok {
 		dcwa.args = *typedArgs
 	} else {
@@ -154,15 +154,15 @@ func Test_Resolver_AggregateLookup(t *testing.T) {
 		var (
 			ctx        = context.Background()
 			repository = repository.NewSimpleRepositoryDouble(
-				types.EventFixture{
-					agg: []types.Event{
+				retro.EventFixture{
+					agg: []retro.Event{
 						OneEvent{},
 						OtherEvent{},
 					},
 				},
 			)
 			r   = New(aggM, cmdM)
-			res types.Command
+			res retro.Command
 
 			err error
 		)
@@ -229,8 +229,8 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 
 		var (
 			ctx        = context.Background()
-			repository = repository.NewSimpleRepositoryDouble(types.EventFixture{
-				agg: []types.Event{&OneEvent{}},
+			repository = repository.NewSimpleRepositoryDouble(retro.EventFixture{
+				agg: []retro.Event{&OneEvent{}},
 			})
 			r   = New(aggM, cmdM)
 			err error
@@ -263,8 +263,8 @@ func Test_Resolver_CommandParsing(t *testing.T) {
 
 		var (
 			repository = repository.NewSimpleRepositoryDouble(
-				types.EventFixture{
-					agg: []types.Event{
+				retro.EventFixture{
+					agg: []retro.Event{
 						OneEvent{},
 						OtherEvent{},
 					},

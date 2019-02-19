@@ -9,7 +9,7 @@ import (
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type args struct {
@@ -25,7 +25,7 @@ type CreateIdentity struct {
 
 // SetState receieves an anonymous Aggregate and must type assert
 // it to the correct type (Identity).
-func (cmd *CreateIdentity) SetState(agg types.Aggregate) error {
+func (cmd *CreateIdentity) SetState(agg retro.Aggregate) error {
 	if typedAggregate, ok := agg.(*aggregates.Identity); ok {
 		cmd.identity = typedAggregate
 		return nil
@@ -34,7 +34,7 @@ func (cmd *CreateIdentity) SetState(agg types.Aggregate) error {
 	}
 }
 
-func (cmd *CreateIdentity) SetArgs(a types.CommandArgs) error {
+func (cmd *CreateIdentity) SetArgs(a retro.CommandArgs) error {
 	if typedArgs, ok := a.(*args); ok {
 		cmd.args = *typedArgs
 	} else {
@@ -43,7 +43,7 @@ func (cmd *CreateIdentity) SetArgs(a types.CommandArgs) error {
 	return nil
 }
 
-func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session types.Session, repo types.Repository) (types.CommandResult, error) {
+func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session retro.Session, repo retro.Repository) (retro.CommandResult, error) {
 
 	// if repo.Exists(ctx, cmd.identity.Name()) {
 	// 	return nil, fmt.Errorf("identity already exists with name %q", cmd.identity.Name())
@@ -54,7 +54,7 @@ func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session types
 	// 	return nil, fmt.Errorf("session %s is already associated with an identity named %s (%t)", s.Name(), cmd.identity.Name(), exists)
 	// }
 
-	var ownEvents = []types.Event{
+	var ownEvents = []retro.Event{
 		events.SetDisplayName{Name: cmd.args.Name},
 	}
 
@@ -66,15 +66,15 @@ func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session types
 		ownEvents = append(ownEvents, events.SetAvatar{ImgData: cmd.args.Avatar})
 	}
 
-	return types.CommandResult{
-		session: []types.Event{
+	return retro.CommandResult{
+		session: []retro.Event{
 			&events.AssociateIdentity{Identity: cmd.identity},
 		},
 		&aggregates.Identity{}: ownEvents,
 	}, nil
 }
 
-func (cmd *CreateIdentity) Render(ctx context.Context, w io.Writer, session types.Session, res types.CommandResult) error {
+func (cmd *CreateIdentity) Render(ctx context.Context, w io.Writer, session retro.Session, res retro.CommandResult) error {
 	fmt.Fprintf(w, "helo world")
 	return nil
 }

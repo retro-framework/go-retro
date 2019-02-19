@@ -9,7 +9,7 @@ import (
 	"time"
 
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 func Test_PackedObject(t *testing.T) {
@@ -23,7 +23,7 @@ func Test_PackedObject(t *testing.T) {
 				nowFn:  func() time.Time { return time.Time{} },
 			}
 			hash           = NewHash(HashAlgoNameSHA256, sha256.New().Sum([]byte("foo")))
-			packedAffix, _ = jp.PackAffix(Affix{"baz/123": []types.Hash{hash}, "bar/123": []types.Hash{hash}})
+			packedAffix, _ = jp.PackAffix(Affix{"baz/123": []retro.Hash{hash}, "bar/123": []retro.Hash{hash}})
 		)
 
 		// Act

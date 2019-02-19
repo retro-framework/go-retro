@@ -1,13 +1,13 @@
 package packing
 
-import "github.com/retro-framework/go-retro/framework/types"
+import "github.com/retro-framework/go-retro/framework/retro"
 
 const (
-	ObjectTypeAffix      types.ObjectTypeName = "affix"
-	ObjectTypeCheckpoint types.ObjectTypeName = "checkpoint"
-	ObjectTypeEvent      types.ObjectTypeName = "event"
+	ObjectTypeAffix      retro.ObjectTypeName = "affix"
+	ObjectTypeCheckpoint retro.ObjectTypeName = "checkpoint"
+	ObjectTypeEvent      retro.ObjectTypeName = "event"
 
-	ObjectTypeUnknown types.ObjectTypeName = "unknown object type"
+	ObjectTypeUnknown retro.ObjectTypeName = "unknown object type"
 )
 
-var KnownObjectTypes []types.ObjectTypeName = []types.ObjectTypeName{ObjectTypeAffix, ObjectTypeCheckpoint, ObjectTypeEvent}
+var KnownObjectTypes []retro.ObjectTypeName = []retro.ObjectTypeName{ObjectTypeAffix, ObjectTypeCheckpoint, ObjectTypeEvent}

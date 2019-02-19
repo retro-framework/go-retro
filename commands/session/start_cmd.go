@@ -8,7 +8,7 @@ import (
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/events"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 // Start is used to gatekeep the creation of new sessions if starting a session
@@ -29,7 +29,7 @@ type Start struct {
 
 // SetState receieves an anonymous Aggregate and must type assert
 // it to the correct type (Session).
-func (cmd *Start) SetState(agg types.Aggregate) error {
+func (cmd *Start) SetState(agg retro.Aggregate) error {
 	if s, ok := agg.(*aggregates.Session); ok {
 		cmd.session = s
 		return nil
@@ -41,9 +41,9 @@ func (cmd *Start) SetState(agg types.Aggregate) error {
 // Apply for sessions is effectively a noop in the default implementation
 // it need only make a record in the data store that a session has been
 // created and that we can look it up in the future.
-func (cmd *Start) Apply(ctxt context.Context, _ io.Writer, _ types.Session, repo types.Repository) (types.CommandResult, error) {
-	return types.CommandResult{
-		cmd.session: []types.Event{
+func (cmd *Start) Apply(ctxt context.Context, _ io.Writer, _ retro.Session, repo retro.Repository) (retro.CommandResult, error) {
+	return retro.CommandResult{
+		cmd.session: []retro.Event{
 			events.StartSession{},
 		},
 	}, nil

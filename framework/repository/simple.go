@@ -17,23 +17,23 @@ import (
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/storage"
-	"github.com/retro-framework/go-retro/framework/types"
+	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type simple struct {
 	objdb object.DB
 	refdb ref.DB
 
-	eventManifest types.EventManifest
+	eventManifest retro.EventManifest
 
-	matcher types.PatternMatcher
+	matcher retro.PatternMatcher
 }
 
 type double struct {
-	fixture types.EventFixture
+	fixture retro.EventFixture
 }
 
-func NewEmptyMemory() types.Repository {
+func NewEmptyMemory() retro.Repository {
 	return simple{
 		objdb:         &memory.ObjectStore{},
 		refdb:         &memory.RefStore{},
@@ -42,7 +42,7 @@ func NewEmptyMemory() types.Repository {
 	}
 }
 
-func NewSimpleRepository(odb object.DB, rdb ref.DB, evM types.EventManifest) types.Repository {
+func NewSimpleRepository(odb object.DB, rdb ref.DB, evM retro.EventManifest) retro.Repository {
 	return simple{
 		objdb:         odb,
 		refdb:         rdb,
@@ -51,7 +51,7 @@ func NewSimpleRepository(odb object.DB, rdb ref.DB, evM types.EventManifest) typ
 	}
 }
 
-func NewSimpleRepositoryDouble(evFix types.EventFixture) types.Repository {
+func NewSimpleRepositoryDouble(evFix retro.EventFixture) retro.Repository {
 	return double{evFix}
 }
 
@@ -65,7 +65,7 @@ func (s double) Release(partition string) {
 	return
 }
 
-func (s double) Exists(_ context.Context, partitionName types.PartitionName) bool {
+func (s double) Exists(_ context.Context, partitionName retro.PartitionName) bool {
 	for k := range s.fixture {
 		if k.Name() == partitionName {
 			return true
@@ -74,8 +74,8 @@ func (s double) Exists(_ context.Context, partitionName types.PartitionName) boo
 	return false
 }
 
-func (s double) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
-	var events []types.Event
+func (s double) Rehydrate(ctx context.Context, dst retro.Aggregate, partitionName retro.PartitionName) error {
+	var events []retro.Event
 	for k, v := range s.fixture {
 		if k.Name() == partitionName {
 			events = v
@@ -97,7 +97,7 @@ func (s simple) Release(partition string) {
 	return
 }
 
-func (s simple) Exists(ctx context.Context, partitionName types.PartitionName) bool {
+func (s simple) Exists(ctx context.Context, partitionName retro.PartitionName) bool {
 	found, _ := simplePartitionExistenceChecker{
 		objdb:   s.objdb,
 		refdb:   s.refdb,
@@ -107,7 +107,7 @@ func (s simple) Exists(ctx context.Context, partitionName types.PartitionName) b
 	return found
 }
 
-func (s simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionName types.PartitionName) error {
+func (s simple) Rehydrate(ctx context.Context, dst retro.Aggregate, partitionName retro.PartitionName) error {
 
 	spnRehydrate, ctx := opentracing.StartSpanFromContext(ctx, "repository.simple.Rehydrate")
 	spnRehydrate.SetTag("partitionName", string(partitionName))
@@ -218,7 +218,7 @@ func (s simple) Rehydrate(ctx context.Context, dst types.Aggregate, partitionNam
 // which the caller can then drain. enqueueCheckpointIfRelevant is expected to be called
 // with a HEAD ref so that the most recent checkpoint on any given thread is pushed onto
 // the stack first, and emitted last.
-func (s simple) enqueueCheckpointIfRelevant(pattern types.PartitionName, checkpointObjHash types.Hash, st *storage.AffixStack) error {
+func (s simple) enqueueCheckpointIfRelevant(pattern retro.PartitionName, checkpointObjHash retro.Hash, st *storage.AffixStack) error {
 
 	var jp *packing.JSONPacker
 
