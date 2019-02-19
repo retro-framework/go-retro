@@ -22,7 +22,7 @@ services:
   redis:
     logging:
       driver: none
-    image: redis/redis
+    image: redis
     container_name: redis
     ports:
       - 6379:6379
