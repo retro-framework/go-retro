@@ -19,9 +19,9 @@ import (
 	"github.com/retro-framework/go-retro/framework/depot"
 	"github.com/retro-framework/go-retro/framework/repository"
 	"github.com/retro-framework/go-retro/framework/resolver"
+	"github.com/retro-framework/go-retro/framework/retro"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type Predictable5sJumpClock struct {
@@ -94,12 +94,12 @@ func (dc *dummyCmd) Render(_ context.Context, w io.Writer, _ retro.Session, _ re
 	return nil
 }
 
-func ResolverDouble(resolverFn retro.ResolveFunc) retro.Resolver {
+func ResolverDouble(resolverFn retro.ResolveFn) retro.Resolver {
 	return resolverDouble{resolverFn}
 }
 
 type resolverDouble struct {
-	resolveFn retro.ResolveFunc
+	resolveFn retro.ResolveFn
 }
 
 func (rd resolverDouble) Resolve(ctx context.Context, repository retro.Repository, buf []byte) (retro.Command, error) {

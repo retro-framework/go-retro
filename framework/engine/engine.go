@@ -27,12 +27,12 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
-func New(d retro.Depot, r retro.Repository, resolver retro.Resolver, i retro.IDFactory, c retro.Clock, a retro.AggregateManifest, e retro.EventManifest) Engine {
+func New(d retro.Depot, r retro.Repository, resolver retro.Resolver, i retro.IDFn, c retro.Clock, a retro.AggregateManifest, e retro.EventManifest) Engine {
 	return Engine{
 		depot:        d,
 		repository:   r,
 		resolver:     resolver,
-		idFactory:    i,
+		idFn:         i,
 		clock:        c,
 		aggm:         a,
 		evm:          e,
@@ -44,9 +44,9 @@ type Engine struct {
 	depot      retro.Depot
 	repository retro.Repository
 
-	resolver  retro.Resolver
-	idFactory retro.IDFactory
-	clock     retro.Clock
+	resolver retro.Resolver
+	idFn     retro.IDFn
+	clock    retro.Clock
 
 	// TODO: this is a big hammer for finding out which aggregate is registered at "session"
 	aggm retro.AggregateManifest
@@ -186,7 +186,7 @@ func dumpCommandResult(w io.Writer, cr retro.CommandResult) {
 // calling it's "Start" command. If no session aggregate is registered and no
 // "start" command for it exists an error will be raised.
 //
-// The ID is generated internally using the retro.IDFactory given to the
+// The ID is generated internally using the retro.IDFn given to the
 // constructor. This function can be tied into a ticket server, or a simple
 // central sequential store or random hex string generator function at will.
 //
@@ -203,7 +203,7 @@ func (e *Engine) StartSession(ctx context.Context) (retro.SessionID, error) {
 	defer spnStartSession.Finish()
 
 	// Generate a session id using the provided factory
-	sidStr, err := e.idFactory()
+	sidStr, err := e.idFn()
 	if err != nil {
 		return "", Error{"generate-id-for-session", err, "id factory returned an error when genrating an id"}
 	}
@@ -299,7 +299,7 @@ func (e *Engine) guardHasID(a retro.Aggregate) (retro.PartitionName, error) {
 		err error
 	)
 	if len(name) == 0 {
-		var id, err = e.idFactory()
+		var id, err = e.idFn()
 		if err != nil {
 			return "", err
 		}
