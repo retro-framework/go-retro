@@ -56,7 +56,7 @@ func (fssc *Start) SetState(s retro.Aggregate) error {
 	}
 }
 
-func (fssc *Start) Apply(context.Context, io.Writer, retro.Session, retro.Repository) (retro.CommandResult, error) {
+func (fssc *Start) Apply(context.Context, io.Writer, retro.Session, retro.Repo) (retro.CommandResult, error) {
 	return retro.CommandResult{fssc.s: []retro.Event{DummyStartSessionEvent{"hello world"}}}, nil
 }
 
@@ -84,7 +84,7 @@ func (dc *dummyCmd) SetState(s retro.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ retro.Session, _ retro.Repository) (retro.CommandResult, error) {
+func (dc *dummyCmd) Apply(_ context.Context, _ io.Writer, _ retro.Session, _ retro.Repo) (retro.CommandResult, error) {
 	dc.wasApplied = true
 	return retro.CommandResult{dc.s: []retro.Event{DummyEvent{}}}, nil
 }
@@ -102,7 +102,7 @@ type resolverDouble struct {
 	resolveFn retro.ResolveFn
 }
 
-func (rd resolverDouble) Resolve(ctx context.Context, repository retro.Repository, buf []byte) (retro.Command, error) {
+func (rd resolverDouble) Resolve(ctx context.Context, repository retro.Repo, buf []byte) (retro.Command, error) {
 	return rd.resolveFn(ctx, repository, buf)
 }
 
@@ -124,7 +124,7 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repo, _ []byte) (retro.Command, error) {
 				var (
 					fssc = &Start{}
 					s    = &dummySession{}
@@ -158,7 +158,7 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repo, _ []byte) (retro.Command, error) {
 				var (
 					fssc = &Start{}
 					s    = &dummySession{}
@@ -201,7 +201,7 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository = repository.NewSimpleRepository(objdb, refdb, evM)
 			idFn       = func() (string, error) { return "123-stub-id", nil }
 			clock      = &Predictable5sJumpClock{}
-			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
+			resolver   = ResolverDouble(func(_ context.Context, _ retro.Repo, _ []byte) (retro.Command, error) {
 				var (
 					fssc = &Start{}
 					s    = &dummySession{}
@@ -235,7 +235,7 @@ func Test_Engine_StartSession(t *testing.T) {
 			repository    = repository.NewSimpleRepository(objdb, refdb, eventManifest)
 			idFn          = func() (string, error) { return fmt.Sprintf("%x", rand.Uint64()), nil }
 			clock         = &Predictable5sJumpClock{}
-			resolver      = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
+			resolver      = ResolverDouble(func(_ context.Context, _ retro.Repo, _ []byte) (retro.Command, error) {
 				return nil, resolverErr
 			})
 		)
@@ -271,7 +271,7 @@ func Test_Engine_Apply(t *testing.T) {
 			repository    = repository.NewSimpleRepository(objdb, refdb, eventManifest)
 			idFn          = func() (string, error) { return "123-stub-id", nil }
 			clock         = &Predictable5sJumpClock{}
-			resolver      = ResolverDouble(func(_ context.Context, _ retro.Repository, _ []byte) (retro.Command, error) {
+			resolver      = ResolverDouble(func(_ context.Context, _ retro.Repo, _ []byte) (retro.Command, error) {
 				var (
 					fssc = &Start{}
 					s    = &dummySession{}

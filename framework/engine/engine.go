@@ -27,7 +27,7 @@ func (e Error) Error() string {
 	return fmt.Sprintf("engine: op: %q err: %q msg: %q", e.Op, e.Err, e.Msg)
 }
 
-func New(d retro.Depot, r retro.Repository, resolver retro.Resolver, i retro.IDFn, c retro.Clock, a retro.AggregateManifest, e retro.EventManifest) Engine {
+func New(d retro.Depot, r retro.Repo, resolver retro.Resolver, i retro.IDFn, c retro.Clock, a retro.AggregateManifest, e retro.EventManifest) Engine {
 	return Engine{
 		depot:        d,
 		repository:   r,
@@ -42,7 +42,7 @@ func New(d retro.Depot, r retro.Repository, resolver retro.Resolver, i retro.IDF
 
 type Engine struct {
 	depot      retro.Depot
-	repository retro.Repository
+	repository retro.Repo
 
 	resolver retro.Resolver
 	idFn     retro.IDFn

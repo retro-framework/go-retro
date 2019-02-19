@@ -43,7 +43,7 @@ func (cmd *CreateIdentity) SetArgs(a retro.CommandArgs) error {
 	return nil
 }
 
-func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session retro.Session, repo retro.Repository) (retro.CommandResult, error) {
+func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session retro.Session, repo retro.Repo) (retro.CommandResult, error) {
 
 	// if repo.Exists(ctx, cmd.identity.Name()) {
 	// 	return nil, fmt.Errorf("identity already exists with name %q", cmd.identity.Name())

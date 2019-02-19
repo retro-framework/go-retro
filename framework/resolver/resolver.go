@@ -55,7 +55,7 @@ func New(aggm retro.AggregateManifest, cmdm retro.CommandManifest) retro.Resolve
 // this to work the command registered under that name must implement retro.CommandWithArgs. The
 // arguments will be parsed into a copy of the registered arg type for this command and passed to
 // the command the command's "SetArgs" method.
-func (r *resolver) Resolve(ctx context.Context, repository retro.Repository, b []byte) (retro.Command, error) {
+func (r *resolver) Resolve(ctx context.Context, repository retro.Repo, b []byte) (retro.Command, error) {
 
 	spnResolve, ctx := opentracing.StartSpanFromContext(ctx, "resolver.Resolve")
 	defer spnResolve.Finish()
@@ -94,7 +94,7 @@ func (r *resolver) Resolve(ctx context.Context, repository retro.Repository, b [
 //
 // It may make sense to expose this as a public API to avoid the serialization
 // overhead of JSON someday.
-func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, repository retro.Repository, cmdDesc commandDesc) (retro.Command, error) {
+func (r *resolver) resolve(ctx context.Context, spnResolve opentracing.Span, repository retro.Repo, cmdDesc commandDesc) (retro.Command, error) {
 
 	// cmdDesc handles the details for us, we may fall-back
 	// to looking up "_" if no path was specified.

@@ -33,7 +33,7 @@ type double struct {
 	fixture retro.EventFixture
 }
 
-func NewEmptyMemory() retro.Repository {
+func NewEmptyMemory() retro.Repo {
 	return simple{
 		objdb:         &memory.ObjectStore{},
 		refdb:         &memory.RefStore{},
@@ -42,7 +42,7 @@ func NewEmptyMemory() retro.Repository {
 	}
 }
 
-func NewSimpleRepository(odb object.DB, rdb ref.DB, evM retro.EventManifest) retro.Repository {
+func NewSimpleRepository(odb object.DB, rdb ref.DB, evM retro.EventManifest) retro.Repo {
 	return simple{
 		objdb:         odb,
 		refdb:         rdb,
@@ -51,7 +51,7 @@ func NewSimpleRepository(odb object.DB, rdb ref.DB, evM retro.EventManifest) ret
 	}
 }
 
-func NewSimpleRepositoryDouble(evFix retro.EventFixture) retro.Repository {
+func NewSimpleRepositoryDouble(evFix retro.EventFixture) retro.Repo {
 	return double{evFix}
 }
 

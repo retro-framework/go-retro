@@ -28,7 +28,7 @@ func (cmd *HideIdentity) SetState(agg retro.Aggregate) error {
 	}
 }
 
-func (cmd *HideIdentity) Apply(ctxt context.Context, w io.Writer, session retro.Session, repo retro.Repository) (retro.CommandResult, error) {
+func (cmd *HideIdentity) Apply(ctxt context.Context, w io.Writer, session retro.Session, repo retro.Repo) (retro.CommandResult, error) {
 
 	s := session.(*aggregates.Session)
 	if !s.HasIdentity {

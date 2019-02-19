@@ -53,7 +53,7 @@ func (dc *dummyCmd) SetState(s retro.Aggregate) error {
 	}
 }
 
-func (dc *dummyCmd) Apply(context.Context, io.Writer, retro.Session, retro.Repository) (retro.CommandResult, error) {
+func (dc *dummyCmd) Apply(context.Context, io.Writer, retro.Session, retro.Repo) (retro.CommandResult, error) {
 	if len(dc.s.seenEvents) != 2 {
 		return nil, errors.New(fmt.Sprintf("can't apply ExtraEvent to dummyAggregate unless it has seen precisely two events so far (has seen %d)", len(dc.s.seenEvents)))
 	}

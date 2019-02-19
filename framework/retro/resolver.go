@@ -8,5 +8,5 @@ import "context"
 // func returned will usually be a function on a struct type
 // which the resolver will instantiate and prepare for execution.
 type Resolver interface {
-	Resolve(context.Context, Repository, []byte) (Command, error)
+	Resolve(context.Context, Repo, []byte) (Command, error)
 }

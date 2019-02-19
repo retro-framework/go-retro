@@ -5,7 +5,7 @@ import "context"
 // Repository frames all the behaviours we need to play back events
 // and have a domain model which is unconcerned with storage and
 // simply behaves as though the entities exist readily in memory.
-type Repository interface {
+type Repo interface {
 	Claim(context.Context, string) bool
 	Release(string)
 	Exists(context.Context, PartitionName) bool

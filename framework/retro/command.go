@@ -24,6 +24,6 @@ import (
 // current session, and a Depot which it may use to look up any other
 // Aggregates that it needs to apply business logic.
 type Command interface {
-	Apply(context.Context, io.Writer, Session, Repository) (CommandResult, error)
+	Apply(context.Context, io.Writer, Session, Repo) (CommandResult, error)
 	SetState(Aggregate) error
 }
