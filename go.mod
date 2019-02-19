@@ -11,12 +11,13 @@ require (
 	github.com/eapache/go-xerial-snappy v0.0.0-20160609142408-bb955e01b934 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/go-logfmt/logfmt v0.3.0 // indirect
-	github.com/go-redis/redis v6.8.3+incompatible // indirect
+	github.com/go-redis/redis v6.8.3+incompatible
 	github.com/gobuffalo/flect v0.1.0
 	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/google/go-cmp v0.2.0
 	github.com/gorilla/handlers v1.4.0
+	github.com/gorilla/mux v1.7.0
 	github.com/influxdata/influxdb v1.7.4
 	github.com/influxdata/platform v0.0.0-20190117200541-d500d3cf5589 // indirect
 	github.com/karrick/godirwalk v1.7.3 // indirect

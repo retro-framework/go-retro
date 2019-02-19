@@ -7,9 +7,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+
 	"github.com/influxdata/influxdb/client/v2"
 	"github.com/namsral/flag"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -18,6 +21,8 @@ import (
 	"github.com/retro-framework/go-retro/aggregates"
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/events"
+
+	"github.com/retro-framework/go-retro/demo-server/app"
 
 	"github.com/retro-framework/go-retro/framework/depot"
 	"github.com/retro-framework/go-retro/framework/engine"
@@ -45,7 +50,14 @@ func main() {
 	flag.StringVar(&storagePath, "storage_path", "/tmp", "storage dir for the depot")
 	flag.Parse()
 
+	storagePath, err := filepath.Abs(storagePath)
+	if err != nil {
+		log.Fatal(err)
+	}
 	log.Println("Using Storage Path:", storagePath)
+
+	templatePath, err := filepath.Abs("./app/tpl/")
+	log.Println("Using Template Path:", templatePath)
 
 	collector, err := zipkin.NewHTTPCollector("http://localhost:9411/api/v1/spans")
 	if err != nil {
@@ -66,11 +78,12 @@ func main() {
 		odb   = &fs.ObjectStore{BasePath: storagePath}
 		refdb = &fs.RefStore{BasePath: storagePath}
 
-		objDBSrv = objectDBServer{odb}
-		refDBSrv = refDBServer{refdb}
-		d        = depot.NewSimple(odb, refdb)
-		r        = repository.NewSimpleRepository(odb, refdb, events.DefaultManifest)
-		idFn     = func() (string, error) {
+		objDBSrv    = objectDBServer{odb}
+		refDBSrv    = refDBServer{refdb}
+		d           = depot.NewSimple(odb, refdb)
+		r           = repository.NewSimpleRepository(odb, refdb, events.DefaultManifest)
+		projections = make(map[string]app.Projection)
+		idFn        = func() (string, error) {
 			b := make([]byte, 12)
 			_, err := rand.Read(b)
 			if err != nil {
@@ -82,20 +95,38 @@ func main() {
 		e   = engine.New(d, r, rFn, idFn, clock{}, aggregates.DefaultManifest, events.DefaultManifest)
 	)
 
-	mux := http.NewServeMux()
+	rMux := mux.NewRouter()
 
-	mux.Handle("/", handlers.CombinedLoggingHandler(os.Stdout, engineServer{e}))
+	rMux.Handle("/list/aggregates", aggregateManifestServer{aggregates.DefaultManifest}).Methods("GET")
+	rMux.Handle("/list/commands", commandManifestServer{commands.DefaultManifest}).Methods("GET")
+	rMux.Handle("/list/events", eventManifestServer{events.DefaultManifest}).Methods("GET")
+	rMux.Handle("/obj/{hash}", objDBSrv).Methods("GET")
+	rMux.Handle("/ref/", refDBSrv).Methods("GET")
+	rMux.Handle("/", engineServer{e}).Methods("POST")
 
-	mux.Handle("/list/aggregates", handlers.CombinedLoggingHandler(os.Stdout, aggregateManifestServer{aggregates.DefaultManifest}))
-	mux.Handle("/list/commands", handlers.CombinedLoggingHandler(os.Stdout, commandManifestServer{commands.DefaultManifest}))
-	mux.Handle("/list/events", handlers.CombinedLoggingHandler(os.Stdout, eventManifestServer{events.DefaultManifest}))
+	var (
+		demoApp  = app.NewServer(e, templatePath)
+		profile  = demoApp.NewProfileServer()
+		appMount = "/demo-app"
+	)
+	var aMux = rMux.PathPrefix(appMount + "/").Subrouter()
+	aMux.HandleFunc("/", demoApp.IndexHandler).Methods("GET")
+	aMux.HandleFunc("/profiles/{name}", profile.ShowHandler).Methods("GET")
+	aMux.HandleFunc("/profile", demoApp.IndexHandler).Methods("POST")
+	aMux.Use(retroSessionMiddleware{e}.Middleware)
 
-	mux.Handle("/obj/", handlers.CombinedLoggingHandler(os.Stdout, objDBSrv))
-	mux.Handle("/ref/", handlers.CombinedLoggingHandler(os.Stdout, refDBSrv))
+	// Prints mounted routes
+	//
+	// rMux.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	// 	tpl, err1 := route.GetPathTemplate()
+	// 	met, err2 := route.GetMethods()
+	// 	fmt.Println(tpl, err1, met, err2)
+	// 	return nil
+	// })
 
 	s := &http.Server{
 		Addr:           listenAddr,
-		Handler:        mux,
+		Handler:        handlers.CombinedLoggingHandler(os.Stdout, rMux),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
@@ -164,4 +195,39 @@ func main() {
 	}()
 
 	log.Fatal(s.ListenAndServe())
+}
+
+// retroSessionMiddleware ensures that a started session is injected
+// into all requests.
+type retroSessionMiddleware struct {
+	e engine.Engine
+}
+
+func (rsm retroSessionMiddleware) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var (
+			err error
+			sid types.SessionID
+		)
+
+		var ctx = r.Context()
+
+		if sessionCookie, _ := r.Cookie("retroSessionID"); sessionCookie == nil {
+			sid, err = rsm.e.StartSession(ctx)
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+			cookie := http.Cookie{
+				Name:    "retroSessionID",
+				Value:   string(sid),
+				Path:    "/demo-app/",
+				Expires: time.Now().Add(6 * time.Hour),
+			}
+			http.SetCookie(w, &cookie)
+		} else {
+			sid = types.SessionID(sessionCookie.Value)
+		}
+		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, app.ContextKeySessionID, string(sid))))
+	})
 }

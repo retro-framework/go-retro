@@ -12,6 +12,13 @@ github.com/eapache/go-xerial-snappy
 github.com/eapache/queue
 # github.com/go-logfmt/logfmt v0.3.0
 github.com/go-logfmt/logfmt
+# github.com/go-redis/redis v6.8.3+incompatible
+github.com/go-redis/redis
+github.com/go-redis/redis/internal
+github.com/go-redis/redis/internal/consistenthash
+github.com/go-redis/redis/internal/hashtag
+github.com/go-redis/redis/internal/pool
+github.com/go-redis/redis/internal/proto
 # github.com/gobuffalo/flect v0.1.0
 github.com/gobuffalo/flect
 # github.com/gogo/protobuf v1.2.0
@@ -27,6 +34,8 @@ github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
 # github.com/gorilla/handlers v1.4.0
 github.com/gorilla/handlers
+# github.com/gorilla/mux v1.7.0
+github.com/gorilla/mux
 # github.com/influxdata/influxdb v1.7.4
 github.com/influxdata/influxdb/client/v2
 github.com/influxdata/influxdb/models

@@ -19,6 +19,13 @@ services:
       - 9411:9411
     depends_on:
       - zipkin-storage
+  redis:
+    logging:
+      driver: none
+    image: redis/redis
+    container_name: redis
+    ports:
+      - 6379:6379
   influxdb:
     logging:
       driver: none

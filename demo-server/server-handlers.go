@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/retro-framework/go-retro/framework/engine"
 	"github.com/retro-framework/go-retro/framework/object"
@@ -94,54 +95,41 @@ func (srv objectDBServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var (
-		parts   []string
 		jsonEnc = json.NewEncoder(w)
 		jp      = packing.NewJSONPacker()
 	)
 
-	for _, part := range strings.Split(r.URL.Path, "/") {
-		if len(part) > 0 {
-			parts = append(parts, part)
-		}
-	}
-
-	switch len(parts) {
-	case 2:
-		hashedObj, err := srv.db.RetrievePacked(parts[1])
-		if err != nil {
-			log.Println(err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		switch hashedObj.Type() {
-		case packing.ObjectTypeCheckpoint:
-			cp, _ := jp.UnpackCheckpoint(hashedObj.Contents())
-			jsonEnc.Encode(cp)
-		case packing.ObjectTypeAffix:
-			af, _ := jp.UnpackAffix(hashedObj.Contents())
-			jsonEnc.Encode(af)
-		case packing.ObjectTypeEvent:
-			var evPlaceholder map[string]interface{}
-			evName, evEncodedString, _ := jp.UnpackEvent(hashedObj.Contents())
-			err := json.Unmarshal(evEncodedString, &evPlaceholder)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error unmarshalling %s: %s\n", evEncodedString, err)
-			}
-			jsonEnc.Encode(struct {
-				Name    string      `json:"name"`
-				Payload interface{} `json:"payload"`
-			}{evName, evPlaceholder})
-		default:
-			http.Error(w, http.StatusText(http.StatusExpectationFailed), http.StatusExpectationFailed)
-			return
-		}
-		break
-	default:
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+	var vars = mux.Vars(r)
+	hashedObj, err := srv.db.RetrievePacked(vars["hash"])
+	if err != nil {
+		log.Println(err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	switch hashedObj.Type() {
+	case packing.ObjectTypeCheckpoint:
+		cp, _ := jp.UnpackCheckpoint(hashedObj.Contents())
+		jsonEnc.Encode(cp)
+	case packing.ObjectTypeAffix:
+		af, _ := jp.UnpackAffix(hashedObj.Contents())
+		jsonEnc.Encode(af)
+	case packing.ObjectTypeEvent:
+		var evPlaceholder map[string]interface{}
+		evName, evEncodedString, _ := jp.UnpackEvent(hashedObj.Contents())
+		err := json.Unmarshal(evEncodedString, &evPlaceholder)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error unmarshalling %s: %s\n", evEncodedString, err)
+		}
+		jsonEnc.Encode(struct {
+			Name    string      `json:"name"`
+			Payload interface{} `json:"payload"`
+		}{evName, evPlaceholder})
+	default:
+		http.Error(w, http.StatusText(http.StatusExpectationFailed), http.StatusExpectationFailed)
+		return
+	}
 }
 
 type refDBServer struct {
