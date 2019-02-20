@@ -71,5 +71,8 @@ github.com/rcrowley/go-metrics
 github.com/zyedidia/glob
 # golang.org/x/net v0.0.0-20181023162649-9b4f9f5ad519
 golang.org/x/net/context
+# golang.org/x/xerrors v0.0.0-20190212162355-a5947ffaace3
+golang.org/x/xerrors
+golang.org/x/xerrors/internal
 # gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2

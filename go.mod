@@ -32,6 +32,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20180125231941-8732c616f529 // indirect
 	github.com/uudashr/gopkgs v1.3.2 // indirect
 	github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
+	golang.org/x/xerrors v0.0.0-20190212162355-a5947ffaace3
 	google.golang.org/genproto v0.0.0-20181101192439-c830210a61df // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 	gopkg.in/yaml.v2 v2.2.2
