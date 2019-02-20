@@ -1,0 +1,29 @@
+{{ define "listing/form" }}
+<h1>New Listing</h1>
+<form action="{{ urlFor . `/listing/new` }}" method="POST" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="listingName">Name</label>
+        <input type="text" class="form-control" name="name" id="listingName" aria-describedby="emailHelp" placeholder="Listing Name (e.g. My Awesome Listing, Stuff For Sale)">
+        <small id="listingNameHelp" class="form-text text-muted">Pick a catchy title, it will help people
+            find your listing!</small>
+    </div>
+    <div class="form-group">
+        <label for="listingDesc">Description</label>
+        <textarea class="form-control" name="desc" id=" listingDesc" rows="10"></textarea>
+    </div>
+    <div class="form-group">
+        <label for="listingStartPrice">Start Price</label>
+        <input type="number" name="startPrice" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label for="listingImages">Images</label>
+        <input type="file" name="images" class="form-control-file" multiple />
+        <small id="listingImages" class="form-text text-muted">Select more than one!</small>
+    </div>
+    <div class="form-group form-check">
+        <input type="checkbox" name="publishNow" class="form-check-input" id="listingPublishNow">
+        <label class="form-check-label" for="listingPublishNow">Publish immediately?</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+{{ end }}

@@ -1,0 +1,24 @@
+{{ define "listing/new" }}
+
+<!DOCTYPE html>
+<html lang="en">
+{{ template "header" . }}
+
+<body>
+    {{ template "navbar" .}}
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                {{ template "listing/form" . }}
+            </div>
+            <div class="col">
+                <img src="https://media.istockphoto.com/vectors/hand-holding-auction-paddle-vector-id658825934?k=6&m=658825934&s=612x612&w=0&h=fmFTK32Yy4-p4z6hQOVqPu-x9nJimw3YyrDuxYYh_rU="
+                    width="80%" />
+            </div>
+        </div>
+    </div>
+    {{ template "footer" . }}
+</body>
+
+</html>
+{{ end }}

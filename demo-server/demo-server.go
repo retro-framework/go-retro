@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
-	"github.com/influxdata/influxdb/client/v2"
 	"github.com/namsral/flag"
 	opentracing "github.com/opentracing/opentracing-go"
 	zipkin "github.com/openzipkin/zipkin-go-opentracing"
@@ -23,6 +22,7 @@ import (
 	"github.com/retro-framework/go-retro/events"
 
 	"github.com/retro-framework/go-retro/demo-server/app"
+	"github.com/retro-framework/go-retro/demo-server/app/projections"
 
 	"github.com/retro-framework/go-retro/framework/depot"
 	"github.com/retro-framework/go-retro/framework/engine"
@@ -32,6 +32,7 @@ import (
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 
 	_ "github.com/retro-framework/go-retro/commands/identity"
+	_ "github.com/retro-framework/go-retro/commands/listing"
 	_ "github.com/retro-framework/go-retro/commands/session"
 	_ "github.com/retro-framework/go-retro/commands/widgets_app"
 )
@@ -46,6 +47,8 @@ func main() {
 		storagePath string
 		listenAddr  = fmt.Sprintf(":%s", os.Getenv("PORT"))
 	)
+
+	var ctx = context.Background()
 
 	flag.StringVar(&storagePath, "storage_path", "/tmp", "storage dir for the depot")
 	flag.Parse()
@@ -78,12 +81,12 @@ func main() {
 		odb   = &fs.ObjectStore{BasePath: storagePath}
 		refdb = &fs.RefStore{BasePath: storagePath}
 
-		objDBSrv    = objectDBServer{odb}
-		refDBSrv    = refDBServer{refdb}
-		d           = depot.NewSimple(odb, refdb)
-		r           = repository.NewSimpleRepository(odb, refdb, events.DefaultManifest)
-		projections = make(map[string]app.Projection)
-		idFn        = func() (string, error) {
+		objDBSrv = objectDBServer{odb}
+		refDBSrv = refDBServer{refdb}
+		d        = depot.NewSimple(odb, refdb)
+		r        = repository.NewSimpleRepository(odb, refdb, events.DefaultManifest)
+		_ps      = make(map[string]app.Projection)
+		idFn     = func() (string, error) {
 			b := make([]byte, 12)
 			_, err := rand.Read(b)
 			if err != nil {
@@ -105,12 +108,15 @@ func main() {
 	rMux.Handle("/apply", engineServer{e}).Methods("POST")
 
 	var (
-		demoApp  = app.NewServer(e, templatePath, projections)
-		profile  = demoApp.NewProfileServer()
 		appMount = "/demo-app"
+		demoApp  = app.NewServer(e, templatePath, appMount, _ps)
+		profile  = demoApp.NewProfileServer()
+		listing  = demoApp.NewListingServer()
 	)
-	var aMux = rMux.PathPrefix(appMount + "/").Subrouter()
+	var aMux = rMux.PathPrefix(appMount).Subrouter()
+	aMux.HandleFunc("", demoApp.IndexHandler).Methods("GET")
 	aMux.HandleFunc("/", demoApp.IndexHandler).Methods("GET")
+	aMux.HandleFunc("/listing/new", listing.NewHandler).Methods("GET", "POST")
 	aMux.HandleFunc("/profiles/{name}", profile.ShowHandler).Methods("GET")
 	aMux.HandleFunc("/profile", demoApp.IndexHandler).Methods("POST")
 	aMux.Use(retroSessionMiddleware{e}.Middleware)
@@ -132,67 +138,8 @@ func main() {
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	go func() {
-		var (
-			influxDBName        = "retrov1"
-			ctx                 = context.Background()
-			everything          = d.Watch(ctx, "*")
-			influxHTTPClient, _ = client.NewHTTPClient(client.HTTPConfig{
-				Addr: "http://localhost:8086",
-			})
-		)
-		res, err := influxHTTPClient.Query(client.NewQuery("CREATE DATABASE "+influxDBName, "", ""))
-		if err != nil {
-			fmt.Println("err creating database", err)
-		}
-		if res.Error() != nil {
-			fmt.Println("err creating database", res.Error())
-		}
-		for {
-			everythingEvents, err := everything.Next(ctx)
-			if err == depot.Done {
-				continue
-			}
-			if err != nil {
-				fmt.Println("err", err)
-				return
-			}
-			if everythingEvents != nil {
-				go func(evIter retro.EventIterator) {
-					for {
-						var ev, err = evIter.Next(ctx)
-						if err == depot.Done {
-							continue
-						}
-						if err != nil {
-							fmt.Println("err", err)
-							return
-						}
-						if ev != nil {
-							bp, _ := client.NewBatchPoints(client.BatchPointsConfig{
-								Database:  influxDBName,
-								Precision: "s",
-							})
-							var tags = map[string]string{
-								"name":      ev.Name(),
-								"partition": evIter.Pattern(),
-							}
-							var fields = map[string]interface{}{"count": 1}
-							pt, err := client.NewPoint("events", tags, fields, ev.Time())
-							if err != nil {
-								fmt.Println("Error: ", err.Error())
-							}
-							bp.AddPoint(pt)
-							err = influxHTTPClient.Write(bp)
-							if err != nil {
-								fmt.Println("err writing to influxdb", err)
-							}
-						}
-					}
-				}(everythingEvents)
-			}
-		}
-	}()
+	go projections.PublishDataToInfluxDB(ctx, d)
+	go projections.PublishListingsToElasticSearch(ctx, d)
 
 	log.Fatal(s.ListenAndServe())
 }
