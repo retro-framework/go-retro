@@ -1,4 +1,4 @@
-version: '2'
+version: "2"
 
 services:
   zipkin-storage:
@@ -19,6 +19,27 @@ services:
       - 9411:9411
     depends_on:
       - zipkin-storage
+  cerebro:
+    logging:
+      driver: none
+    image: yannart/cerebro
+    container_name: cerebro
+    ports:
+      - 9000:9000
+    depends_on:
+      - elasticsearch
+    links:
+      - elasticsearch
+  elasticsearch:
+    logging:
+      driver: none
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.5.2
+    container_name: elasticsearch
+    ports:
+      - 9200:9200
+      - 9300:9300
+    env_file:
+      - es.env
   redis:
     logging:
       driver: none
