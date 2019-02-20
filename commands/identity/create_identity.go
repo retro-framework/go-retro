@@ -47,15 +47,6 @@ func (cmd *CreateIdentity) Apply(ctx context.Context, w io.Writer, session retro
 
 	var newIdentity = &aggregates.Identity{}
 
-	// if repo.Exists(ctx, cmd.identity.Name()) {
-	// 	return nil, fmt.Errorf("identity already exists with name %q", cmd.identity.Name())
-	// }
-
-	// var s = session.(*aggregates.Session)
-	// if s.HasIdentity && s.IdentityName == cmd.identity.Name() {
-	// 	return nil, fmt.Errorf("session %s is already associated with an identity named %s (%t)", s.Name(), cmd.identity.Name(), exists)
-	// }
-
 	var ownEvents = []retro.Event{
 		events.SetDisplayName{Name: cmd.args.Name},
 	}
