@@ -420,9 +420,16 @@ func (e *Engine) persistEvs(ctx context.Context, sid retro.SessionID, cmdDesc []
 	}
 	packedeObjs = append(packedeObjs, packedAffix)
 
+	var nameStruct = struct {
+		Path string `json:"path"`
+		Name string `json:"name"`
+	}{}
+
+	json.Unmarshal(cmdDesc, &nameStruct)
+
 	checkpoint := packing.Checkpoint{
 		AffixHash:   packedAffix.Hash(),
-		CommandDesc: cmdDesc,
+		CommandDesc: []byte(filepath.Join(nameStruct.Path, nameStruct.Name)),
 		Fields: map[string]string{
 			"session": string(sid),
 			"date":    e.clock.Now().Format(time.RFC3339),
