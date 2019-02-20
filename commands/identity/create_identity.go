@@ -22,16 +22,8 @@ type CreateIdentity struct {
 	args args
 }
 
-// SetState receieves an anonymous Aggregate and must type assert
-// it to the correct type (Identity).
 func (cmd *CreateIdentity) SetState(agg retro.Aggregate) error {
-	// if typedAggregate, ok := agg.(*aggregates.Identity); ok {
-	// 	cmd.identity = typedAggregate
-	// 	return nil
-	// } else {
-	// 	return errors.New("can't cast")
-	// }
-	return nil // we don't need access to the WidgetsApp
+	return nil
 }
 
 func (cmd *CreateIdentity) SetArgs(a retro.CommandArgs) error {

@@ -27,26 +27,19 @@ type Start struct {
 	session *aggregates.Session
 }
 
-// SetState receieves an anonymous Aggregate and must type assert
-// it to the correct type (Session).
 func (cmd *Start) SetState(agg retro.Aggregate) error {
 	if s, ok := agg.(*aggregates.Session); ok {
 		cmd.session = s
 		return nil
-	} else {
-		return errors.New("can't cast")
 	}
+	return errors.New("can't cast")
 }
 
 // Apply for sessions is effectively a noop in the default implementation
 // it need only make a record in the data store that a session has been
 // created and that we can look it up in the future.
 func (cmd *Start) Apply(ctxt context.Context, _ io.Writer, _ retro.Session, repo retro.Repo) (retro.CommandResult, error) {
-	return retro.CommandResult{
-		cmd.session: []retro.Event{
-			events.StartSession{},
-		},
-	}, nil
+	return retro.CommandResult{cmd.session: []retro.Event{events.StartSession{}}}, nil
 }
 
 func init() {

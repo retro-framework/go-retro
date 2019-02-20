@@ -17,15 +17,12 @@ type HideIdentity struct {
 	identity *aggregates.Identity
 }
 
-// SetState receieves an anonymous Aggregate and must type assert
-// it to the correct type (Identity).
 func (cmd *HideIdentity) SetState(agg retro.Aggregate) error {
 	if typedAggregate, ok := agg.(*aggregates.Identity); ok {
 		cmd.identity = typedAggregate
 		return nil
-	} else {
-		return errors.New("can't cast")
 	}
+	return errors.New("can't cast")
 }
 
 func (cmd *HideIdentity) Apply(ctxt context.Context, w io.Writer, session retro.Session, repo retro.Repo) (retro.CommandResult, error) {

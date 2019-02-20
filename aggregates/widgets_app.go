@@ -31,6 +31,10 @@ func (wa *WidgetsApp) ReactTo(ev retro.Event) error {
 	}
 }
 
+func (wa WidgetsApp) CreationOfListingsAllowed() bool {
+	return true
+}
+
 func init() {
 	Register("_", &WidgetsApp{})
 }
