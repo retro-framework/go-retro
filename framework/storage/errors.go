@@ -1,10 +1,10 @@
 package storage
 
 import (
-	"errors"
+	"golang.org/x/xerrors"
 )
 
 var (
-	ErrUnknownRef         = errors.New("storage: ref unknown")
-	ErrUnknownSymbolicRef = errors.New("storage: symbolic ref unknown")
+	ErrUnknownRef         = xerrors.New("storage: ref unknown")
+	ErrUnknownSymbolicRef = xerrors.New("storage: symbolic ref unknown")
 )

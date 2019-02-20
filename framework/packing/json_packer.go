@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/pkg/errors"
 	"github.com/retro-framework/go-retro/framework/retro"
 )
@@ -98,8 +100,7 @@ func (jp *JSONPacker) UnpackAffix(b []byte) (Affix, error) {
 		res[partitionName] = append(res[partitionName], evHash)
 	}
 	if err := scanner.Err(); err != nil {
-		// TODO: Wrap err properly
-		return nil, err
+		return nil, xerrors.Errorf("json-packer: %s: %w", err, ErrAffixScan)
 	}
 
 	return res, nil
@@ -137,7 +138,7 @@ func (jp *JSONPacker) UnpackCheckpoint(b []byte) (Checkpoint, error) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return res, err // TODO: Wrap properly
+		xerrors.Errorf("json-packer: %s: %w", err, ErrCheckpointScan)
 	}
 	return res, nil
 }
@@ -165,7 +166,7 @@ func (jp *JSONPacker) PackAffix(affix Affix) (retro.HashedObject, error) {
 	for i, partition := range partitions {
 		if len(partition) == 0 {
 			// TODO: test this case
-			return nil, fmt.Errorf("empty partition name (usually means bad test fixtures)")
+			return nil, ErrInvalidPartitioName
 		}
 		// The following line can be misleading. Some affixes
 		// contain only one event and the index (i) will be 0.
