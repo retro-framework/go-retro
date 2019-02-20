@@ -45,8 +45,17 @@ github.com/influxdata/platform/models
 github.com/influxdata/platform/pkg/escape
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 github.com/kr/logfmt
+# github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329
+github.com/mailru/easyjson
+github.com/mailru/easyjson/jlexer
+github.com/mailru/easyjson/jwriter
+github.com/mailru/easyjson/buffer
 # github.com/namsral/flag v1.7.4-pre
 github.com/namsral/flag
+# github.com/olivere/elastic v6.2.16+incompatible
+github.com/olivere/elastic
+github.com/olivere/elastic/config
+github.com/olivere/elastic/uritemplates
 # github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492
 github.com/opentracing-contrib/go-observer
 # github.com/opentracing/opentracing-go v1.0.2

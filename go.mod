@@ -16,14 +16,18 @@ require (
 	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
 	github.com/google/go-cmp v0.2.0
+	github.com/google/pprof v0.0.0-20190208070709-b421f19a5c07 // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.7.0
+	github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6 // indirect
 	github.com/influxdata/influxdb v1.7.4
 	github.com/influxdata/platform v0.0.0-20190117200541-d500d3cf5589 // indirect
 	github.com/karrick/godirwalk v1.7.3 // indirect
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515 // indirect
+	github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329 // indirect
 	github.com/mattn/go-shellwords v1.0.3 // indirect
 	github.com/namsral/flag v1.7.4-pre
+	github.com/olivere/elastic v6.2.16+incompatible
 	github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492 // indirect
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/openzipkin/zipkin-go-opentracing v0.3.2
@@ -32,6 +36,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20180125231941-8732c616f529 // indirect
 	github.com/uudashr/gopkgs v1.3.2 // indirect
 	github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
+	golang.org/x/arch v0.0.0-20181203225421-5a4828bb7045 // indirect
 	golang.org/x/xerrors v0.0.0-20190212162355-a5947ffaace3
 	google.golang.org/genproto v0.0.0-20181101192439-c830210a61df // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
