@@ -417,7 +417,7 @@ func Test_Engine_Apply(t *testing.T) {
 			test.H(t).IsNil(err)
 
 			var b bytes.Buffer
-			resStr, err := e.Apply(ctx, &b, sid, []byte(`{"path":"agg/123", "name":"dummyCmd"}`))
+			resStr, err := e.Apply(ctx, &b, sid, []byte(`{"path":"	/123", "name":"dummyCmd"}`))
 
 			// Assert
 			test.H(t).NotNil(err)
@@ -583,25 +583,25 @@ func Test_Engine_Apply(t *testing.T) {
 				t.Fatal("apply failed, we wanted 'ok', got ", resStr)
 			}
 
-			var expected = `event:sha256:70df53d19786d92d1bfa4c2527bb819054495ea3756fcfd7d88e3d4c8fae3172
-event json dummy_event 2\u0000{}
-
-checkpoint:sha256:a2cf30072524ca53eae2f9f660bb91e11e8edaefce6b428f07a7cb95c58aa280
-checkpoint 169\u0000affix sha256:d45315bfa144411d8362ab68c56808ae92c20cfcbbf3abc35c57db5d08c871d5
-date 0001-01-01T00:00:00Z
-session 68656c6c6f
-
-{"path":"session/68656c6c6f","name":"Start"}
-
-
-checkpoint:sha256:bff4eee5edbee7ff29c9b02e039310e23f05d5b2e827a50bb118c41dfc3eebcd
-checkpoint 241\u0000affix sha256:d9d06f42ded214cc216cfa218110bdba475bb5383acd97df8ddd957455592095
-parent sha256:a2cf30072524ca53eae2f9f660bb91e11e8edaefce6b428f07a7cb95c58aa280
+			var expected = `checkpoint:sha256:0fbfebc09b8d49bb22618b2025e923efa801e69366c8ca781f7901930901b3ba
+checkpoint 220\u0000affix sha256:d9d06f42ded214cc216cfa218110bdba475bb5383acd97df8ddd957455592095
+parent sha256:4a99bc815b06677c29a79db0cdcd6f6a3faabb2851b04397a1a13a2c39e4ff8f
 date 0001-01-01T00:00:05Z
 session 68656c6c6f
 
-{"path":"agg/123", "name":"dummyCmd"}
+agg/123/dummyCmd
 
+
+checkpoint:sha256:4a99bc815b06677c29a79db0cdcd6f6a3faabb2851b04397a1a13a2c39e4ff8f
+checkpoint 149\u0000affix sha256:d45315bfa144411d8362ab68c56808ae92c20cfcbbf3abc35c57db5d08c871d5
+date 0001-01-01T00:00:00Z
+session 68656c6c6f
+
+session/68656c6c6f/Start
+
+
+event:sha256:70df53d19786d92d1bfa4c2527bb819054495ea3756fcfd7d88e3d4c8fae3172
+event json dummy_event 2\u0000{}
 
 affix:sha256:d45315bfa144411d8362ab68c56808ae92c20cfcbbf3abc35c57db5d08c871d5
 affix 99\u00000 dummy_session/68656c6c6f sha256:dd176fd38eaf032d39e35e39f04de8f30406bb0eaea55affe847f91cc923f69f
@@ -614,7 +614,7 @@ affix 101\u00000 dummy_aggregate/68656c6c6f sha256:70df53d19786d92d1bfa4c2527bb8
 event:sha256:dd176fd38eaf032d39e35e39f04de8f30406bb0eaea55affe847f91cc923f69f
 event json dummy_start_session_event 26\u0000{"Greeting":"hello world"}
 
-refs/heads/master -> sha256:bff4eee5edbee7ff29c9b02e039310e23f05d5b2e827a50bb118c41dfc3eebcd
+refs/heads/master -> sha256:0fbfebc09b8d49bb22618b2025e923efa801e69366c8ca781f7901930901b3ba
 `
 			if dd, ok := depot.(retro.DumpableDepot); !ok {
 				t.Fatal("could not upgrade depot to diff it")
