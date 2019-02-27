@@ -8,6 +8,12 @@ import "context"
 type Repo interface {
 	Claim(context.Context, string) bool
 	Release(string)
+
 	Exists(context.Context, PartitionName) bool
+
 	Rehydrate(context.Context, Aggregate, PartitionName) error
+}
+
+type Queryable interface {
+	Matching(context.Context, Matcher) (interface{}, error) // TODO: nail this down a bit
 }

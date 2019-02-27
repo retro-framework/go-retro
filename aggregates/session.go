@@ -9,8 +9,8 @@ import (
 type Session struct {
 	NamedAggregate
 
-	HasIdentity  bool
-	IdentityName retro.PartitionName
+	HasIdentity bool
+	IdentityURN retro.URN
 }
 
 func (agg *Session) ReactTo(aev retro.Event) error {
@@ -19,7 +19,7 @@ func (agg *Session) ReactTo(aev retro.Event) error {
 	case *events.AssociateIdentity:
 		if ev.Identity != nil {
 			agg.HasIdentity = true
-			agg.IdentityName = ev.Identity.Name()
+			agg.IdentityURN = ev.Identity.URN()
 		}
 	default:
 		return errors.Errorf("Session aggregate doesn't know what to do with %s", aev)

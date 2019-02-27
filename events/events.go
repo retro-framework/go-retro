@@ -84,3 +84,11 @@ func (m *manifest) List() map[string]interface{} {
 	}
 	return r
 }
+
+type WeakURNReference struct {
+	U retro.URN
+}
+
+func (wur WeakURNReference) URN() retro.URN {
+	return wur.U
+}

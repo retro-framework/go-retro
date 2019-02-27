@@ -12,14 +12,14 @@ import (
 	"github.com/retro-framework/go-retro/framework/retro"
 )
 
-type args struct {
+type CreateArgs struct {
 	Name            string `json:"name"`
 	PubliclyVisible bool   `json:"publiclyVisible"`
 	Avatar          []byte `json:"avatar"`
 }
 
 type CreateIdentity struct {
-	args args
+	args CreateArgs
 }
 
 func (cmd *CreateIdentity) SetState(agg retro.Aggregate) error {
@@ -27,7 +27,7 @@ func (cmd *CreateIdentity) SetState(agg retro.Aggregate) error {
 }
 
 func (cmd *CreateIdentity) SetArgs(a retro.CommandArgs) error {
-	if typedArgs, ok := a.(*args); ok {
+	if typedArgs, ok := a.(*CreateArgs); ok {
 		cmd.args = *typedArgs
 	} else {
 		return fmt.Errorf("can't typecast args")
@@ -63,5 +63,5 @@ func (cmd *CreateIdentity) Render(ctx context.Context, w io.Writer, session retr
 }
 
 func init() {
-	commands.RegisterWithArgs(&aggregates.WidgetsApp{}, &CreateIdentity{}, &args{})
+	commands.RegisterWithArgs(&aggregates.WidgetsApp{}, &CreateIdentity{}, &CreateArgs{})
 }

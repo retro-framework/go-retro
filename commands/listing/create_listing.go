@@ -44,6 +44,15 @@ func (cmd *CreateListing) SetArgs(a retro.CommandArgs) error {
 
 func (cmd *CreateListing) Apply(ctx context.Context, w io.Writer, session retro.Session, repo retro.Repo) (retro.CommandResult, error) {
 
+	if s, ok := session.(*aggregates.Session); ok {
+		if !s.HasIdentity {
+			return nil, fmt.Errorf("can't create listing on anon session")
+		}
+		// TODO: maybe recommend a command to issue first?
+	} else {
+		return nil, fmt.Errorf("can't cast session, world is broken")
+	}
+
 	if !cmd.wa.CreationOfListingsAllowed() {
 		return nil, fmt.Errorf("creation of listings is forbidden")
 	}

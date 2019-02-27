@@ -31,7 +31,7 @@ func (cmd *HideIdentity) Apply(ctxt context.Context, w io.Writer, session retro.
 	if !s.HasIdentity {
 		return nil, fmt.Errorf("you haven't authenticated or you don't have an identity")
 	}
-	if s.IdentityName != cmd.identity.Name() {
+	if s.IdentityURN != cmd.identity.URN() {
 		return nil, fmt.Errorf("Identity name on session does not match, this is not your profile")
 	}
 

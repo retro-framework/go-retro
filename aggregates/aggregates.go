@@ -20,6 +20,10 @@ func (na *NamedAggregate) Name() retro.PartitionName {
 	return na.PN
 }
 
+func (na *NamedAggregate) URN() retro.URN {
+	return retro.URN(na.PN)
+}
+
 func (na *NamedAggregate) SetName(pn retro.PartitionName) error {
 	if len(na.PN) > 0 {
 		return ErrAggregateNotAnonymous
