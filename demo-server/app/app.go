@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -14,9 +15,12 @@ import (
 	"strings"
 	"time"
 
-	listingCmd "github.com/retro-framework/go-retro/commands/listing"
 	"github.com/retro-framework/go-retro/framework/engine"
 	"github.com/retro-framework/go-retro/framework/retro"
+	"github.com/retro-framework/go-retro/projections"
+
+	identityCmd "github.com/retro-framework/go-retro/commands/identity"
+	listingCmd "github.com/retro-framework/go-retro/commands/listing"
 )
 
 type contextKey string
@@ -25,19 +29,34 @@ var (
 	ContextKeySessionID = contextKey("sessionID")
 )
 
+type displayListing struct {
+	Name string `json:"name"`
+	Desc string `json:"desc"`
+
+	Hash string `json:"hash"`
+}
+
 type renderCtx struct {
 	r *http.Request
 
-	messages map[string][]string
+	// not used?
+	Flash string
+
+	// wow this is bad!
+	Listings []projections.Listing
+	Profile  projections.Profile
+
+	// General thing
+	Sessions projections.Sessions
 }
 
 func NewServer(
 	e engine.Engine,
+	session projections.Sessions,
 	tplDir string,
 	mountPoint string,
-	projections map[string]Projection,
 ) server {
-	var s = &server{e: e}
+	var s = &server{e: e, session: session}
 	s.parseTemplates(e, tplDir)
 	return *s
 }
@@ -47,22 +66,26 @@ type Projection interface {
 }
 
 type server struct {
-	e           engine.Engine
-	template    *template.Template
-	mountpoint  string
-	projections map[string]Projection
+	e          engine.Engine
+	template   *template.Template
+	mountpoint string
+	session    projections.Sessions
 }
 
-func (s server) NewProfileServer() profile {
-	return profile{s}
+func (s server) NewProfileServer(projection projections.Profiles) profile {
+	return profile{s, projection}
 }
 
-func (s server) NewListingServer() listing {
-	return listing{s}
+func (s server) NewListingServer(projection projections.Listings) listing {
+	return listing{s, projection}
 }
 
 func (s server) IndexHandler(w http.ResponseWriter, req *http.Request) {
-	err := s.template.ExecuteTemplate(w, "index", renderCtx{req})
+	err := s.template.ExecuteTemplate(w, "index", renderCtx{
+		r:        req,
+		Sessions: s.session,
+		Flash:    GetFlash(w, req, "message"),
+	})
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
 	}
@@ -70,40 +93,27 @@ func (s server) IndexHandler(w http.ResponseWriter, req *http.Request) {
 
 type profile struct {
 	server
+	projection projections.Profiles
 }
 
 func (p profile) ShowHandler(w http.ResponseWriter, req *http.Request) {
-	// err := p.template.ExecuteTemplate(w, "profile", renderCtx{req})
-	// if err != nil {
-	// 	fmt.Fprintf(w, err.Error())
-	// }
+	err := p.template.ExecuteTemplate(w, "profile", renderCtx{
+		r:        req,
+		Sessions: p.session,
+		Flash:    GetFlash(w, req, "message"),
+	})
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	}
 }
 
-func (p profile) CreateHandler(w http.ResponseWriter, req *http.Request) {
-
-}
-
-func (p profile) UpdateHandler(w http.ResponseWriter, req *http.Request) {
-
-}
-
-type listing struct {
-	server
-}
-
-func (l listing) NewHandler(w http.ResponseWriter, req *http.Request) {
-
-	// var retroCmd = retro.CommandDesc{
-	// 	Name: "create_listing",
-	// }
-
-	// type createListingParams struct {
-	// 	Name string `json:"name"`
-	// 	Desc string `json:"desc"`
-	// }
-
+func (p profile) NewHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "GET" {
-		err := l.template.ExecuteTemplate(w, "listing/new", renderCtx{req})
+		err := p.template.ExecuteTemplate(w, "profile/new", renderCtx{
+			r:        req,
+			Sessions: p.session,
+			Flash:    GetFlash(w, req, "message"),
+		})
 		if err != nil {
 			fmt.Fprintf(w, err.Error())
 		}
@@ -114,7 +124,106 @@ func (l listing) NewHandler(w http.ResponseWriter, req *http.Request) {
 			fmt.Fprintf(w, err.Error())
 		}
 
-		// var cmd = listing.CreateListing{}
+		var cmd = struct {
+			Name string                 `json:"name"`
+			Args identityCmd.CreateArgs `json:"args"`
+		}{
+			Name: "create_identity",
+			Args: identityCmd.CreateArgs{Name: req.Form.Get("name")},
+		}
+
+		// Parse the publishNow into a bool
+		if s, err := strconv.ParseBool(req.Form.Get("visibilityPublic")); err != nil {
+			fmt.Fprintf(w, err.Error())
+		} else {
+			cmd.Args.PubliclyVisible = s
+		}
+
+		// Parse the files attached, if any
+		avatar, _, err := req.FormFile("avatar")
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+		defer avatar.Close()
+		avatarBuf, err := ioutil.ReadAll(avatar)
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+		cmd.Args.Avatar = avatarBuf
+
+		cmdB, err := json.Marshal(cmd)
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		var (
+			b            bytes.Buffer
+			sessionIDStr = req.Context().Value(ContextKeySessionID)
+		)
+
+		_, err = p.e.Apply(req.Context(), &b, retro.SessionID(sessionIDStr.(string)), cmdB)
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		SetFlash(w, "message", []byte(fmt.Sprintf("Profile %q created successfully!", b.String())))
+		http.Redirect(w, req, "/demo-app/", http.StatusFound)
+	}
+}
+
+func (p profile) UpdateHandler(w http.ResponseWriter, req *http.Request) {
+
+}
+
+type listing struct {
+	server
+	projection projections.Listings
+}
+
+func (l listing) ListHandler(w http.ResponseWriter, req *http.Request) {
+
+	var listings, err = l.projection.PublishedListings(req.Context())
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+		return
+	}
+
+	var rtx = renderCtx{
+		r:        req,
+		Listings: listings,
+		Sessions: l.session,
+		Flash:    GetFlash(w, req, "message"),
+	}
+
+	err = l.template.ExecuteTemplate(w, "listing/list", rtx)
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	}
+
+}
+
+func (l listing) NewHandler(w http.ResponseWriter, req *http.Request) {
+
+	if req.Method == "GET" {
+		err := l.template.ExecuteTemplate(w, "listing/new", renderCtx{
+			r:        req,
+			Sessions: l.session,
+			Flash:    GetFlash(w, req, "message"),
+		})
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+		}
+	} else if req.Method == "POST" {
+
+		err := req.ParseMultipartForm(1 << 20)
+		if err != nil {
+			fmt.Fprintf(w, err.Error())
+		}
+
 		var cmd = struct {
 			Name string          `json:"name"`
 			Args listingCmd.Args `json:"args"`
@@ -124,6 +233,13 @@ func (l listing) NewHandler(w http.ResponseWriter, req *http.Request) {
 				Name: req.Form.Get("name"),
 				Desc: req.Form.Get("desc"),
 			},
+		}
+
+		// Parse the publishNow into a bool
+		if s, err := strconv.ParseBool(req.Form.Get("publishNow")); err != nil {
+			fmt.Fprintf(w, err.Error())
+		} else {
+			cmd.Args.PublishNow = s
 		}
 
 		// Parse the startPrice into an Int16
@@ -155,15 +271,18 @@ func (l listing) NewHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		var sessionIDStr = req.Context().Value(ContextKeySessionID)
-		newListingName, err := l.e.Apply(req.Context(), ioutil.Discard, retro.SessionID(sessionIDStr.(string)), cmdB)
+		var (
+			b            bytes.Buffer
+			sessionIDStr = req.Context().Value(ContextKeySessionID)
+		)
+		_, err = l.e.Apply(req.Context(), &b, retro.SessionID(sessionIDStr.(string)), cmdB)
 		if err != nil {
 			fmt.Fprintf(w, err.Error())
 			return
 		}
 
-		SetFlash(w, "message", []byte(fmt.Sprintf("Listing %q created successfully!", newListingName))
-		http.Redirect(w, req, newListingName, http.StatusFound)
+		SetFlash(w, "message", []byte(fmt.Sprintf("Listing %q created successfully!", b.String())))
+		http.Redirect(w, req, "/demo-app/listings", http.StatusFound)
 	}
 }
 
@@ -175,9 +294,15 @@ var (
 		var sessionID = rtx.r.Context().Value(ContextKeySessionID)
 		return sessionID.(string)
 	}
+	session = func(rtx renderCtx) projections.Session {
+		var sessionID = rtx.r.Context().Value(ContextKeySessionID)
+		return rtx.Sessions.Get(
+			rtx.r.Context(),
+			retro.PartitionName(filepath.Join("session", sessionID.(string))), // TODO: plural?
+		)
+	}
 	urlFor = func(rtx renderCtx, rest string) string {
-		fmt.Println("got", rest, "making", filepath.Join("/demo-app", rest))
-		return filepath.Join("/demo-app/", rest)
+		return "/demo-app/" + rest
 	}
 )
 
@@ -190,6 +315,7 @@ func (s *server) parseTemplates(e engine.Engine, dir string) {
 			templ.Funcs(template.FuncMap{
 				"hasIdentity": hasIdentity,
 				"sessionID":   sessionID,
+				"session":     session,
 				"urlFor":      urlFor,
 			})
 			if err != nil {
@@ -210,23 +336,18 @@ func SetFlash(w http.ResponseWriter, name string, value []byte) {
 	http.SetCookie(w, c)
 }
 
-func GetFlash(w http.ResponseWriter, r *http.Request, name string) ([]byte, error) {
+func GetFlash(w http.ResponseWriter, r *http.Request, name string) string {
 	c, err := r.Cookie(name)
 	if err != nil {
-		switch err {
-		case http.ErrNoCookie:
-			return nil, nil
-		default:
-			return nil, err
-		}
+		return ""
 	}
 	value, err := decode(c.Value)
 	if err != nil {
-		return nil, err
+		return ""
 	}
 	dc := &http.Cookie{Name: name, MaxAge: -1, Expires: time.Unix(1, 0)}
 	http.SetCookie(w, dc)
-	return value, nil
+	return string(value)
 }
 
 // -------------------------

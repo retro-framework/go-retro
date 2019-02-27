@@ -1,0 +1,27 @@
+{{ define "profile/form" }}
+<h1>New Profile</h1>
+<form action="{{ urlFor . `profile/new` }}" method="POST" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" class="form-control" name="name" id="name" aria-describedby="username" placeholder="Mr. Bacon 🥓" />
+    </div>
+    <div class="form-group">
+        <label for="avatar">Avatar</label>
+        <input type="file" name="avatar" class="form-control-file" />
+    </div>
+    <div class="form-group form-check">
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-secondary active">
+                <input type="hidden" name="visibilityPublic" value="false" />
+                <input type="radio" name="visibilityPublic" value="true" id="public-true" autocomplete="off"> Public
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="visibilityPrivate" value="true" id="public-false" autocomplete="off" checked>
+                Private
+            </label>
+        </div>
+        <label class="form-check-label" for="visibility">Public Profile</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+{{ end }}

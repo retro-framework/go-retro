@@ -9,13 +9,12 @@
     <div class="container">
         <div class="row">
             <div class="col-sm">
-                col three
+                {{ template "listings" . }}
             </div>
             <div class="col-sm">
-                col two
-            </div>
-            <div class="col-sm">
-                {{ template "profile/form" . }}
+                {{ if not ( session . ).IsAnonymous }}
+                {{ template "profile/card" . }}
+                {{ end }}
             </div>
         </div>
     </div>

@@ -1,6 +1,6 @@
 {{ define "listing/form" }}
 <h1>New Listing</h1>
-<form action="{{ urlFor . `/listing/new` }}" method="POST" enctype="multipart/form-data">
+<form action="{{ urlFor . `listing/new` }}" method="POST" enctype="multipart/form-data">
     <div class="form-group">
         <label for="listingName">Name</label>
         <input type="text" class="form-control" name="name" id="listingName" aria-describedby="emailHelp" placeholder="Listing Name (e.g. My Awesome Listing, Stuff For Sale)">
@@ -21,7 +21,8 @@
         <small id="listingImages" class="form-text text-muted">Select more than one!</small>
     </div>
     <div class="form-group form-check">
-        <input type="checkbox" name="publishNow" class="form-check-input" id="listingPublishNow">
+        <input type="hidden" name="publishNow" class="form-check-input" value="false" id="listingPublishNowShadow">
+        <input type="checkbox" name="publishNow" class="form-check-input" value="true" id="listingPublishNow">
         <label class="form-check-label" for="listingPublishNow">Publish immediately?</label>
     </div>
     <button type="submit" class="btn btn-primary">Submit</button>

@@ -10,13 +10,23 @@ import (
 	"github.com/retro-framework/go-retro/framework/retro"
 )
 
-var PublishDataToInfluxDB = func(ctx context.Context, d retro.Depot) {
+type TSDB interface {
+	Run(context.Context)
+}
+
+type InfluxDB struct {
+	retro.Depot
+}
+
+func NewTSDB(d retro.Depot) TSDB {
+	return InfluxDB{d}
+}
+
+func (i InfluxDB) Run(ctx context.Context) {
 	var (
 		influxDBName        = "retrov1"
-		everything          = d.Watch(ctx, "*")
-		influxHTTPClient, _ = client.NewHTTPClient(client.HTTPConfig{
-			Addr: "http://localhost:8086",
-		})
+		everything          = i.Watch(ctx, "*")
+		influxHTTPClient, _ = client.NewHTTPClient(client.HTTPConfig{Addr: "http://localhost:8086"})
 	)
 	res, err := influxHTTPClient.Query(client.NewQuery("CREATE DATABASE "+influxDBName, "", ""))
 	if err != nil {
@@ -64,7 +74,6 @@ var PublishDataToInfluxDB = func(ctx context.Context, d retro.Depot) {
 						if err != nil {
 							fmt.Println("err writing to influxdb", err)
 						}
-						fmt.Println("projection(influx):", pt)
 					}
 				}
 			}(everythingEvents)

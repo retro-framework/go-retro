@@ -1,0 +1,23 @@
+{{ define "profile/new" }}
+
+<!DOCTYPE html>
+<html lang="en">
+{{ template "header" . }}
+
+<body>
+    {{ template "navbar" .}}
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                {{ template "profile/form" . }}
+            </div>
+            <div class="col">
+                <img src="https://via.placeholder.com/150" width="80%" />
+            </div>
+        </div>
+    </div>
+    {{ template "footer" . }}
+</body>
+
+</html>
+{{ end }}

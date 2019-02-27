@@ -12,17 +12,43 @@
                     <a class="nav-link" href="{{ urlFor . `/` }}">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ urlFor . `/listing/new` }}">New Listing</a>
+                    <a class="nav-link" href="{{ urlFor . `/listings` }}">Listings</a>
                 </li>
-                <!-- <li class="nav-item">
-                    <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
-                </li> -->
+                <li class="nav-item">
+                    {{ if ( session . ).IsAnonymous }}
+                    <a class="nav-link" href="{{ urlFor . `/profiles/new` }}">You are Anonymous</a>
+                    {{ end }}
+                </li>
+                <li class="nav-item">
+                    <a class="btn-outline-success btn" href="{{ urlFor . `/listing/new` }}">New Listing</a>
+                </li>
             </ul>
-            <form class="form-inline my-2 my-lg-0">
+            <!-- <form class="form-inline my-2 my-lg-0">
                 <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
                 <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
-            </form>
+            </form> -->
+
+            <ul class="navbar-nav mr-auto">
+                {{ if ( session . ).IsAnonymous }}
+                <form class="form-inline">
+                    <input class="form-control mr-sm-2" type="email" placeholder="lisa@example.com" aria-label="username">
+                    <input class="form-control mr-sm-2" type="password" aria-label="password">
+                    <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Log In</button>
+                </form>
+                {{ else }}
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Log Out</a>
+                </li>
+                {{ end }}
+            </ul>
         </div>
     </nav>
 </div>
+
+{{ with .Flash }}
+<div class="container">
+    <div class="alert alert-primary" role="alert"> {{ . }} </div>
+</div>
+{{ end }}
+
 {{ end }}

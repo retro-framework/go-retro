@@ -10,8 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/go-redis/redis"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/olivere/elastic"
 
 	"github.com/namsral/flag"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -22,7 +24,7 @@ import (
 	"github.com/retro-framework/go-retro/events"
 
 	"github.com/retro-framework/go-retro/demo-server/app"
-	"github.com/retro-framework/go-retro/demo-server/app/projections"
+	"github.com/retro-framework/go-retro/projections"
 
 	"github.com/retro-framework/go-retro/framework/depot"
 	"github.com/retro-framework/go-retro/framework/engine"
@@ -85,7 +87,6 @@ func main() {
 		refDBSrv = refDBServer{refdb}
 		d        = depot.NewSimple(odb, refdb)
 		r        = repository.NewSimpleRepository(odb, refdb, events.DefaultManifest)
-		_ps      = make(map[string]app.Projection)
 		idFn     = func() (string, error) {
 			b := make([]byte, 12)
 			_, err := rand.Read(b)
@@ -98,6 +99,35 @@ func main() {
 		e   = engine.New(d, r, rFn, idFn, clock{}, aggregates.DefaultManifest, events.DefaultManifest)
 	)
 
+	esClient, err := elastic.NewClient(
+		elastic.SetSniff(false),
+		elastic.SetURL("http://localhost:9200"),
+		elastic.SetErrorLog(log.New(os.Stdout, "es-listings: ", 0)),
+		// elastic.SetTraceLog(log.New(os.Stdout, "es-listings: ", 0)),
+	)
+	if err != nil {
+		fmt.Println("es-listings: err dialing ES:", err)
+		return
+	}
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+	var (
+		listingsProjection = projections.NewListings(esClient, events.DefaultManifest, d)
+		profilesProjection = projections.NewProfiles(redisClient, events.DefaultManifest, d)
+		sessionsProjection = projections.NewSessions(profilesProjection, events.DefaultManifest, d)
+		tsdbProjection     = projections.NewTSDB(d)
+	)
+
+	go listingsProjection.Run(ctx)
+	go profilesProjection.Run(ctx)
+	go sessionsProjection.Run(ctx)
+	go tsdbProjection.Run(ctx)
+
 	rMux := mux.NewRouter()
 
 	rMux.Handle("/list/aggregates", aggregateManifestServer{aggregates.DefaultManifest}).Methods("GET")
@@ -109,26 +139,19 @@ func main() {
 
 	var (
 		appMount = "/demo-app"
-		demoApp  = app.NewServer(e, templatePath, appMount, _ps)
-		profile  = demoApp.NewProfileServer()
-		listing  = demoApp.NewListingServer()
+		demoApp  = app.NewServer(e, sessionsProjection, templatePath, appMount)
+		profile  = demoApp.NewProfileServer(profilesProjection)
+		listing  = demoApp.NewListingServer(listingsProjection)
 	)
 	var aMux = rMux.PathPrefix(appMount).Subrouter()
 	aMux.HandleFunc("", demoApp.IndexHandler).Methods("GET")
 	aMux.HandleFunc("/", demoApp.IndexHandler).Methods("GET")
+	aMux.HandleFunc("/listings", listing.ListHandler).Methods("GET")
 	aMux.HandleFunc("/listing/new", listing.NewHandler).Methods("GET", "POST")
 	aMux.HandleFunc("/profiles/{name}", profile.ShowHandler).Methods("GET")
+	aMux.HandleFunc("/profile/new", profile.NewHandler).Methods("GET", "POST")
 	aMux.HandleFunc("/profile", demoApp.IndexHandler).Methods("POST")
 	aMux.Use(retroSessionMiddleware{e}.Middleware)
-
-	// Prints mounted routes
-	//
-	// rMux.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-	// 	tpl, err1 := route.GetPathTemplate()
-	// 	met, err2 := route.GetMethods()
-	// 	fmt.Println(tpl, err1, met, err2)
-	// 	return nil
-	// })
 
 	s := &http.Server{
 		Addr:           listenAddr,
@@ -137,9 +160,6 @@ func main() {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-
-	go projections.PublishDataToInfluxDB(ctx, d)
-	go projections.PublishListingsToElasticSearch(ctx, d)
 
 	log.Fatal(s.ListenAndServe())
 }

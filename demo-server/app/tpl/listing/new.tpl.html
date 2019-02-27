@@ -9,6 +9,17 @@
     <div class="container">
         <div class="row">
             <div class="col">
+                {{ if ( session . ).IsAnonymous }}
+                <div class="alert alert-success" role="alert">
+                    <h4 class="alert-heading">Slow down anon!</h4>
+                    <p>It's cool that you want to create a listing, but you are anonymous right now, it would be better
+                        if you created a profile first!</p>
+                    <hr>
+                    <p class="mb-0"><a href="{{ urlFor . `/profile/new` }}">Do that now</a></p>
+                </div>
+                {{ else }}
+                {{ template "profile/card" . }}
+                {{ end }}
                 {{ template "listing/form" . }}
             </div>
             <div class="col">

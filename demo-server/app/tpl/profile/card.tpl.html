@@ -1,0 +1,9 @@
+{{ define "profile/card" }}
+<div class="card mt-3">
+  <div class="card-body">
+    <img src="{{ (session .).Profile.AvatarSrc }}" class="mr-1" style="width: 80px; float: left; border-radius: 15px;" />
+    <h5 class="card-title">{{ ( session . ).Profile.Name }}</h5>
+    <a href="{{ urlFor . (session .).Profile.URN.TrimPrefix }}" class="">View</a>
+  </div>
+</div>
+{{ end }}
