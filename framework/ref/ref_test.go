@@ -10,10 +10,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/retro"
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 func Test_DB(t *testing.T) {

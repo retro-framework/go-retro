@@ -14,9 +14,9 @@ import (
 	"github.com/retro-framework/go-retro/commands"
 	"github.com/retro-framework/go-retro/events"
 	"github.com/retro-framework/go-retro/framework/repository"
+	"github.com/retro-framework/go-retro/framework/retro"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 	test "github.com/retro-framework/go-retro/framework/test_helper"
-	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type OneEvent struct{}

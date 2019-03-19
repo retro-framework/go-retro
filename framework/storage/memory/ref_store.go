@@ -1,8 +1,8 @@
 package memory
 
 import (
-	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/retro"
+	"github.com/retro-framework/go-retro/framework/storage"
 )
 
 // RefStore is used for storing references, references such as

@@ -3,8 +3,8 @@ package aggregates
 import (
 	"testing"
 
-	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/retro"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 type dummyAggregate struct{ NamedAggregate }

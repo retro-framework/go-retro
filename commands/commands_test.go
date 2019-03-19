@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/retro-framework/go-retro/aggregates"
-	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/retro"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 type dummyCmd struct{}

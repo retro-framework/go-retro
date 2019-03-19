@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/retro-framework/go-retro/framework/packing"
-	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/retro"
+	"github.com/retro-framework/go-retro/framework/storage"
 )
 
 var (

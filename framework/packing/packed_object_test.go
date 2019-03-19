@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/retro"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 func Test_PackedObject(t *testing.T) {

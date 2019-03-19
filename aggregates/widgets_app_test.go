@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/retro-framework/go-retro/events"
-	test "github.com/retro-framework/go-retro/framework/test_helper"
 	"github.com/retro-framework/go-retro/framework/retro"
+	test "github.com/retro-framework/go-retro/framework/test_helper"
 )
 
 func Test_WidgetsApp_State_AllowCreationOfIdentities(t *testing.T) {
