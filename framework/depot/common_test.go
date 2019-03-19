@@ -16,9 +16,9 @@ import (
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
+	"github.com/retro-framework/go-retro/framework/retro"
 	"github.com/retro-framework/go-retro/framework/storage/fs"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
-	"github.com/retro-framework/go-retro/framework/retro"
 )
 
 type DummyEvSetAuthorName struct {
