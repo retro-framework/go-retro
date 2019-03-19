@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/matcher"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -20,7 +21,7 @@ type simplePartitionIterator struct {
 	refdb ref.DB
 
 	pattern string
-	matcher retro.PatternMatcher
+	matcher retro.Matcher
 
 	subscribedOn <-chan retro.RefMove
 
@@ -80,7 +81,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan retro
 		//
 		evIter := &simpleEventIterator{
 			objdb:   s.objdb,
-			matcher: s.matcher,
+			matcher: matcher.NewGlobPattern(kp),
 			pattern: kp,
 			stackCh: make(chan storage.AffixStack, 1),
 		}
@@ -195,7 +196,7 @@ func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash r
 	}
 
 	for partition := range affix {
-		matched, err := s.matcher.DoesMatch(s.pattern, string(partition))
+		matched, err := s.matcher.DoesMatch(partition)
 		if err != nil {
 			// TODO: test this case
 			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, s.pattern))

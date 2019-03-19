@@ -9,15 +9,15 @@ import (
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
-	"github.com/retro-framework/go-retro/framework/storage"
 	"github.com/retro-framework/go-retro/framework/retro"
+	"github.com/retro-framework/go-retro/framework/storage"
 )
 
 type simplePartitionExistenceChecker struct {
 	objdb   object.DB
 	refdb   ref.DB
 	pattern retro.PartitionName
-	matcher retro.PatternMatcher
+	matcher retro.Matcher
 }
 
 // refs/heads/master => sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
@@ -89,7 +89,7 @@ func (s simplePartitionExistenceChecker) returnTruOnMatching(ctx context.Context
 	}
 
 	for partition := range affix {
-		matched, err := s.matcher.DoesMatch(string(s.pattern), string(partition))
+		matched, err := s.matcher.DoesMatch(string(partition))
 		if err != nil {
 			// TODO: test this case
 			return false, errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, s.pattern))

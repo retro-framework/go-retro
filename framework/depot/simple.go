@@ -153,7 +153,7 @@ func (s *Simple) Watch(_ context.Context, partition string) retro.PartitionItera
 		objdb:          s.objdb,
 		refdb:          s.refdb,
 		pattern:        partition,
-		matcher:        matcher.Glob{},
+		matcher:        matcher.NewGlobPattern(partition),
 		subscribedOn:   subscriberNotificationCh,
 		eventIterators: make(map[string]*simpleEventIterator),
 	}

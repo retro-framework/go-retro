@@ -19,7 +19,7 @@ type simpleEventIterator struct {
 
 	stackCh chan storage.AffixStack
 
-	matcher retro.PatternMatcher
+	matcher retro.Matcher
 
 	out    chan retro.PersistedEvent
 	outErr chan error
@@ -66,7 +66,7 @@ func (s *simpleEventIterator) events(ctx context.Context, out chan retro.Persist
 				break
 			}
 			for partitionName, affixEvHashes := range h.Affix {
-				match, err := s.matcher.DoesMatch(string(partitionName), s.pattern)
+				match, err := s.matcher.DoesMatch(partitionName)
 				if err != nil {
 					outErr <- fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, s.pattern)
 					return

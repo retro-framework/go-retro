@@ -26,7 +26,7 @@ type simple struct {
 
 	eventManifest retro.EventManifest
 
-	matcher retro.PatternMatcher
+	matcher retro.Matcher
 }
 
 type double struct {
@@ -38,7 +38,6 @@ func NewEmptyMemory() retro.Repo {
 		objdb:         &memory.ObjectStore{},
 		refdb:         &memory.RefStore{},
 		eventManifest: events.NewManifest(),
-		matcher:       matcher.Glob{},
 	}
 }
 
@@ -47,7 +46,6 @@ func NewSimpleRepository(odb object.DB, rdb ref.DB, evM retro.EventManifest) ret
 		objdb:         odb,
 		refdb:         rdb,
 		eventManifest: evM,
-		matcher:       matcher.Glob{},
 	}
 }
 
@@ -102,7 +100,7 @@ func (s simple) Exists(ctx context.Context, partitionName retro.PartitionName) b
 		objdb:   s.objdb,
 		refdb:   s.refdb,
 		pattern: partitionName,
-		matcher: matcher.Glob{},
+		matcher: matcher.NewGlobPattern(string(partitionName)),
 	}.Exists(ctx, partitionName)
 	return found
 }
@@ -144,7 +142,7 @@ func (s simple) Rehydrate(ctx context.Context, dst retro.Aggregate, partitionNam
 			break
 		}
 		for partitionName, affixEvHashes := range h.Affix {
-			match, err := s.matcher.DoesMatch(string(partitionName), string(partitionName))
+			match, err := s.matcher.DoesMatch(partitionName)
 			if err != nil {
 				return fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, partitionName)
 			}
@@ -259,7 +257,7 @@ func (s simple) enqueueCheckpointIfRelevant(pattern retro.PartitionName, checkpo
 	}
 
 	for partition := range affix {
-		matched, err := s.matcher.DoesMatch(string(pattern), string(partition))
+		matched, err := matcher.NewGlobPattern(string(pattern)).DoesMatch(string(partition))
 		if err != nil {
 			// TODO: test this case
 			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, pattern))
