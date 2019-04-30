@@ -13,7 +13,3 @@ type Repo interface {
 
 	Rehydrate(context.Context, Aggregate, PartitionName) error
 }
-
-type Queryable interface {
-	Matching(context.Context, Matcher) (interface{}, error) // TODO: nail this down a bit
-}
