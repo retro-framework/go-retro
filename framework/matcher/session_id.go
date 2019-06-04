@@ -1,4 +1,4 @@
-package framework
+package matcher
 
 import (
 	"fmt"
@@ -24,6 +24,6 @@ func (sidm sessionIDMatcher) DoesMatch(i interface{}) (bool, error) {
 	return false, nil
 }
 
-func NewSessionIDMatcher(sid string) retro.Matcher {
+func NewSessionID(sid string) retro.Matcher {
 	return sessionIDMatcher(retro.SessionID(sid))
 }

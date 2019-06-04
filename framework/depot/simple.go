@@ -184,6 +184,10 @@ func (s Simple) MoveHeadPointer(old, new retro.Hash) error {
 	return err
 }
 
+func (s Simple) Matching(_ context.Context, m retro.Matcher) (interface{}, error) {
+	return nil, nil
+}
+
 // notifySubscribers takes old,new so that we can notify subscribers whether
 // this is fast forward or not. That _should_ be as easy as fetching the
 // new from the store, and checking that it has the old one as its only

@@ -16,6 +16,8 @@ type Depot interface {
 	// For enumerating or matching on a single PartitionName
 	Watch(context.Context, string) PartitionIterator
 
+	Matching(context.Context, Matcher) (interface{}, error)
+
 	// General variadaric function for storing any packed things
 	// simplifies the interface to the underlying store.
 	StorePacked(...HashedObject) error

@@ -37,7 +37,9 @@ The working directory is mounted at `/go/src/github.com/...` inside the testing
 container hence the complete package URL must be used.
 
 To run the tests with a specific set of flags (see `GOTESTFLAGS?=...` in the
-`Makefile`) for the defaults.
+`Makefile`) for the defaults. For example, you may wish to run `make GOTESTFLAGS="-v"`
+to see verbose output, or specify `-run ...` with a pattern to run only tests for a 
+matching a specific pattern.
 
 **NOTE:** Some tests (integration, external server) are guarded by build tags,
 build with:
