@@ -184,7 +184,7 @@ func (s Simple) MoveHeadPointer(old, new retro.Hash) error {
 	return err
 }
 
-func (s Simple) Matching(_ context.Context, m retro.Matcher) (interface{}, error) {
+func (s Simple) Matching(_ context.Context, m retro.Matcher) (retro.MatcherResults, error) {
 	return nil, nil
 }
 

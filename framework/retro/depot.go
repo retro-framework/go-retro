@@ -16,7 +16,10 @@ type Depot interface {
 	// For enumerating or matching on a single PartitionName
 	Watch(context.Context, string) PartitionIterator
 
-	Matching(context.Context, Matcher) (interface{}, error)
+	// For arbitrary queries of the storage space. MatcherResults
+	// can be drained/filtered to extract Checkpoints, Affixes or
+	// Events at various levels of granularity 
+	Matching(context.Context, Matcher) (MatcherResults, error)
 
 	// General variadaric function for storing any packed things
 	// simplifies the interface to the underlying store.
