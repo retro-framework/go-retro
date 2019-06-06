@@ -229,16 +229,47 @@ func (q queryable) Matching(ctx context.Context, m retro.Matcher) (retro.Matcher
 		return nil, errors.Wrapf(err, "unknown ref %s", refFromCtx(ctx))
 	}
 
-	q.gatherMatches(ctx, m, headRef)
+	err = q.gatherMatches(ctx, m, headRef)
 
-  return nil, nil
+  return nil, err
 }
 
 // TODO: This can/should be modified to honor the possible parallel histories
 // in case any checkpoint has two parents, in which case the histories should
 // probably be interleaved.
-func (q queryable) gatherMatches(_ context.Context, m retro.Matcher, headRef retro.Hash) {
+//
+//
+// 1. gather matches takes a single hash, retrieves the checkpoint and affix, and runs
+//    them all through the matcher
+//
+//
+// TODO: This could easily run the matcher concurrently across all events and the affix and
+// the checkpoint. Write a benchmark suite before testing this.
+//
+func (q queryable) gatherMatches(ctx context.Context, m retro.Matcher, cpHash retro.Hash) (error) {
+	cp, err := q.retrieveCheckpoint(cpHash)
+	if err != nil {
+		return errors.Wrap(err, "can't gather matches, error retreiving checkpoint")
+	}
 
+	m.DoesMatch(cp)
+
+	// fmt.Println("gathering matches, cpHash is", cpHash)
+	// fmt.Println("gathering matches, checkpoint is", cp)
+	// fmt.Println("gathering matches, checkpoint's affix hash is", cp.AffixHash)
+
+	affix, err := q.retrieveAffix(cp.AffixHash)
+	if err != nil {
+		return errors.Wrap(err, "can't gather matches, error retrieving affix")
+	}
+
+	m.DoesMatch(affix)
+
+	for _, ph := range cp.ParentHashes {
+		q.gatherMatches(ctx, m, ph)
+	}
+
+	return nil
 }
 
 func (q queryable) retrieveCheckpoint(h retro.Hash) (*packing.Checkpoint, error) {
