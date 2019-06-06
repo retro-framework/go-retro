@@ -184,8 +184,11 @@ func (s Simple) MoveHeadPointer(old, new retro.Hash) error {
 	return err
 }
 
-func (s Simple) Matching(_ context.Context, m retro.Matcher) (retro.MatcherResults, error) {
-	return nil, nil
+func (s Simple) Matching(ctx context.Context, m retro.Matcher) (retro.MatcherResults, error) {
+  return queryable{
+		objdb: s.objdb,
+		refdb: s.refdb,
+	}.Matching(ctx, m)
 }
 
 // notifySubscribers takes old,new so that we can notify subscribers whether
@@ -211,4 +214,100 @@ func (s Simple) notifySubscribers(old, new retro.Hash) error {
 		}(subscriber)
 	}
 	return nil
+}
+
+type queryable struct {
+	objdb object.DB
+	refdb ref.DB
+}
+
+func (q queryable) Matching(ctx context.Context, m retro.Matcher) (retro.MatcherResults, error) {
+
+	// Resolve the head ref for the given ctx
+	headRef, err := q.refdb.Retrieve(refFromCtx(ctx))
+	if err != nil {
+		return nil, errors.Wrapf(err, "unknown ref %s", refFromCtx(ctx))
+	}
+
+	q.gatherMatches(ctx, m, headRef)
+
+  return nil, nil
+}
+
+// TODO: This can/should be modified to honor the possible parallel histories
+// in case any checkpoint has two parents, in which case the histories should
+// probably be interleaved.
+func (q queryable) gatherMatches(_ context.Context, m retro.Matcher, headRef retro.Hash) {
+
+}
+
+func (q queryable) retrieveCheckpoint(h retro.Hash) (*packing.Checkpoint, error) {
+
+	var jp *packing.JSONPacker
+
+	var (
+		checkpoint packing.Checkpoint
+		err error
+	)
+
+	packedCheckpoint, err := q.objdb.RetrievePacked(h.String())
+	if err != nil {
+		// TODO: test this case
+		return nil, errors.Wrap(err, fmt.Sprintf("can't read object %s", h.String()))
+	}
+
+	if packedCheckpoint.Type() != packing.ObjectTypeCheckpoint {
+		// TODO: test this case
+		return nil, errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeCheckpoint, packedCheckpoint.Type()))
+	}
+
+	checkpoint, err = jp.UnpackCheckpoint(packedCheckpoint.Contents())
+	if err != nil {
+		// TODO: test this case
+		return nil, errors.Wrap(err, fmt.Sprintf("can't read object %s", h.String()))
+	}
+
+	return &checkpoint, err
+}
+
+func (q queryable) retrieveAffix(h retro.Hash) (*packing.Affix, error) {
+
+	var jp *packing.JSONPacker
+
+	var (
+		affix packing.Affix
+		err error
+	)
+
+	// Unpack the Affix
+	packedAffix, err := q.objdb.RetrievePacked(h.String())
+	if err != nil {
+		// TODO: test this case
+		return nil, errors.Wrap(err, fmt.Sprintf("retrieve affix %s", h.String()))
+	}
+
+	if packedAffix.Type() != packing.ObjectTypeAffix {
+		// TODO: test this case
+		return nil, errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeAffix, packedAffix.Type()))
+	}
+
+	affix, err = jp.UnpackAffix(packedAffix.Contents())
+	if err != nil {
+		// TODO: test this case
+		return nil, errors.Wrap(err, fmt.Sprintf("unpack affix %s s", h.String()))
+	}
+
+	return &affix, nil
+}
+
+func (q queryable) doesCheckpointMatch(_ context.Context, m retro.Matcher, cp packing.Checkpoint) (bool, error) {
+	return false, nil
+}
+
+func (q queryable) doesAffixMatch(_ context.Context, m retro.Matcher, af packing.Affix) (bool, error) {
+	return false, nil
+}
+
+func (q queryable) doesEventMatch(_ context.Context, m retro.Matcher, ev packing.Event) (bool, error) {
+ return false, nil
 }
