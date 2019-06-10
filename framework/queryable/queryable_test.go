@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/retro-framework/go-retro/framework/object"
-	"github.com/retro-framework/go-retro/framework/ref"
-	"github.com/retro-framework/go-retro/framework/matcher"
 	"github.com/retro-framework/go-retro/framework/depot"
+	"github.com/retro-framework/go-retro/framework/matcher"
+	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
+	"github.com/retro-framework/go-retro/framework/ref"
 	"github.com/retro-framework/go-retro/framework/retro"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 )
@@ -44,10 +44,22 @@ func (c *Predictable5sJumpClock) Now() time.Time {
 	return next
 }
 
-type alwaysMatches struct {}
-func (_ alwaysMatches) DoesMatch(i interface{}) (bool, error) {
+type alwaysMatches struct{}
+
+func (_ alwaysMatches) DoesMatch(i interface{}) (matcher.Result, error) {
+	switch i.(type) {
+	case packing.Checkpoint:
+		return matcher.ResultCheckpointMatch(true), nil
+	case packing.Affix:
+		return matcher.ResultAffixMatch(true), nil
+		// default:
+		// 	// TOD: None might not be perfect here, what if we
+		// 	// just don't know how to handle the type of the
+		// 	// thing we were sent?
+		// 	return matcher.ResultNoMatch(), nil
+	}
 	fmt.Printf("checking for match on %s\n", i)
-	return true, nil
+	return matcher.ResultNoMatch(), nil
 }
 
 func Test_Queryable(t *testing.T) {

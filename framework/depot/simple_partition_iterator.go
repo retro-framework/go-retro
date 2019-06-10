@@ -196,12 +196,12 @@ func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash r
 	}
 
 	for partition := range affix {
-		matched, err := s.matcher.DoesMatch(partition)
+		matched, err := s.matcher.DoesMatch(partition.String())
 		if err != nil {
 			// TODO: test this case
 			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, s.pattern))
 		}
-		if matched {
+		if matched.Success() {
 
 			// Ensure we can get the date field header and parse it, else raise an error.
 			dateStr, ok := checkpoint.Fields["date"]

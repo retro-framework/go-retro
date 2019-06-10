@@ -89,12 +89,12 @@ func (s simplePartitionExistenceChecker) returnTruOnMatching(ctx context.Context
 	}
 
 	for partition := range affix {
-		matched, err := s.matcher.DoesMatch(string(partition))
+		matched, err := s.matcher.DoesMatch(partition.String())
 		if err != nil {
 			// TODO: test this case
 			return false, errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, s.pattern))
 		}
-		if matched {
+		if matched.Success() {
 			return true, nil
 		}
 	}

@@ -185,7 +185,7 @@ func (s Simple) MoveHeadPointer(old, new retro.Hash) error {
 }
 
 func (s Simple) Matching(ctx context.Context, m retro.Matcher) (retro.MatcherResults, error) {
-  return queryable{
+	return queryable{
 		objdb: s.objdb,
 		refdb: s.refdb,
 	}.Matching(ctx, m)
@@ -231,7 +231,7 @@ func (q queryable) Matching(ctx context.Context, m retro.Matcher) (retro.Matcher
 
 	err = q.gatherMatches(ctx, m, headRef)
 
-  return nil, err
+	return nil, err
 }
 
 // TODO: This can/should be modified to honor the possible parallel histories
@@ -246,28 +246,29 @@ func (q queryable) Matching(ctx context.Context, m retro.Matcher) (retro.Matcher
 // TODO: This could easily run the matcher concurrently across all events and the affix and
 // the checkpoint. Write a benchmark suite before testing this.
 //
-func (q queryable) gatherMatches(ctx context.Context, m retro.Matcher, cpHash retro.Hash) (error) {
+func (q queryable) gatherMatches(ctx context.Context, m retro.Matcher, cpHash retro.Hash) error {
 	cp, err := q.retrieveCheckpoint(cpHash)
 	if err != nil {
 		return errors.Wrap(err, "can't gather matches, error retreiving checkpoint")
 	}
 
-	m.DoesMatch(cp)
-
-	// fmt.Println("gathering matches, cpHash is", cpHash)
-	// fmt.Println("gathering matches, checkpoint is", cp)
-	// fmt.Println("gathering matches, checkpoint's affix hash is", cp.AffixHash)
-
-	affix, err := q.retrieveAffix(cp.AffixHash)
+	af, err := q.retrieveAffix(cp.AffixHash)
 	if err != nil {
 		return errors.Wrap(err, "can't gather matches, error retrieving affix")
 	}
 
-	m.DoesMatch(affix)
-
 	for _, ph := range cp.ParentHashes {
 		q.gatherMatches(ctx, m, ph)
 	}
+
+	var (
+		matcherErrs chan error
+	)
+
+	_ = matcherErrs
+
+	go q.doesCheckpointMatch(ctx, m, *cp)
+	go q.doesAffixMatch(ctx, m, *af)
 
 	return nil
 }
@@ -278,7 +279,7 @@ func (q queryable) retrieveCheckpoint(h retro.Hash) (*packing.Checkpoint, error)
 
 	var (
 		checkpoint packing.Checkpoint
-		err error
+		err        error
 	)
 
 	packedCheckpoint, err := q.objdb.RetrievePacked(h.String())
@@ -307,7 +308,7 @@ func (q queryable) retrieveAffix(h retro.Hash) (*packing.Affix, error) {
 
 	var (
 		affix packing.Affix
-		err error
+		err   error
 	)
 
 	// Unpack the Affix
@@ -331,14 +332,10 @@ func (q queryable) retrieveAffix(h retro.Hash) (*packing.Affix, error) {
 	return &affix, nil
 }
 
-func (q queryable) doesCheckpointMatch(_ context.Context, m retro.Matcher, cp packing.Checkpoint) (bool, error) {
-	return false, nil
+func (q queryable) doesCheckpointMatch(_ context.Context, m retro.Matcher, cp packing.Checkpoint) (matcher.Result, error) {
+	return m.DoesMatch(cp)
 }
 
-func (q queryable) doesAffixMatch(_ context.Context, m retro.Matcher, af packing.Affix) (bool, error) {
-	return false, nil
-}
-
-func (q queryable) doesEventMatch(_ context.Context, m retro.Matcher, ev packing.Event) (bool, error) {
- return false, nil
+func (q queryable) doesAffixMatch(_ context.Context, m retro.Matcher, af packing.Affix) (matcher.Result, error) {
+	return m.DoesMatch(af)
 }
