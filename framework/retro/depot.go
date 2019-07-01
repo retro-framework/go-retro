@@ -24,5 +24,5 @@ type Depot interface {
 	// Head pointer operations are important for the engine
 	// to be able to do things without mangling the history
 	HeadPointer(context.Context) (Hash, error)
-	MoveHeadPointer(old, new Hash) error
+	MoveHeadPointer(ctx context.Context, old, new Hash) error
 }

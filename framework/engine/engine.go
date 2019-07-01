@@ -453,7 +453,7 @@ func (e *Engine) persistEvs(ctx context.Context, sid retro.SessionID, cmdDesc []
 		return Error{"persist-evs", err, "error writing packedAffix to odb in NewSimpleStub"}
 	}
 
-	if err := e.depot.MoveHeadPointer(nil, packedCheckpoint.Hash()); err != nil {
+	if err := e.depot.MoveHeadPointer(context.TODO(), nil, packedCheckpoint.Hash()); err != nil {
 		return Error{"persist-evs", err, "moving head pointer"}
 	}
 

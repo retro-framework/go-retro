@@ -87,7 +87,7 @@ func EmptySimpleMemory() retro.Depot {
 }
 
 // HeadPointer is a simple read-thru which gets
-// the value of the current jhead pointer from the refdb
+// the value of the current head pointer from the refdb
 // it uses the context to try and get a branch name, and
 // in case of failure falls back to the default branch
 // name.
@@ -176,8 +176,11 @@ func (s Simple) StorePacked(packed ...retro.HashedObject) error {
 //
 // TODO: check for fastforward 🔜 before allowing write and/or something
 // to make this not totally unsafe
-func (s Simple) MoveHeadPointer(old, new retro.Hash) error {
-	_, err := s.refdb.Write(DefaultBranchName, new)
+//
+// TODO: make sure that pointer is currently at OLD if provided
+// before moving it.
+func (s Simple) MoveHeadPointer(ctx context.Context, old, new retro.Hash) error {
+	_, err := s.refdb.Write(refFromCtx(ctx), new)
 	if err == nil {
 		s.notifySubscribers(old, new)
 	}
