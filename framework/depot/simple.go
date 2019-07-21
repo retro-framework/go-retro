@@ -224,121 +224,157 @@ type queryable struct {
 	refdb ref.DB
 }
 
+// type checkpointAtTime struct {
+// 	t         time.Time
+// 	cpHashStr string
+// 	// TODO: include matcher.Result here?
+// }
+
+// type MatcherInstance struct {
+// 	q  queryable
+// 	wg sync.WaitGroup
+// }
+
 func (q queryable) Matching(ctx context.Context, m retro.Matcher) (retro.MatcherResults, error) {
 
-	// Resolve the head ref for the given ctx
-	headRef, err := q.refdb.Retrieve(refFromCtx(ctx))
-	if err != nil {
-		return nil, errors.Wrapf(err, "unknown ref %s", refFromCtx(ctx))
-	}
+	// 1. Find the get a chronological index
+	//    for the current branch.
+	//
+	// TODO: subscribers don't really respect
+	//       branch names yet, so this isn't
+	//       really reliable. (see the data structure
+	//       for head pointer moves, it is not branch
+	//       aware)
+	// ci, _ := index.ChronologicalForBranch(refFromCtx(ctx), q.objdb, q.refdb)
 
-	err = q.gatherMatches(ctx, m, headRef)
+	// 2. Register that index as a subscriber to receive updates
+	//    about head pointer movements
 
-	return nil, err
+	// 3. Consume that resource indefinitely passing the checkpoints
+	//    to the matcher
+
+	// 	// Resolve the head ref for the given ctx
+
+	// 	fmt.Println("gathering matches")
+
+	// 	var (
+	// 		results    = matcher.Results{}
+	// 		matchedCPs = make(chan checkpointAtTime)
+	// 		// matcherErrs = make(chan error)
+
+	// 		finished      = make(chan struct{})
+	// 		noMoreResults = make(chan struct{})
+	// 	)
+
+	// 	go q.gatherMatches(ctx, matchedCPs, noMoreResults, m, headRef)
+
+	// 	go func(rCh <-chan checkpointAtTime, noMoreResults <-chan struct{}) {
+	// 		for {
+	// 			select {
+	// 			case cpAtTime := <-rCh:
+	// 				fmt.Println("Matched a checkpoint")
+	// 				results = results.Insert(cpAtTime.t, cpAtTime.cpHashStr)
+	// 			case <-noMoreResults:
+	// 				fmt.Println("signalling EOL, no more checkpoints")
+	// 				finished <- struct{}{}
+	// 			}
+	// 		}
+	// 		fmt.Printf("Results all found are %#v\n", results)
+	// 	}(matchedCPs, noMoreResults)
+
+	// 	fmt.Println("waiting until we find only checkpoints with no ancestors")
+	// 	fmt.Println("done")
+
+	return nil, nil
 }
 
-// TODO: This can/should be modified to honor the possible parallel histories
-// in case any checkpoint has two parents, in which case the histories should
-// probably be interleaved.
-//
-//
-// 1. gather matches takes a single hash, retrieves the checkpoint and affix, and runs
-//    them all through the matcher
-//
-//
-// TODO: This could easily run the matcher concurrently across all events and the affix and
-// the checkpoint. Write a benchmark suite before testing this.
-//
-func (q queryable) gatherMatches(ctx context.Context, m retro.Matcher, cpHash retro.Hash) error {
-	cp, err := q.retrieveCheckpoint(cpHash)
-	if err != nil {
-		return errors.Wrap(err, "can't gather matches, error retreiving checkpoint")
-	}
+// func (q queryable) gatherMatches(ctx context.Context, cpAtTimeCh chan<- checkpointAtTime, noMoreResultsCh chan<- struct{}, m retro.Matcher, cpHash retro.Hash) error {
 
-	af, err := q.retrieveAffix(cp.AffixHash)
-	if err != nil {
-		return errors.Wrap(err, "can't gather matches, error retrieving affix")
-	}
+// 	fmt.Println("checkpoints +1")
 
-	for _, ph := range cp.ParentHashes {
-		q.gatherMatches(ctx, m, ph)
-	}
+// 	fmt.Println("in gather matches with", cpHash)
 
-	var (
-		matcherErrs chan error
-	)
+// 	cp, err := q.retrieveCheckpoint(cpHash)
+// 	if err != nil {
+// 		return errors.Wrap(err, "can't gather matches, error retreiving checkpoint")
+// 	}
 
-	_ = matcherErrs
+// 	af, err := q.retrieveAffix(cp.AffixHash)
+// 	if err != nil {
+// 		return errors.Wrap(err, "can't gather matches, error retrieving affix")
+// 	}
 
-	go q.doesCheckpointMatch(ctx, m, *cp)
-	go q.doesAffixMatch(ctx, m, *af)
+// 	for _, b := range *af {
+// 		for _, ev := range b {
+// 			fmt.Println("EvHash", ev)
+// 		}
+// 	}
 
-	return nil
-}
+// 	for _, ph := range cp.ParentHashes {
 
-func (q queryable) retrieveCheckpoint(h retro.Hash) (*packing.Checkpoint, error) {
+// 		go q.gatherMatches(ctx, cpAtTimeCh, noMoreResultsCh, m, ph)
+// 	}
 
-	var jp *packing.JSONPacker
+// 	// if we get an early match we can avoid maybe
+// 	// looking up all the contents of the db here
+// 	// e.g if matching on a session id, no need to look
+// 	// at the affix and events
 
-	var (
-		checkpoint packing.Checkpoint
-		err        error
-	)
+// 	var timeFromCP = func(cp *packing.Checkpoint) time.Time {
+// 		t, err := time.Parse(time.RFC3339, (*cp).Fields["date"])
+// 		if err != nil {
+// 			fmt.Println("extremely serious error, could not parse a time we previously validated", err)
+// 		}
+// 		return t
+// 	}
 
-	packedCheckpoint, err := q.objdb.RetrievePacked(h.String())
-	if err != nil {
-		// TODO: test this case
-		return nil, errors.Wrap(err, fmt.Sprintf("can't read object %s", h.String()))
-	}
+// 	if match, _ := m.DoesMatch(*cp); match.Success() {
+// 		cpAtTimeCh <- checkpointAtTime{t: timeFromCP(cp), cpHashStr: cpHash.String()}
+// 	}
 
-	if packedCheckpoint.Type() != packing.ObjectTypeCheckpoint {
-		// TODO: test this case
-		return nil, errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeCheckpoint, packedCheckpoint.Type()))
-	}
+// 	if match, _ := m.DoesMatch(*af); match.Success() {
+// 		fmt.Println("affix matched")
+// 	}
 
-	checkpoint, err = jp.UnpackCheckpoint(packedCheckpoint.Contents())
-	if err != nil {
-		// TODO: test this case
-		return nil, errors.Wrap(err, fmt.Sprintf("can't read object %s", h.String()))
-	}
+// 	time.Sleep(4)
 
-	return &checkpoint, err
-}
+// 	return nil
+// }
 
-func (q queryable) retrieveAffix(h retro.Hash) (*packing.Affix, error) {
+// func (q queryable) retrieveAffix(h retro.Hash) (*packing.Affix, error) {
 
-	var jp *packing.JSONPacker
+// 	var jp *packing.JSONPacker
 
-	var (
-		affix packing.Affix
-		err   error
-	)
+// 	var (
+// 		affix packing.Affix
+// 		err   error
+// 	)
 
-	// Unpack the Affix
-	packedAffix, err := q.objdb.RetrievePacked(h.String())
-	if err != nil {
-		// TODO: test this case
-		return nil, errors.Wrap(err, fmt.Sprintf("retrieve affix %s", h.String()))
-	}
+// 	// Unpack the Affix
+// 	packedAffix, err := q.objdb.RetrievePacked(h.String())
+// 	if err != nil {
+// 		// TODO: test this case
+// 		return nil, errors.Wrap(err, fmt.Sprintf("retrieve affix %s", h.String()))
+// 	}
 
-	if packedAffix.Type() != packing.ObjectTypeAffix {
-		// TODO: test this case
-		return nil, errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeAffix, packedAffix.Type()))
-	}
+// 	if packedAffix.Type() != packing.ObjectTypeAffix {
+// 		// TODO: test this case
+// 		return nil, errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeAffix, packedAffix.Type()))
+// 	}
 
-	affix, err = jp.UnpackAffix(packedAffix.Contents())
-	if err != nil {
-		// TODO: test this case
-		return nil, errors.Wrap(err, fmt.Sprintf("unpack affix %s s", h.String()))
-	}
+// 	affix, err = jp.UnpackAffix(packedAffix.Contents())
+// 	if err != nil {
+// 		// TODO: test this case
+// 		return nil, errors.Wrap(err, fmt.Sprintf("unpack affix %s s", h.String()))
+// 	}
 
-	return &affix, nil
-}
+// 	return &affix, nil
+// }
 
-func (q queryable) doesCheckpointMatch(_ context.Context, m retro.Matcher, cp packing.Checkpoint) (matcher.Result, error) {
-	return m.DoesMatch(cp)
-}
+// // func (q queryable) doesCheckpointMatch(_ context.Context, m retro.Matcher, cp packing.Checkpoint) (matcher.Result, error) {
+// // 	return m.DoesMatch(cp)
+// // }
 
-func (q queryable) doesAffixMatch(_ context.Context, m retro.Matcher, af packing.Affix) (matcher.Result, error) {
-	return m.DoesMatch(af)
-}
+// // func (q queryable) doesAffixMatch(_ context.Context, m retro.Matcher, af packing.Affix) (matcher.Result, error) {
+// // 	return m.DoesMatch(af)
+// // }

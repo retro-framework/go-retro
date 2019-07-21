@@ -202,7 +202,10 @@ func (jp *JSONPacker) PackCheckpoint(cp Checkpoint) (retro.HashedObject, error) 
 		payload bytes.Buffer
 	)
 
-	cpB.WriteString(fmt.Sprintf("%s %s\n", ObjectTypeAffix, cp.AffixHash.String()))
+	// TODO: can checkpoints have no affix?
+	if cp.AffixHash != nil {
+		cpB.WriteString(fmt.Sprintf("%s %s\n", ObjectTypeAffix, cp.AffixHash.String()))
+	}
 
 	for _, parentHash := range cp.ParentHashes {
 		cpB.WriteString(fmt.Sprintf("parent %s\n", parentHash.String()))
