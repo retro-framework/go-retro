@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/ctxkey"
 	"github.com/retro-framework/go-retro/framework/matcher"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -115,7 +116,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan retro
 		}()
 
 		// Resolve the head ref for the given ctx
-		checkpointHash, err := s.refdb.Retrieve(refFromCtx(ctx))
+		checkpointHash, err := s.refdb.Retrieve(ctxkey.Ref(ctx))
 		if err != nil {
 			outErr <- errors.Wrap(err, "unknown reference, can't lookup partitions")
 			return

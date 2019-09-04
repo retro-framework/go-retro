@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/retro-framework/go-retro/events"
+	"github.com/retro-framework/go-retro/framework/ctxkey"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 
 	"github.com/opentracing/opentracing-go"
@@ -117,7 +118,7 @@ func (s simple) Rehydrate(ctx context.Context, dst retro.Aggregate, partitionNam
 	)
 
 	// Resolve the head ref for the given ctx
-	headRef, err := s.refdb.Retrieve(refFromCtx(ctx))
+	headRef, err := s.refdb.Retrieve(ctxkey.Ref(ctx))
 	if err != nil {
 		return errors.Wrapf(err, "unknown ref, can't lookup partitions for %s", string(partitionName))
 	}

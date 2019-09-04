@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/ctxkey"
 	"github.com/retro-framework/go-retro/framework/matcher"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -92,7 +93,7 @@ func EmptySimpleMemory() retro.Depot {
 // in case of failure falls back to the default branch
 // name.
 func (s *Simple) HeadPointer(ctx context.Context) (retro.Hash, error) {
-	ptr, err := s.refdb.Retrieve(refFromCtx(ctx))
+	ptr, err := s.refdb.Retrieve(ctxkey.Ref(ctx))
 	if err == storage.ErrUnknownRef {
 		return nil, nil
 	}
@@ -140,11 +141,6 @@ type Simple struct {
 	subscribers []chan<- retro.RefMove
 }
 
-// TODO: make this respect the actual value that might come in a context
-func refFromCtx(ctx context.Context) string {
-	return DefaultBranchName
-}
-
 // Watch makes the world go round
 func (s *Simple) Watch(_ context.Context, partition string) retro.PartitionIterator {
 	var subscriberNotificationCh = make(chan retro.RefMove)
@@ -180,7 +176,7 @@ func (s Simple) StorePacked(packed ...retro.HashedObject) error {
 // TODO: make sure that pointer is currently at OLD if provided
 // before moving it.
 func (s Simple) MoveHeadPointer(ctx context.Context, old, new retro.Hash) error {
-	_, err := s.refdb.Write(refFromCtx(ctx), new)
+	_, err := s.refdb.Write(ctxkey.Ref(ctx), new)
 	if err == nil {
 		s.notifySubscribers(old, new)
 	}
@@ -245,7 +241,7 @@ func (q queryable) Matching(ctx context.Context, m retro.Matcher) (retro.Matcher
 	//       really reliable. (see the data structure
 	//       for head pointer moves, it is not branch
 	//       aware)
-	// ci, _ := index.ChronologicalForBranch(refFromCtx(ctx), q.objdb, q.refdb)
+	// ci, _ := index.ChronologicalForBranch(ctxkey.Ref(ctx), q.objdb, q.refdb)
 
 	// 2. Register that index as a subscriber to receive updates
 	//    about head pointer movements

@@ -6,6 +6,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/ctxkey"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
 	"github.com/retro-framework/go-retro/framework/ref"
@@ -32,7 +33,7 @@ func (s simplePartitionExistenceChecker) Exists(ctx context.Context, partitionNa
 	spnExists, ctx := opentracing.StartSpanFromContext(ctx, "simplePartitionExistenceChecker.Exists")
 	spnExists.SetTag("partitionName", string(partitionName))
 	defer spnExists.Finish()
-	headRef, err := s.refdb.Retrieve(refFromCtx(ctx))
+	headRef, err := s.refdb.Retrieve(ctxkey.Ref(ctx))
 	if err != nil {
 		spnExists.SetTag("error", err)
 		return false, err
