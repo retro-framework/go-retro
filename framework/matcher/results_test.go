@@ -29,13 +29,11 @@ func Test_Results(t *testing.T) {
 
 }
 
-
-
-1. 5 things in the index
-2. consumer starts reading index
-3. index is lazy evaluated first time
-4. immediately two documents added to index
-5. consumer receives 7 items
-6. new consumer immediately receives 7 items
-7. new documented added to index
-8. both consumers receive 1 new item
+// 1. 5 things in the index
+// 2. consumer starts reading index
+// 3. index is lazy evaluated first time
+// 4. immediately two documents added to index
+// 5. consumer receives 7 items
+// 6. new consumer immediately receives 7 items
+// 7. new documented added to index
+// 8. both consumers receive 1 new item
