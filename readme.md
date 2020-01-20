@@ -10,7 +10,7 @@
     > "our survey was retrospective"
     > synonyms: backdated, retroactive, ex post facto, backward-looking
 
-Retro is a DDD, CQRS & ES framework. Domain driven design, command query request
+Retro is a DDD, CQRS & ES framework. Domain driven design, command query responsibility
 segregation and event sourcing.
 
 ## Usage
