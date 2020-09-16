@@ -7,5 +7,6 @@ package retro
 type RefMove struct {
 	Old Hash
 	New Hash
-	FF  bool
+
+	Name string
 }

@@ -2,6 +2,11 @@ package retro
 
 import "context"
 
+type MatcherResults interface{}
+
 type Queryable interface {
-	Matching(context.Context, Matcher) (interface{}, error) // TODO: nail this down a bit
+	// For arbitrary queries of the storage space. MatcherResults
+	// can be drained/filtered to extract Checkpoints, Affixes or
+	// Events at various levels of granularity
+	Matching(context.Context, Matcher) (MatcherResults, error)
 }

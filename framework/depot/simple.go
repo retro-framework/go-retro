@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/ctxkey"
 	"github.com/retro-framework/go-retro/framework/matcher"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -87,12 +88,12 @@ func EmptySimpleMemory() retro.Depot {
 }
 
 // HeadPointer is a simple read-thru which gets
-// the value of the current jhead pointer from the refdb
+// the value of the current head pointer from the refdb
 // it uses the context to try and get a branch name, and
 // in case of failure falls back to the default branch
 // name.
 func (s *Simple) HeadPointer(ctx context.Context) (retro.Hash, error) {
-	ptr, err := s.refdb.Retrieve(refFromCtx(ctx))
+	ptr, err := s.refdb.Retrieve(ctxkey.Ref(ctx))
 	if err == storage.ErrUnknownRef {
 		return nil, nil
 	}
@@ -140,11 +141,6 @@ type Simple struct {
 	subscribers []chan<- retro.RefMove
 }
 
-// TODO: make this respect the actual value that might come in a context
-func refFromCtx(ctx context.Context) string {
-	return DefaultBranchName
-}
-
 // Watch makes the world go round
 func (s *Simple) Watch(_ context.Context, partition string) retro.PartitionIterator {
 	var subscriberNotificationCh = make(chan retro.RefMove)
@@ -176,12 +172,22 @@ func (s Simple) StorePacked(packed ...retro.HashedObject) error {
 //
 // TODO: check for fastforward 🔜 before allowing write and/or something
 // to make this not totally unsafe
-func (s Simple) MoveHeadPointer(old, new retro.Hash) error {
-	_, err := s.refdb.Write(DefaultBranchName, new)
+//
+// TODO: make sure that pointer is currently at OLD if provided
+// before moving it.
+func (s Simple) MoveHeadPointer(ctx context.Context, old, new retro.Hash) error {
+	_, err := s.refdb.Write(ctxkey.Ref(ctx), new)
 	if err == nil {
 		s.notifySubscribers(old, new)
 	}
 	return err
+}
+
+func (s Simple) Matching(ctx context.Context, m retro.Matcher) (retro.MatcherResults, error) {
+	return queryable{
+		objdb: s.objdb,
+		refdb: s.refdb,
+	}.Matching(ctx, m)
 }
 
 // notifySubscribers takes old,new so that we can notify subscribers whether
@@ -208,3 +214,163 @@ func (s Simple) notifySubscribers(old, new retro.Hash) error {
 	}
 	return nil
 }
+
+type queryable struct {
+	objdb object.DB
+	refdb ref.DB
+}
+
+// type checkpointAtTime struct {
+// 	t         time.Time
+// 	cpHashStr string
+// 	// TODO: include matcher.Result here?
+// }
+
+// type MatcherInstance struct {
+// 	q  queryable
+// 	wg sync.WaitGroup
+// }
+
+func (q queryable) Matching(ctx context.Context, m retro.Matcher) (retro.MatcherResults, error) {
+
+	// 1. Find the get a chronological index
+	//    for the current branch.
+	//
+	// TODO: subscribers don't really respect
+	//       branch names yet, so this isn't
+	//       really reliable. (see the data structure
+	//       for head pointer moves, it is not branch
+	//       aware)
+	// ci, _ := index.ChronologicalForBranch(ctxkey.Ref(ctx), q.objdb, q.refdb)
+
+	// 2. Register that index as a subscriber to receive updates
+	//    about head pointer movements
+
+	// 3. Consume that resource indefinitely passing the checkpoints
+	//    to the matcher
+
+	// 	// Resolve the head ref for the given ctx
+
+	// 	fmt.Println("gathering matches")
+
+	// 	var (
+	// 		results    = matcher.Results{}
+	// 		matchedCPs = make(chan checkpointAtTime)
+	// 		// matcherErrs = make(chan error)
+
+	// 		finished      = make(chan struct{})
+	// 		noMoreResults = make(chan struct{})
+	// 	)
+
+	// 	go q.gatherMatches(ctx, matchedCPs, noMoreResults, m, headRef)
+
+	// 	go func(rCh <-chan checkpointAtTime, noMoreResults <-chan struct{}) {
+	// 		for {
+	// 			select {
+	// 			case cpAtTime := <-rCh:
+	// 				fmt.Println("Matched a checkpoint")
+	// 				results = results.Insert(cpAtTime.t, cpAtTime.cpHashStr)
+	// 			case <-noMoreResults:
+	// 				fmt.Println("signalling EOL, no more checkpoints")
+	// 				finished <- struct{}{}
+	// 			}
+	// 		}
+	// 		fmt.Printf("Results all found are %#v\n", results)
+	// 	}(matchedCPs, noMoreResults)
+
+	// 	fmt.Println("waiting until we find only checkpoints with no ancestors")
+	// 	fmt.Println("done")
+
+	return nil, nil
+}
+
+// func (q queryable) gatherMatches(ctx context.Context, cpAtTimeCh chan<- checkpointAtTime, noMoreResultsCh chan<- struct{}, m retro.Matcher, cpHash retro.Hash) error {
+
+// 	fmt.Println("checkpoints +1")
+
+// 	fmt.Println("in gather matches with", cpHash)
+
+// 	cp, err := q.retrieveCheckpoint(cpHash)
+// 	if err != nil {
+// 		return errors.Wrap(err, "can't gather matches, error retreiving checkpoint")
+// 	}
+
+// 	af, err := q.retrieveAffix(cp.AffixHash)
+// 	if err != nil {
+// 		return errors.Wrap(err, "can't gather matches, error retrieving affix")
+// 	}
+
+// 	for _, b := range *af {
+// 		for _, ev := range b {
+// 			fmt.Println("EvHash", ev)
+// 		}
+// 	}
+
+// 	for _, ph := range cp.ParentHashes {
+
+// 		go q.gatherMatches(ctx, cpAtTimeCh, noMoreResultsCh, m, ph)
+// 	}
+
+// 	// if we get an early match we can avoid maybe
+// 	// looking up all the contents of the db here
+// 	// e.g if matching on a session id, no need to look
+// 	// at the affix and events
+
+// 	var timeFromCP = func(cp *packing.Checkpoint) time.Time {
+// 		t, err := time.Parse(time.RFC3339, (*cp).Fields["date"])
+// 		if err != nil {
+// 			fmt.Println("extremely serious error, could not parse a time we previously validated", err)
+// 		}
+// 		return t
+// 	}
+
+// 	if match, _ := m.DoesMatch(*cp); match.Success() {
+// 		cpAtTimeCh <- checkpointAtTime{t: timeFromCP(cp), cpHashStr: cpHash.String()}
+// 	}
+
+// 	if match, _ := m.DoesMatch(*af); match.Success() {
+// 		fmt.Println("affix matched")
+// 	}
+
+// 	time.Sleep(4)
+
+// 	return nil
+// }
+
+// func (q queryable) retrieveAffix(h retro.Hash) (*packing.Affix, error) {
+
+// 	var jp *packing.JSONPacker
+
+// 	var (
+// 		affix packing.Affix
+// 		err   error
+// 	)
+
+// 	// Unpack the Affix
+// 	packedAffix, err := q.objdb.RetrievePacked(h.String())
+// 	if err != nil {
+// 		// TODO: test this case
+// 		return nil, errors.Wrap(err, fmt.Sprintf("retrieve affix %s", h.String()))
+// 	}
+
+// 	if packedAffix.Type() != packing.ObjectTypeAffix {
+// 		// TODO: test this case
+// 		return nil, errors.Wrap(err, fmt.Sprintf("object was not a %s but a %s", packing.ObjectTypeAffix, packedAffix.Type()))
+// 	}
+
+// 	affix, err = jp.UnpackAffix(packedAffix.Contents())
+// 	if err != nil {
+// 		// TODO: test this case
+// 		return nil, errors.Wrap(err, fmt.Sprintf("unpack affix %s s", h.String()))
+// 	}
+
+// 	return &affix, nil
+// }
+
+// // func (q queryable) doesCheckpointMatch(_ context.Context, m retro.Matcher, cp packing.Checkpoint) (matcher.Result, error) {
+// // 	return m.DoesMatch(cp)
+// // }
+
+// // func (q queryable) doesAffixMatch(_ context.Context, m retro.Matcher, af packing.Affix) (matcher.Result, error) {
+// // 	return m.DoesMatch(af)
+// // }

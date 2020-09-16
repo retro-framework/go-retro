@@ -1,19 +1,6 @@
-package framework
+// +build unit
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"testing"
-// 	"time"
-
-// 	"github.com/retro-framework/go-retro/framework/object"
-// 	"github.com/retro-framework/go-retro/framework/ref"
-
-// 	"github.com/retro-framework/go-retro/framework/depot"
-// 	"github.com/retro-framework/go-retro/framework/packing"
-// 	"github.com/retro-framework/go-retro/framework/retro"
-// 	"github.com/retro-framework/go-retro/framework/storage/memory"
-// )
+package queryable
 
 // type DummyEvSetAuthorName struct {
 // 	Name string
@@ -40,6 +27,24 @@ package framework
 // 	var next = c.t.Add(time.Duration((5 * c.calls)) * time.Second)
 // 	c.calls = c.calls + 1
 // 	return next
+// }
+
+// type alwaysMatches struct{}
+
+// func (_ alwaysMatches) DoesMatch(i interface{}) (matcher.Result, error) {
+// 	switch i.(type) {
+// 	case packing.Checkpoint:
+// 		return matcher.ResultCheckpointMatch(true), nil
+// 	case packing.Affix:
+// 		return matcher.ResultAffixMatch(true), nil
+// 		// default:
+// 		// 	// TOD: None might not be perfect here, what if we
+// 		// 	// just don't know how to handle the type of the
+// 		// 	// thing we were sent?
+// 		// 	return matcher.ResultNoMatch(), nil
+// 	}
+// 	fmt.Printf("checking for match on %s\n", i)
+// 	return matcher.ResultNoMatch(), nil
 // }
 
 // func Test_Queryable(t *testing.T) {
@@ -144,6 +149,8 @@ package framework
 // 		odb.WritePacked(affixOne)
 // 		odb.WritePacked(affixTwo)
 // 		odb.WritePacked(affixThree)
+// 		odb.WritePacked(affixFourA)
+// 		odb.WritePacked(affixFourB)
 
 // 		odb.WritePacked(checkpointOne)
 // 		odb.WritePacked(checkpointTwo)
@@ -160,6 +167,12 @@ package framework
 // 	var queryableMatrix = map[string]func(object.DB, ref.DB) retro.Queryable{
 // 		"depot": func(odb object.DB, refdb ref.DB) retro.Queryable {
 // 			var o, r = populateDBs(odb, refdb)
+
+// 			// Uncomment me to dump the hash table from the object db
+// 			// if lsOdb, ok := o.(object.ListableSource); ok {
+// 			// 	fmt.Println(lsOdb.Ls())
+// 			// }
+
 // 			return depot.NewSimple(o, r)
 // 		},
 // 	}
@@ -173,10 +186,17 @@ package framework
 // 	}{
 // 		{
 // 			desc:           "can be found by the session ID on the default thread",
-// 			matcher:        NewSessionIDMatcher("one"),
+// 			matcher:        alwaysMatches{},
 // 			expectedResult: []retro.URN{retro.URN("users/alice")},
 // 		},
+// 		// {
+// 		// 	desc:           "can be found by the session ID on the default thread",
+// 		// 	matcher:        matcher.NewSessionID("one"),
+// 		// 	expectedResult: []retro.URN{retro.URN("users/alice")},
+// 		// },
 // 	}
+
+// 	_ = matcher.NewSessionID("one")
 
 // 	for querableName, queryableFn := range queryableMatrix {
 

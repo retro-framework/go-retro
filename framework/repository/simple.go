@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/retro-framework/go-retro/events"
+	"github.com/retro-framework/go-retro/framework/ctxkey"
 	"github.com/retro-framework/go-retro/framework/storage/memory"
 
 	"github.com/opentracing/opentracing-go"
@@ -117,7 +118,7 @@ func (s simple) Rehydrate(ctx context.Context, dst retro.Aggregate, partitionNam
 	)
 
 	// Resolve the head ref for the given ctx
-	headRef, err := s.refdb.Retrieve(refFromCtx(ctx))
+	headRef, err := s.refdb.Retrieve(ctxkey.Ref(ctx))
 	if err != nil {
 		return errors.Wrapf(err, "unknown ref, can't lookup partitions for %s", string(partitionName))
 	}
@@ -142,7 +143,7 @@ func (s simple) Rehydrate(ctx context.Context, dst retro.Aggregate, partitionNam
 			break
 		}
 		for partitionName, affixEvHashes := range h.Affix {
-			match, err := s.matcher.DoesMatch(partitionName)
+			match, err := s.matcher.DoesMatch(partitionName.String())
 			if err != nil {
 				return fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, partitionName)
 			}
@@ -152,7 +153,7 @@ func (s simple) Rehydrate(ctx context.Context, dst retro.Aggregate, partitionNam
 			if partitionName != dst.Name() {
 				continue
 			}
-			if match {
+			if match.Success() {
 
 				for _, evHash := range affixEvHashes {
 
@@ -257,12 +258,12 @@ func (s simple) enqueueCheckpointIfRelevant(pattern retro.PartitionName, checkpo
 	}
 
 	for partition := range affix {
-		matched, err := matcher.NewGlobPattern(string(pattern)).DoesMatch(string(partition))
+		matched, err := matcher.NewGlobPattern(string(pattern)).DoesMatch(partition.String())
 		if err != nil {
 			// TODO: test this case
 			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, pattern))
 		}
-		if matched {
+		if matched.Success() {
 			st.Push(storage.RelevantCheckpoint{
 				Time:           time.Time{},
 				CheckpointHash: packedCheckpoint.Hash(),

@@ -1,13 +1,14 @@
 package matcher
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/zyedidia/glob"
 	"golang.org/x/xerrors"
-
-	"github.com/retro-framework/go-retro/framework/retro"
 )
 
-func NewGlobPattern(pattern string) retro.Matcher {
+func NewGlobPattern(pattern string) globPatternMatcher {
 	glob, _ := glob.Compile(pattern)
 	return globPatternMatcher{glob}
 }
@@ -17,16 +18,27 @@ type globPatternMatcher struct {
 	glob *glob.Glob
 }
 
-func (gpm globPatternMatcher) DoesMatch(i interface{}) (bool, error) {
+func (gpm globPatternMatcher) DoesMatch(i interface{}) (Result, error) {
 	if gpm.glob == nil {
-		return false, xerrors.New("has no glob, possibly the pattern would not compile")
+		return ResultNoMatch(), xerrors.New("has no glob, possibly the pattern would not compile")
 	}
-	switch m := i.(type) {
-	case string:
-		return gpm.glob.Match([]byte(m)), nil
-	case retro.PartitionName:
-		return gpm.glob.Match([]byte(m)), nil
-	default:
-		return false, xerrors.Errorf("don't know how to handle type in glob matcher")
+
+	fmt.Println(reflect.TypeOf(i))
+
+	if s, ok := i.(string); ok {
+		return ResultBoolean(gpm.glob.Match([]byte(s))), nil
 	}
+
+	// if b, ok := i.([]byte); ok {
+	// 	return ResultBoolean(gpm.glob.Match(b)), nil
+	// }
+	return ResultNoMatch(), xerrors.Errorf("don't know how to handle type in glob matcher")
+
+	// switch m := i.(type) {
+	// case string:
+	// // TODO: how to do this and avoid an import cycle...
+	// // case retro.PartitionName:
+	// // 	return matcher.ResultSuccess(gpm.glob.Match([]byte(m))), nil
+	// default:
+	// }
 }

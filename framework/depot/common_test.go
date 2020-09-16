@@ -236,7 +236,7 @@ func Test_Depot(t *testing.T) {
 			t.Run("iterates over correct events in correct order", func(t *testing.T) {
 
 				var depot = depotFn()
-				depot.MoveHeadPointer(nil, checkpointThree.Hash())
+				depot.MoveHeadPointer(context.TODO(), nil, checkpointThree.Hash())
 
 				var (
 					expectedResult = map[retro.PartitionName][]string{
@@ -343,7 +343,7 @@ func Test_Depot(t *testing.T) {
 			t.Run("propagates new partitions after a consumer has consumed all that existed at start time", func(t *testing.T) {
 
 				var depot = depotFn()
-				depot.MoveHeadPointer(nil, checkpointThree.Hash())
+				depot.MoveHeadPointer(context.TODO(), nil, checkpointThree.Hash())
 
 				var ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
 				defer cancelFn()
@@ -367,7 +367,7 @@ func Test_Depot(t *testing.T) {
 					depot.StorePacked(associateArticleAuthor2)
 					depot.StorePacked(affixFourA)
 					depot.StorePacked(checkpointFourA)
-					depot.MoveHeadPointer(checkpointThree.Hash(), checkpointFourA.Hash())
+					depot.MoveHeadPointer(context.TODO(), checkpointThree.Hash(), checkpointFourA.Hash())
 				}()
 
 				for {
@@ -393,7 +393,7 @@ func Test_Depot(t *testing.T) {
 
 			t.Run("propagates new events after a consumer has reached the head pointer", func(t *testing.T) {
 				var depot = depotFn()
-				depot.MoveHeadPointer(nil, checkpointThree.Hash())
+				depot.MoveHeadPointer(context.TODO(), nil, checkpointThree.Hash())
 
 				var ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
 				defer cancelFn()
@@ -406,7 +406,7 @@ func Test_Depot(t *testing.T) {
 					depot.StorePacked(associateArticleAuthor2)
 					depot.StorePacked(affixFourB)
 					depot.StorePacked(checkpointFourB)
-					depot.MoveHeadPointer(checkpointThree.Hash(), checkpointFourB.Hash())
+					depot.MoveHeadPointer(context.TODO(), checkpointThree.Hash(), checkpointFourB.Hash())
 				}
 
 				var handleEvents = func(ctx context.Context, evi retro.EventIterator) {
@@ -472,7 +472,7 @@ func Test_Depot(t *testing.T) {
 				var success = make(chan bool)
 
 				var depot = depotFn()
-				depot.MoveHeadPointer(nil, checkpointThree.Hash())
+				depot.MoveHeadPointer(context.TODO(), nil, checkpointThree.Hash())
 
 				var ctx, cancelFn = context.WithTimeout(context.Background(), 1*time.Second)
 				defer cancelFn()

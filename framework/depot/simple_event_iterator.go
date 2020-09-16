@@ -66,12 +66,12 @@ func (s *simpleEventIterator) events(ctx context.Context, out chan retro.Persist
 				break
 			}
 			for partitionName, affixEvHashes := range h.Affix {
-				match, err := s.matcher.DoesMatch(partitionName)
+				match, err := s.matcher.DoesMatch(partitionName.String())
 				if err != nil {
 					outErr <- fmt.Errorf("error checking partition name %s against pattern %s for match", partitionName, s.pattern)
 					return
 				}
-				if match {
+				if match.Success() {
 					for _, evHash := range affixEvHashes {
 
 						packedEv, err := s.objdb.RetrievePacked(evHash.String())

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/retro-framework/go-retro/framework/ctxkey"
 	"github.com/retro-framework/go-retro/framework/matcher"
 	"github.com/retro-framework/go-retro/framework/object"
 	"github.com/retro-framework/go-retro/framework/packing"
@@ -115,7 +116,7 @@ func (s *simplePartitionIterator) partitions(ctx context.Context, out chan retro
 		}()
 
 		// Resolve the head ref for the given ctx
-		checkpointHash, err := s.refdb.Retrieve(refFromCtx(ctx))
+		checkpointHash, err := s.refdb.Retrieve(ctxkey.Ref(ctx))
 		if err != nil {
 			outErr <- errors.Wrap(err, "unknown reference, can't lookup partitions")
 			return
@@ -196,12 +197,12 @@ func (s *simplePartitionIterator) enqueueCheckpointIfRelevant(fromHash, toHash r
 	}
 
 	for partition := range affix {
-		matched, err := s.matcher.DoesMatch(partition)
+		matched, err := s.matcher.DoesMatch(partition.String())
 		if err != nil {
 			// TODO: test this case
 			return errors.Wrap(err, fmt.Sprintf("error checking partition name %s against pattern %s for match", partition, s.pattern))
 		}
-		if matched {
+		if matched.Success() {
 
 			// Ensure we can get the date field header and parse it, else raise an error.
 			dateStr, ok := checkpoint.Fields["date"]
