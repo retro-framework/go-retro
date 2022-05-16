@@ -1,44 +1,40 @@
 module github.com/retro-framework/go-retro
 
 require (
-	github.com/0xAX/notificator v0.0.0-20181105090803-d81462e38c21 // indirect
+	github.com/go-redis/redis v6.8.3+incompatible
+	github.com/gobuffalo/flect v0.1.0
+	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
+	github.com/google/go-cmp v0.2.0
+	github.com/gorilla/handlers v1.4.0
+	github.com/gorilla/mux v1.7.0
+	github.com/influxdata/influxdb v1.7.4
+	github.com/namsral/flag v1.7.4-pre
+	github.com/olivere/elastic v6.2.16+incompatible
+	github.com/opentracing/opentracing-go v1.0.2
+	github.com/openzipkin/zipkin-go-opentracing v0.3.2
+	github.com/pkg/errors v0.8.0
+	github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
+	golang.org/x/xerrors v0.0.0-20190212162355-a5947ffaace3
+	gopkg.in/yaml.v2 v2.2.8
+)
+
+require (
 	github.com/Shopify/sarama v1.15.0 // indirect
+	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
 	github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d // indirect
-	github.com/buger/goterm v0.0.0-20180423150900-6d19e6a8df12 // indirect
-	github.com/codegangsta/envy v0.0.0-20141216192214-4b78388c8ce4 // indirect
-	github.com/codegangsta/gin v0.0.0-20171026143024-cafe2ce98974 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.0.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20160609142408-bb955e01b934 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/go-logfmt/logfmt v0.3.0 // indirect
-	github.com/go-redis/redis v6.8.3+incompatible
-	github.com/gobuffalo/flect v0.1.0
 	github.com/gogo/protobuf v1.2.0 // indirect
-	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
-	github.com/google/go-cmp v0.2.0
-	github.com/google/pprof v0.0.0-20190208070709-b421f19a5c07 // indirect
-	github.com/gorilla/handlers v1.4.0
-	github.com/gorilla/mux v1.7.0
-	github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6 // indirect
-	github.com/influxdata/influxdb v1.7.4
+	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/influxdata/platform v0.0.0-20190117200541-d500d3cf5589 // indirect
-	github.com/karrick/godirwalk v1.7.3 // indirect
 	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515 // indirect
 	github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329 // indirect
-	github.com/mattn/go-shellwords v1.0.3 // indirect
-	github.com/namsral/flag v1.7.4-pre
-	github.com/olivere/elastic v6.2.16+incompatible
 	github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492 // indirect
-	github.com/opentracing/opentracing-go v1.0.2
-	github.com/openzipkin/zipkin-go-opentracing v0.3.2
-	github.com/pierrec/xxHash v0.1.1 // indirect
-	github.com/pkg/errors v0.8.0
+	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20180125231941-8732c616f529 // indirect
-	github.com/uudashr/gopkgs v1.3.2 // indirect
-	github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
-	golang.org/x/arch v0.0.0-20181203225421-5a4828bb7045 // indirect
-	golang.org/x/xerrors v0.0.0-20190212162355-a5947ffaace3
-	google.golang.org/genproto v0.0.0-20181101192439-c830210a61df // indirect
-	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
-	gopkg.in/yaml.v2 v2.2.2
+	golang.org/x/net v0.0.0-20181023162649-9b4f9f5ad519 // indirect
 )
