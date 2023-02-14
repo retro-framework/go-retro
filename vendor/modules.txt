@@ -1,18 +1,30 @@
 # github.com/Shopify/sarama v1.15.0
+## explicit
 github.com/Shopify/sarama
+# github.com/Shopify/toxiproxy v2.1.4+incompatible
+## explicit
 # github.com/apache/thrift v0.0.0-20171203172758-327ebb6c2b6d
+## explicit
 github.com/apache/thrift/lib/go/thrift
 # github.com/davecgh/go-spew v1.1.1
+## explicit
 github.com/davecgh/go-spew/spew
 # github.com/eapache/go-resiliency v1.0.0
+## explicit
 github.com/eapache/go-resiliency/breaker
 # github.com/eapache/go-xerial-snappy v0.0.0-20160609142408-bb955e01b934
+## explicit
 github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
+## explicit
 github.com/eapache/queue
+# github.com/fortytw2/leaktest v1.3.0
+## explicit
 # github.com/go-logfmt/logfmt v0.3.0
+## explicit
 github.com/go-logfmt/logfmt
 # github.com/go-redis/redis v6.8.3+incompatible
+## explicit
 github.com/go-redis/redis
 github.com/go-redis/redis/internal
 github.com/go-redis/redis/internal/consistenthash
@@ -20,49 +32,65 @@ github.com/go-redis/redis/internal/hashtag
 github.com/go-redis/redis/internal/pool
 github.com/go-redis/redis/internal/proto
 # github.com/gobuffalo/flect v0.1.0
+## explicit
 github.com/gobuffalo/flect
-# github.com/gogo/protobuf v1.2.0
+# github.com/gogo/protobuf v1.3.2
+## explicit; go 1.15
 github.com/gogo/protobuf/proto
 # github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
+## explicit
 github.com/golang-collections/collections/stack
 # github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
+## explicit
 github.com/golang/snappy
 # github.com/google/go-cmp v0.2.0
+## explicit
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
 # github.com/gorilla/handlers v1.4.0
+## explicit
 github.com/gorilla/handlers
 # github.com/gorilla/mux v1.7.0
+## explicit
 github.com/gorilla/mux
 # github.com/influxdata/influxdb v1.7.4
+## explicit
 github.com/influxdata/influxdb/client/v2
 github.com/influxdata/influxdb/models
 github.com/influxdata/influxdb/pkg/escape
 # github.com/influxdata/platform v0.0.0-20190117200541-d500d3cf5589
+## explicit
 github.com/influxdata/platform/models
 github.com/influxdata/platform/pkg/escape
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
+## explicit
 github.com/kr/logfmt
 # github.com/mailru/easyjson v0.0.0-20180823135443-60711f1a8329
+## explicit
 github.com/mailru/easyjson
+github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-github.com/mailru/easyjson/buffer
 # github.com/namsral/flag v1.7.4-pre
+## explicit
 github.com/namsral/flag
 # github.com/olivere/elastic v6.2.16+incompatible
+## explicit
 github.com/olivere/elastic
 github.com/olivere/elastic/config
 github.com/olivere/elastic/uritemplates
 # github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492
+## explicit
 github.com/opentracing-contrib/go-observer
 # github.com/opentracing/opentracing-go v1.0.2
+## explicit
 github.com/opentracing/opentracing-go
-github.com/opentracing/opentracing-go/log
 github.com/opentracing/opentracing-go/ext
+github.com/opentracing/opentracing-go/log
 # github.com/openzipkin/zipkin-go-opentracing v0.3.2
+## explicit
 github.com/openzipkin/zipkin-go-opentracing
 github.com/openzipkin/zipkin-go-opentracing/flag
 github.com/openzipkin/zipkin-go-opentracing/thrift/gen-go/scribe
@@ -70,18 +98,25 @@ github.com/openzipkin/zipkin-go-opentracing/thrift/gen-go/zipkincore
 github.com/openzipkin/zipkin-go-opentracing/types
 github.com/openzipkin/zipkin-go-opentracing/wire
 # github.com/pierrec/lz4 v2.0.5+incompatible
+## explicit
 github.com/pierrec/lz4
 github.com/pierrec/lz4/internal/xxh32
 # github.com/pkg/errors v0.8.0
+## explicit
 github.com/pkg/errors
 # github.com/rcrowley/go-metrics v0.0.0-20180125231941-8732c616f529
+## explicit
 github.com/rcrowley/go-metrics
 # github.com/zyedidia/glob v0.0.0-20170209203856-dd4023a66dc3
+## explicit
 github.com/zyedidia/glob
-# golang.org/x/net v0.0.0-20181023162649-9b4f9f5ad519
+# golang.org/x/net v0.0.0-20201021035429-f5854403a974
+## explicit; go 1.11
 golang.org/x/net/context
-# golang.org/x/xerrors v0.0.0-20190212162355-a5947ffaace3
+# golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+## explicit; go 1.11
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
 # gopkg.in/yaml.v2 v2.2.2
+## explicit
 gopkg.in/yaml.v2
